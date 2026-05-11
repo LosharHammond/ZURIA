@@ -1,0 +1,89 @@
+mutation SeedData @transaction @auth(level: PUBLIC, insecureReason: "This is seed data for demonstration purposes and does not require authentication.") {
+  client1: client_insert(data: {
+    name: "Acme Corp",
+    email: "contact@acmecorp.com",
+    phoneNumber: "555-123-4567",
+    address: "123 Main St, Anytown, USA",
+    industry: "Technology",
+    createdAt: "2023-01-15T10:00:00Z"
+  })
+  client2: client_insert(data: {
+    name: "Globex Inc.",
+    email: "info@globex.com",
+    phoneNumber: "555-987-6543",
+    address: "456 Oak Ave, Somewhere, USA",
+    industry: "Manufacturing",
+    createdAt: "2023-02-20T11:30:00Z"
+  })
+  project1: project_insert(data: {
+    clientId: "550e8400-e29b-41d4-a716-446655440000", # Placeholder for client1's ID
+    name: "Website Redesign",
+    status: "In Progress",
+    startDate: "2023-03-01",
+    description: "Redesigning the company website for better user experience.",
+    budget: 15000.00,
+    createdAt: "2023-02-25T09:00:00Z"
+  })
+  project2: project_insert(data: {
+    clientId: "550e8400-e29b-41d4-a716-446655440001", # Placeholder for client2's ID
+    name: "Product Launch Campaign",
+    status: "Planning",
+    startDate: "2023-04-15",
+    description: "Marketing campaign for the new product line.",
+    budget: 20000.00,
+    createdAt: "2023-03-10T14:00:00Z"
+  })
+  task1: task_insert(data: {
+    projectId: "550e8400-e29b-41d4-a716-446655440002", # Placeholder for project1's ID
+    description: "Design UI/UX mockups",
+    status: "To Do",
+    dueDate: "2023-03-15",
+    priority: "High",
+    createdAt: "2023-03-01T10:00:00Z"
+  })
+  task2: task_insert(data: {
+    projectId: "550e8400-e29b-41d4-a716-446655440003", # Placeholder for project1's ID
+    description: "Develop front-end components",
+    status: "To Do",
+    dueDate: "2023-03-30",
+    priority: "Medium",
+    createdAt: "2023-03-05T11:00:00Z"
+  })
+  invoice1: invoice_insert(data: {
+    clientId: "550e8400-e29b-41d4-a716-446655440000", # Placeholder for client1's ID
+    projectId: "550e8400-e29b-41d4-a716-446655440002", # Placeholder for project1's ID
+    invoiceNumber: "INV-2023-001",
+    issueDate: "2023-03-31",
+    totalAmount: 7500.00,
+    status: "Pending",
+    createdAt: "2023-03-25T16:00:00Z"
+  })
+  service1: service_insert(data: {
+    name: "Web Development",
+    price: 100.00,
+    unit: "hour",
+    createdAt: "2023-01-01T08:00:00Z",
+    description: "Hourly rate for web development services."
+  })
+  service2: service_insert(data: {
+    name: "Graphic Design",
+    price: 75.00,
+    unit: "hour",
+    createdAt: "2023-01-01T09:00:00Z",
+    description: "Hourly rate for graphic design services."
+  })
+  user1: user_insert(data: {
+    displayName: "Alice Smith",
+    email: "alice.smith@example.com",
+    role: "Admin",
+    createdAt: "2023-01-10T09:00:00Z",
+    photoUrl: "https://example.com/alice.jpg"
+  })
+  user2: user_insert(data: {
+    displayName: "Bob Johnson",
+    email: "bob.johnson@example.com",
+    role: "User",
+    createdAt: "2023-01-12T10:00:00Z",
+    photoUrl: "https://example.com/bob.jpg"
+  })
+}

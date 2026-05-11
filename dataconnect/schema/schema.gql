@@ -1,0 +1,60 @@
+type User @table {
+  displayName: String!
+  email: String!
+  role: String!
+  createdAt: Timestamp!
+  photoUrl: String
+  phoneNumber: String
+}
+
+type Client @table {
+  name: String!
+  email: String!
+  createdAt: Timestamp!
+  phoneNumber: String
+  address: String
+  industry: String
+}
+
+type Project @table {
+  client: Client!
+  name: String!
+  status: String!
+  startDate: Date!
+  createdAt: Timestamp!
+  description: String
+  endDate: Date
+  budget: Float
+}
+
+type Task @table {
+  project: Project!
+  assignedTo: User
+  description: String!
+  status: String!
+  dueDate: Date!
+  createdAt: Timestamp!
+  priority: String
+  completedAt: Timestamp
+}
+
+type Invoice @table {
+  client: Client!
+  project: Project
+  invoiceNumber: String!
+  issueDate: Date!
+  totalAmount: Float!
+  status: String!
+  createdAt: Timestamp!
+  dueDate: Date
+  paymentDate: Timestamp
+  notes: String
+}
+
+type Service @table {
+  name: String!
+  price: Float!
+  createdAt: Timestamp!
+  description: String
+  unit: String
+}

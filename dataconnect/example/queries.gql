@@ -1,0 +1,45 @@
+query ListAllClients @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  clients {
+    id
+    name
+    email
+    phoneNumber
+    industry
+    createdAt
+  }
+}
+
+mutation CreateNewProject($clientId: UUID!, $name: String!, $status: String!, $startDate: Date!, $description: String, $endDate: Date, $budget: Float) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  project_insert(data: {
+    clientId: $clientId,
+    name: $name,
+    status: $status,
+    startDate: $startDate,
+    description: $description,
+    endDate: $endDate,
+    budget: $budget,
+    createdAt_expr: "request.time"
+  })
+}
+
+query GetMyTasks @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  tasks(where: {assignedToId: {eq_expr: "auth.uid"}}) {
+    id
+    description
+    status
+    dueDate
+    priority
+    project {
+      name
+      client {
+        name
+      }
+    }
+  }
+}
+
+mutation UpdateInvoiceStatus($id: UUID!, $status: String!) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  invoice_update(key: {id: $id}, data: {
+    status: $status
+  })
+}

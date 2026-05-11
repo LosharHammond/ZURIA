@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter";
+  --background: 172 40% 7%;
+  --foreground: 44 64% 96%;
+  --card: 172 36% 10%;
+  --card-foreground: 44 64% 96%;
+  --popover: 172 36% 10%;
+  --popover-foreground: 44 64% 96%;
+  --primary: 170 74% 52%;
+  --primary-foreground: 172 60% 8%;
+  --secondary: 32 92% 58%;
+  --secondary-foreground: 28 55% 10%;
+  --muted: 174 22% 16%;
+  --muted-foreground: 42 18% 72%;
+  --accent: 346 79% 64%;
+  --accent-foreground: 44 64% 96%;
+  --destructive: 0 74% 57%;
+  --destructive-foreground: 44 64% 96%;
+  --border: 174 20% 20%;
+  --input: 174 20% 18%;
+  --ring: 170 74% 52%;
+  --radius: 1.5rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(79, 209, 197, 0.16), transparent 28rem),
+    radial-gradient(circle at 84% 2%, rgba(245, 158, 11, 0.14), transparent 26rem),
+    radial-gradient(circle at 55% 92%, rgba(236, 72, 153, 0.10), transparent 22rem),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+::selection {
+  background: rgba(79, 209, 197, 0.3);
+}
+
+.glass {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.surface {
+  background: rgba(12, 35, 34, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.text-balance {
+  text-wrap: balance;
+}

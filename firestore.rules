@@ -1,0 +1,111 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────────────
+    // Only the user themselves can read/write their own document.
+    // Phone, PIN, referral balance — all locked to the owner.
+    match /users/{userId} {
+      allow read, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow delete: if false; // Never allow client-side delete
+    }
+
+    // ─── Businesses ─────────────────────────────────────────────────────────
+    // A user can read/write the business they own (ownerId == uid).
+    match /businesses/{businessId} {
+      allow read, write: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+    }
+
+    // ─── Transactions ────────────────────────────────────────────────────────
+    // Read/write only if the businessId on the document belongs to the user.
+    // Enforce businessId matches a business the user owns.
+    match /transactions/{txnId} {
+      allow read: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow update, delete: if false; // Transactions are immutable from the client
+    }
+
+    // ─── Debts ──────────────────────────────────────────────────────────────
+    match /debts/{debtId} {
+      allow read, write: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+    }
+
+    // ─── Loans ──────────────────────────────────────────────────────────────
+    match /loans/{loanId} {
+      allow read, write: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+    }
+
+    // ─── Inventory ──────────────────────────────────────────────────────────
+    match /inventory/{itemId} {
+      allow read, write: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
+        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+    }
+
+    // ─── WhatsApp sessions ───────────────────────────────────────────────────
+    // Only Admin SDK (server) can write. Deny all client reads/writes.
+    match /whatsapp_sessions/{phone} {
+      allow read, write: if false;
+    }
+
+    // ─── Withdrawals ────────────────────────────────────────────────────────
+    // Users can create and read their own withdrawals. Only Admin SDK updates status.
+    match /withdrawals/{withdrawalId} {
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow update, delete: if false; // Only Admin SDK (server) can update
+    }
+
+    // ─── Notifications ───────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow write: if false; // Server-generated only
+    }
+
+    // ─── Error logs ──────────────────────────────────────────────────────────
+    // Written by Admin SDK (server) only. No client access.
+    match /errors/{errorId} {
+      allow read, write: if false;
+    }
+
+    // ─── Deny everything else ────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
