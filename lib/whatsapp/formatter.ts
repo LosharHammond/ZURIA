@@ -1,10 +1,24 @@
-import type { BusinessCategory, Debt, InventoryItem, Loan, ParsedTransaction, Transaction } from "@/types/domain";
+import type { BusinessCategory, Debt, InventoryItem, Loan, ParsedTransaction, SubscriptionPlan, Transaction } from "@/types/domain";
 import { MONEY_IN_TYPES, MONEY_OUT_TYPES, REVENUE_TYPES, OPERATING_COST_TYPES, TRANSACTION_TYPE_LABELS } from "@/types/domain";
 import { formatMoney } from "@/lib/utils";
+import { ADMIN_MOMO_NUMBER, SUPPORT_WA_LINK } from "@/lib/config";
+
+// ─── Subscription config (self-contained so formatter has no Firestore deps) ──
+const ADMIN_MOMO = ADMIN_MOMO_NUMBER;
+const SUPPORT_WA = SUPPORT_WA_LINK;
+const SUB_PLANS = {
+  growth:     { label: "ZURIA Growth",     price: 20,  monthlyPrice: 200 },
+  pro:        { label: "ZURIA Pro",        price: 50,  monthlyPrice: 500 },
+  enterprise: { label: "ZURIA Enterprise", price: 100, monthlyPrice: 1000 },
+} as const;
 
 const GHS = (n: number) => formatMoney(Math.abs(n));
 
-const SUPPORT_WA = "https://wa.me/233242176603";
+// Referral constants — kept in sync with referral-service.ts and welcome/route.ts
+const REFERRAL_REWARD_GHS = 0.50;
+const WITHDRAWAL_THRESHOLD_GHS = 5.00;   // 10 referrals
+const MILESTONE_REFERRALS = 30;           // 30 referrals this month → Growth unlock
+const MILESTONE_BALANCE_GHS = 15.00;     // 30 × 0.50
 
 // ─── Business-type-aware labels ───────────────────────────────────────────────
 
@@ -80,89 +94,7 @@ export function fmtConfirm(
   return lines.join("\n");
 }
 
-// ─── Daily summary ────────────────────────────────────────────────────────────
-
-export function fmtSummary(
-  transactions: Transaction[],
-  ownerName: string,
-  category: BusinessCategory = "provision",
-  businessName = "Your Business"
-): string {
-  const voice = getVoice(category);
-  const today = new Date().toISOString().slice(0, 10);
-  const todays = transactions.filter((t) => t.createdAt.startsWith(today));
-  const firstName = ownerName.split(" ")[0];
-  const dateStr = new Date().toLocaleDateString("en-GH", { weekday: "short", day: "numeric", month: "short" });
-
-  if (todays.length === 0) {
-    return [
-      `📊 *${businessName} — ${dateStr}*`,
-      "",
-      "Nothing recorded yet today. 😊",
-      "",
-      "Tell me what happened:",
-      category === "barber" || category === "salon"
-        ? '• "Cut hair 15" or "Shaved 20"'
-        : category === "food" || category === "restaurant"
-        ? '• "Served rice 10" or "Sold 5 plates 50"'
-        : category === "momo"
-        ? '• "Sent 200 momo" or "Received 100"'
-        : '• "Sold rice 120" or "Bought stock 200"',
-      '• "balance" — to see today\'s report',
-      "",
-      `_I'm right here whenever you're ready, ${firstName}! 😊_`,
-      "",
-      sig(businessName),
-    ].join("\n");
-  }
-
-  const moneyIn        = sum(todays.filter((t) => MONEY_IN_TYPES.includes(t.type)));
-  const moneyOut       = sum(todays.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
-  const salesRevenue   = sum(todays.filter((t) => REVENUE_TYPES.includes(t.type)));
-  const operatingCosts = sum(todays.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
-
-  const tradingProfit = salesRevenue - operatingCosts;
-  const financingIn   = moneyIn - salesRevenue;
-  const financingOut  = moneyOut - operatingCosts;
-  const netCash       = moneyIn - moneyOut;
-
-  const lines = [`📊 *${businessName} — ${dateStr}*`, ""];
-
-  lines.push(`${voice.revenueIcon} *${voice.revenueSection}:*   ${GHS(salesRevenue)}`);
-  if (operatingCosts > 0) lines.push(`🔴 *Costs today:*           ${GHS(operatingCosts)}`);
-  lines.push(`─────────────────`);
-
-  if (salesRevenue === 0 && operatingCosts === 0) {
-    lines.push(`🔄 No ${voice.revenueSection.toLowerCase()} or costs yet.`);
-  } else if (tradingProfit > 0) {
-    lines.push(`✅ *${voice.profitLabel}:  +${GHS(tradingProfit)}* 🎉`);
-  } else if (tradingProfit < 0) {
-    lines.push(`📉 *Loss:  -${GHS(tradingProfit)}* — costs are more than ${voice.revenueSection.toLowerCase()}.`);
-  } else {
-    lines.push(`🔄 *Break even* — you made back exactly what you spent.`);
-  }
-
-  if (financingIn > 0 || financingOut > 0) {
-    lines.push("", "💼 *Other money today:*");
-    if (financingIn > 0)  lines.push(`  💳 Received (loans/other): +${GHS(financingIn)}`);
-    if (financingOut > 0) lines.push(`  💸 Paid out (loans/other):  -${GHS(financingOut)}`);
-    lines.push("");
-    if (netCash > 0)      lines.push(`💰 *Cash in hand today: +${GHS(netCash)}*`);
-    else if (netCash < 0) lines.push(`📉 *Cash today: -${GHS(netCash)}* _(more left than came in)_`);
-    else                  lines.push(`🔄 *Cash in = Cash out.*`);
-  }
-
-  const topProduct = getTopProduct(todays);
-  if (topProduct) lines.push("", `🏆 *${voice.bestLabel}: ${topProduct}*`);
-
-  lines.push("");
-  if (tradingProfit > 0)      lines.push(`_Good work today, ${firstName}! 💪 Keep recording so I can help you grow._`);
-  else if (tradingProfit < 0) lines.push(`_Don't worry ${firstName} — every day is a chance to do better. I'm with you! 💙_`);
-  else                        lines.push(`_Keep going ${firstName}! Every sale counts. I'm tracking it all for you! 😊_`);
-
-  lines.push("", sig(businessName));
-  return lines.join("\n");
-}
+// ─── Daily summary (alias kept for backwards-compat — delegates to fmtEndOfDayReport) ─
 
 // ─── Debt list ────────────────────────────────────────────────────────────────
 
@@ -246,7 +178,12 @@ export function fmtStock(inventory: InventoryItem[], businessName = "Your Busine
 
 // ─── Help message ─────────────────────────────────────────────────────────────
 
-export function fmtHelp(ownerName: string, category: BusinessCategory = "provision", businessName = "Your Business"): string {
+export function fmtHelp(
+  ownerName: string,
+  category: BusinessCategory = "provision",
+  businessName = "Your Business",
+  plan: SubscriptionPlan = "free"
+): string {
   const firstName = ownerName.split(" ")[0];
 
   const examples =
@@ -278,8 +215,26 @@ export function fmtHelp(ownerName: string, category: BusinessCategory = "provisi
           '🤝 Loans: "Borrowed 500 from bank" or "Gave Kojo 200 loan"',
         ];
 
+  const canMonthly = plan === "growth" || plan === "pro" || plan === "enterprise";
+  const canFull    = plan === "pro" || plan === "enterprise";
+
+  const planBadge =
+    plan === "free"       ? "🆓 Starter Ledger — Free (10 entries/day)"
+    : plan === "growth"   ? "🟢 ZURIA Growth — GHS 20/month"
+    : plan === "pro"      ? "🔵 ZURIA Pro — GHS 50/month"
+    : "🟣 ZURIA Enterprise — GHS 100/month";
+
+  const reportLines = [
+    '📊 "balance" or "summary" — End-of-day report',
+    '📅 "weekly report" — This week\'s performance',
+    canMonthly ? '📆 "monthly report" — Full monthly analysis' : '_"monthly report" — available on Growth & above_',
+    canFull    ? '🏛️ "full dashboard" — Advanced analytics & AI insights' : null,
+  ].filter(Boolean) as string[];
+
   return [
     `👋 Hi *${firstName}*! I am *ZURIA (${businessName})*, your personal business helper.`,
+    "",
+    `Your plan: *${planBadge}*`,
     "",
     "Just tell me what happened — I do the rest! 😊",
     "",
@@ -288,11 +243,14 @@ export function fmtHelp(ownerName: string, category: BusinessCategory = "provisi
     '💳 Got paid: "Ama paid me 100" or "Kofi paid 50 momo"',
     "",
     "*Check how your business is doing:*",
-    '📊 "balance" or "summary" — Today\'s full report',
+    ...reportLines,
     '💰 "who owes me" — See all debts',
     '🤝 "loans" — See all loans',
     '📦 "stock" — See your goods',
     '🔒 "lock" — Lock your account',
+    "",
+    plan === "free" ? "*Want unlimited messages + more features?*" : "*Subscription commands:*",
+    plan === "free" ? 'Reply *"subscribe"* to see plans (from GHS 20/month)' : 'Reply *"subscribe"* to renew or upgrade your plan',
     "",
     "*Need human help?*",
     `📞 Message us directly: ${SUPPORT_WA}`,
@@ -416,7 +374,997 @@ export function fmtSystemError(): string {
   ].join("\n");
 }
 
+// ─── Subscription plans overview (user typed "subscribe" / "upgrade") ────────
+
+export function fmtSubscribePlans(
+  currentPlan: SubscriptionPlan = "free",
+  businessName = "Your Business"
+): string {
+  const currentLabel =
+    currentPlan === "free"       ? "Starter Ledger — Free (10 entries/day)"
+    : currentPlan === "growth"   ? "ZURIA Growth — GHS 20/month"
+    : currentPlan === "pro"      ? "ZURIA Pro — GHS 50/month"
+    : "ZURIA Enterprise — GHS 100/month";
+
+  return [
+    `🧠 *ZURIA — AI Memory System for Your Business*`,
+    `_Your current plan: ${currentLabel}_`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    `🟢 *ZURIA Growth — GHS ${SUB_PLANS.growth.price}/month*`,
+    `   _(or GHS ${SUB_PLANS.growth.monthlyPrice}/year — 2 months free!)_`,
+    "   ✅ 200 AI entries per month",
+    "   ✅ Monthly profit reports",
+    "   ✅ AI-generated sales insights in local language",
+    "   ✅ Auto debt reminders via WhatsApp",
+    "   ✅ Inventory tracking & restock predictions",
+    "   ✅ Customer debt summaries",
+    "   ✅ Export to PDF/Excel",
+    "",
+    `🔵 *ZURIA Pro — GHS ${SUB_PLANS.pro.price}/month*`,
+    `   _(or GHS ${SUB_PLANS.pro.monthlyPrice}/year — 2 months free!)_`,
+    "   ✅ Unlimited AI entries",
+    "   ✅ AI cash-flow forecasting & profit leakage detection",
+    "   ✅ Predictive business health scoring",
+    "   ✅ Staff accounts & employee permissions",
+    "   ✅ Customer loyalty tracking",
+    "   ✅ Auto-generated invoices",
+    "   ✅ AI business coach chatbot",
+    "   ✅ Advanced analytics (profit trends, expense heatmaps)",
+    "",
+    `🟣 *ZURIA Enterprise — GHS ${SUB_PLANS.enterprise.price}/month*`,
+    `   _(or GHS ${SUB_PLANS.enterprise.monthlyPrice}/year — 2 months free!)_`,
+    "   ✅ Everything in Pro",
+    "   ✅ Multi-branch management & dashboards",
+    "   ✅ Executive KPI & AI growth forecasting",
+    "   ✅ Business valuation estimates",
+    "   ✅ Supplier & purchase order management",
+    "   ✅ Ask AI anything: \"Why are profits down?\"",
+    "   ✅ POS, MoMo & bank integrations",
+    "   ✅ Dedicated support & onboarding",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    "💳 *How to pay with MoMo:*",
+    "",
+    `*MTN MoMo:* Dial *170#* → Send Money`,
+    `   Enter number: *${ADMIN_MOMO}*`,
+    `   Amount: GHS 20, 50, or 100`,
+    `   Reference: your WhatsApp number`,
+    "",
+    `*AirtelTigo Money:* Dial *110#* → Make Payment`,
+    `   Enter number: *${ADMIN_MOMO}* → Amount → Reference: your number`,
+    "",
+    `*Vodafone Cash:* Dial *110#* → Send Money`,
+    `   Enter number: *${ADMIN_MOMO}* → Amount → Reference: your number`,
+    "",
+    "After paying, reply here:",
+    "   *PAID GROWTH* | *PAID PRO* | *PAID ENTERPRISE*",
+    "",
+    "We activate your plan within *1 hour*. 🙏",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "🎁 *Want Growth for FREE? — Refer & Earn*",
+    `Earn *GHS ${REFERRAL_REWARD_GHS.toFixed(2)}* for every friend who joins ZURIA.`,
+    "",
+    `💵 *Goal 1:* Refer 10 friends → earn *GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)}* → withdraw cash to your MoMo`,
+    `🚀 *Goal 2:* Refer ${MILESTONE_REFERRALS} friends this month → earn *GHS ${MILESTONE_BALANCE_GHS.toFixed(2)}* + unlock *Growth features FREE* until end of month!`,
+    "",
+    "Open ZURIA app → Refer & Earn → copy your personal referral link.",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    `Questions? ${SUPPORT_WA}`,
+    `_— ZURIA (${businessName})_`,
+  ].join("\n");
+}
+
+// ─── Subscription required (free daily limit hit) ────────────────────────────
+
+export function fmtSubscriptionRequired(
+  dailyLimit: number,
+  businessName = "Your Business",
+  referralLink?: string
+): string {
+  return [
+    `🚫 *You've used all ${dailyLimit} free AI entries for today.*`,
+    "",
+    "_Your limit resets tomorrow at midnight. 🌙_",
+    "",
+    "Want unlimited access? Upgrade to a paid plan:",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    `🟢 *ZURIA Growth — GHS ${SUB_PLANS.growth.price}/month*`,
+    "   ✅ 200 AI entries per month",
+    "   ✅ Monthly profit reports",
+    "   ✅ AI sales insights in local language",
+    "   ✅ Auto debt reminders & inventory tracking",
+    "",
+    `🔵 *ZURIA Pro — GHS ${SUB_PLANS.pro.price}/month*`,
+    "   ✅ Unlimited AI entries",
+    "   ✅ AI forecasting & profit leakage detection",
+    "   ✅ Staff accounts & advanced analytics",
+    "   ✅ AI business coach",
+    "",
+    `🟣 *ZURIA Enterprise — GHS ${SUB_PLANS.enterprise.price}/month*`,
+    "   ✅ Multi-branch, supplier management",
+    "   ✅ Executive dashboards & AI queries",
+    "   ✅ Dedicated support & integrations",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    "💳 *Pay with MoMo in 3 steps:*",
+    `1️⃣  *MTN:* Dial *170#* → Send Money → *${ADMIN_MOMO}*`,
+    `    *AirtelTigo/Vodafone:* Dial *110#* → Send Money → *${ADMIN_MOMO}*`,
+    "2️⃣  Enter the amount (GHS 20, 50, or 100)",
+    "3️⃣  Use your WhatsApp number as the reference",
+    "",
+    "Then reply here:",
+    "   *PAID GROWTH* | *PAID PRO* | *PAID ENTERPRISE*",
+    "",
+    "Your plan activates within *1 hour*. 🙏",
+    "",
+    `Prefer to wait? Come back tomorrow — your ${dailyLimit} free entries reset at midnight.`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "🤝 *Earn Growth for FREE — Refer & Earn!*",
+    `Earn *GHS ${REFERRAL_REWARD_GHS.toFixed(2)}* for every friend who joins ZURIA.`,
+    "",
+    `💵 10 referrals = GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)} → *withdraw cash to your MoMo*`,
+    `🚀 ${MILESTONE_REFERRALS} referrals this month = GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} + *Growth features FREE!*`,
+    "",
+    ...(referralLink
+      ? [`Your referral link 👇`, referralLink]
+      : ["Open ZURIA app → Refer & Earn → copy your personal link."]),
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    `Questions? ${SUPPORT_WA}`,
+    `_— ZURIA (${businessName})_`,
+  ].join("\n");
+}
+
+// ─── Subscription payment received (user replied PAID) ────────────────────────
+
+export function fmtPaymentReceived(
+  plan: string,
+  businessName = "Your Business"
+): string {
+  return [
+    `✅ *Thank you! Your payment notification has been received.*`,
+    "",
+    `You chose: *${plan}*`,
+    "",
+    "We are reviewing your payment and will activate your plan within *1 hour*.",
+    "You will get a confirmation message here on WhatsApp as soon as it's done. 😊",
+    "",
+    `If you need help, contact us: ${SUPPORT_WA}`,
+    "",
+    `_— ZURIA (${businessName})_`,
+  ].join("\n");
+}
+
+// ─── Subscription activated (sent when admin activates) ───────────────────────
+
+export function fmtSubscriptionActivated(
+  plan: SubscriptionPlan,
+  expiresAt: string,
+  businessName = "Your Business"
+): string {
+  const planInfo = SUB_PLANS[plan as keyof typeof SUB_PLANS];
+  const expDate = new Date(expiresAt).toLocaleDateString("en-GH", { day: "numeric", month: "long", year: "numeric" });
+  const tipLines =
+    plan === "growth"
+      ? ['📅 Try: *"monthly report"* — your full month\'s profit & expense analysis',
+         '📦 Try: *"stock"* — your inventory with restock predictions']
+      : plan === "pro"
+      ? ['📊 Try: *"full dashboard"* — advanced analytics & AI business health',
+         '📅 Try: *"monthly report"* — profit trends, expense heatmaps & more']
+      : plan === "enterprise"
+      ? ['🏛️ Try: *"full dashboard"* — executive KPIs & multi-branch overview',
+         '🤖 Ask me anything: *"Why are my profits down?"*']
+      : [];
+
+  return [
+    `🎉 *You are now on ${planInfo?.label ?? plan}!*`,
+    "",
+    `Valid until: *${expDate}*`,
+    "",
+    "Your business memory just got a major upgrade. 🚀",
+    "",
+    ...tipLines,
+    "",
+    "_Thank you for investing in your business. ZURIA is with you! 💙_",
+    "",
+    `_— ZURIA (${businessName})_`,
+  ].filter((l, i, arr) => !(l === "" && arr[i - 1] === "")).join("\n");
+}
+
+// ─── End-of-day report (free + all paid tiers) ───────────────────────────────
+// Strictly today's transactions only — never mixes other days
+
+export function fmtEndOfDayReport(
+  allTransactions: Transaction[],
+  ownerName: string,
+  category: BusinessCategory = "provision",
+  businessName = "Your Business",
+  referralLink?: string,
+  referralBalance = 0,
+  monthlyReferrals = 0,
+  openDebtCount = 0,
+  openDebtTotal = 0
+): string {
+  const voice = getVoice(category);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const todays = allTransactions.filter((t) => t.createdAt.startsWith(today));
+  const firstName = ownerName.split(" ")[0];
+  const dateStr = now.toLocaleDateString("en-GH", {
+    weekday: "long", day: "numeric", month: "long",
+  });
+
+  // Yesterday for comparison
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const yesterdays = allTransactions.filter((t) => t.createdAt.startsWith(yesterdayStr));
+  const yesterdayRevenue = sum(yesterdays.filter((t) => REVENUE_TYPES.includes(t.type)));
+
+  const header = `📊 *End-of-Day Report — ${dateStr}*`;
+
+  if (todays.length === 0) {
+    return [
+      header,
+      `_For: ${businessName}_`,
+      "",
+      "No transactions recorded today. 😊",
+      "",
+      "Start recording to see your end-of-day report.",
+      "",
+      sig(businessName),
+    ].join("\n");
+  }
+
+  const moneyIn        = sum(todays.filter((t) => MONEY_IN_TYPES.includes(t.type)));
+  const moneyOut       = sum(todays.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
+  const salesRevenue   = sum(todays.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const operatingCosts = sum(todays.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const tradingProfit  = salesRevenue - operatingCosts;
+  const netCash        = moneyIn - moneyOut;
+  const txCount        = todays.length;
+
+  const lines = [
+    header,
+    `_For: ${businessName}_`,
+    "",
+    `📅 *${dateStr}*`,
+    `📝 Total entries recorded: *${txCount}*`,
+    "",
+    `${voice.revenueIcon} *${voice.revenueSection}:*     ${GHS(salesRevenue)}`,
+    operatingCosts > 0 ? `🔴 *Total costs:*              ${GHS(operatingCosts)}` : null,
+    `─────────────────`,
+  ].filter(Boolean) as string[];
+
+  if (tradingProfit > 0) {
+    lines.push(`✅ *${voice.profitLabel}: +${GHS(tradingProfit)}* 🎉`);
+    if (salesRevenue > 0) {
+      const margin = Math.round((tradingProfit / salesRevenue) * 100);
+      lines.push(`📊 _Profit margin: ${margin}%_`);
+    }
+  } else if (tradingProfit < 0) {
+    lines.push(`📉 *Loss: -${GHS(Math.abs(tradingProfit))}* — costs exceed revenue`);
+  } else {
+    lines.push(`🔄 *Break even* — revenue matched costs`);
+  }
+
+  // vs Yesterday
+  if (yesterdayRevenue > 0 && salesRevenue > 0) {
+    const diff = salesRevenue - yesterdayRevenue;
+    const pct = Math.abs(Math.round((diff / yesterdayRevenue) * 100));
+    const vsYest = diff > 0
+      ? `📈 _${pct}% more than yesterday (${GHS(yesterdayRevenue)})_`
+      : diff < 0
+      ? `📉 _${pct}% less than yesterday (${GHS(yesterdayRevenue)})_`
+      : `↔️ _Same as yesterday (${GHS(yesterdayRevenue)})_`;
+    lines.push(vsYest);
+  }
+
+  const financingIn  = moneyIn - salesRevenue;
+  const financingOut = moneyOut - operatingCosts;
+  if (financingIn > 0 || financingOut > 0) {
+    lines.push("", "💼 *Other money today:*");
+    if (financingIn > 0)  lines.push(`   💳 Loans/investments in: +${GHS(financingIn)}`);
+    if (financingOut > 0) lines.push(`   💸 Loans/withdrawals out: -${GHS(financingOut)}`);
+    lines.push("");
+    lines.push(netCash > 0 ? `💰 *Net cash today: +${GHS(netCash)}*` : `📉 *Net cash today: -${GHS(Math.abs(netCash))}*`);
+  }
+
+  const topProduct = getTopProduct(todays);
+  if (topProduct) lines.push("", `🏆 *${voice.bestLabel}: ${topProduct}*`);
+
+  // Top customer today
+  const topCustomerToday = getTopCustomer(todays);
+  if (topCustomerToday) lines.push(`👤 *Top customer: ${topCustomerToday[0]}* (${GHS(topCustomerToday[1])})`);
+
+  // Cost breakdown for today (only when there are 2+ cost types)
+  if (operatingCosts > 0) {
+    const todayCostBreakdown: Record<string, number> = {};
+    todays.filter((t) => OPERATING_COST_TYPES.includes(t.type)).forEach((t) => {
+      const label = TRANSACTION_TYPE_LABELS[t.type] ?? t.type;
+      todayCostBreakdown[label] = (todayCostBreakdown[label] ?? 0) + t.amount;
+    });
+    const costEntries = Object.entries(todayCostBreakdown).sort(([, a], [, b]) => b - a);
+    if (costEntries.length > 1) {
+      lines.push("", "🔍 *Costs today:*");
+      costEntries.slice(0, 4).forEach(([label, amt]) => lines.push(`   • ${label}: ${GHS(amt)}`));
+    }
+  }
+
+  // ── Debt reminder ─────────────────────────────────────────────────────────
+  if (openDebtCount > 0) {
+    lines.push(
+      "",
+      `📋 *${openDebtCount} customer${openDebtCount !== 1 ? "s" : ""} owe${openDebtCount === 1 ? "s" : ""} you ${GHS(openDebtTotal)}* — type _"who owes me"_ to see the list.`
+    );
+  }
+
+  // ── Smart referral tip based on current balance/progress ────────────────
+  const referralTip = buildReferralTip(referralBalance, monthlyReferrals, referralLink, "short");
+
+  lines.push(
+    "",
+    tradingProfit > 0
+      ? `_Well done today, ${firstName}! 💪 See you tomorrow!_`
+      : tradingProfit < 0
+      ? `_Keep going ${firstName} — tomorrow is a new day! 💙_`
+      : `_Solid day, ${firstName}! Every record counts. 😊_`,
+    "",
+    referralTip,
+    "",
+    sig(businessName)
+  );
+
+  return lines.join("\n");
+}
+
+// ─── Weekly report (Small, Medium, Large tiers) ───────────────────────────────
+
+export function fmtWeeklyReport(
+  allTransactions: Transaction[],
+  ownerName: string,
+  category: BusinessCategory = "provision",
+  businessName = "Your Business",
+  referralLink?: string,
+  referralBalance = 0,
+  monthlyReferrals = 0
+): string {
+  const voice = getVoice(category);
+  const firstName = ownerName.split(" ")[0];
+
+  // Compute the start of the current week (Monday)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysFromMonday);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().slice(0, 10);
+
+  // Last week window for trend comparison
+  const lastWeekStart = new Date(weekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const lastWeekStartStr = lastWeekStart.toISOString().slice(0, 10);
+  const lastWeek = allTransactions.filter(
+    (t) => t.createdAt.slice(0, 10) >= lastWeekStartStr && t.createdAt.slice(0, 10) < weekStartStr
+  );
+  const lastWeekRevenue = sum(lastWeek.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const lastWeekCosts   = sum(lastWeek.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const lastWeekProfit  = lastWeekRevenue - lastWeekCosts;
+
+  const weekly = allTransactions.filter((t) => t.createdAt.slice(0, 10) >= weekStartStr);
+  const weekRangeLabel = weekStart.toLocaleDateString("en-GH", { day: "numeric", month: "short" }) +
+    " – " + now.toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" });
+
+  const header = `📊 *Weekly Report — ${weekRangeLabel}*`;
+
+  if (weekly.length === 0) {
+    return [
+      header,
+      `_For: ${businessName}_`,
+      "",
+      "No transactions this week yet.",
+      "",
+      sig(businessName),
+    ].join("\n");
+  }
+
+  const moneyIn        = sum(weekly.filter((t) => MONEY_IN_TYPES.includes(t.type)));
+  const moneyOut       = sum(weekly.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
+  const salesRevenue   = sum(weekly.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const operatingCosts = sum(weekly.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const tradingProfit  = salesRevenue - operatingCosts;
+  const netCash        = moneyIn - moneyOut;
+
+  // Breakdown by day
+  const byDay = new Map<string, { in: number; out: number; profit: number }>();
+  for (let d = new Date(weekStart); d <= now; d.setDate(d.getDate() + 1)) {
+    const dayStr = d.toISOString().slice(0, 10);
+    const dayTxns = weekly.filter((t) => t.createdAt.startsWith(dayStr));
+    const dayIn = sum(dayTxns.filter((t) => REVENUE_TYPES.includes(t.type)));
+    const dayOut = sum(dayTxns.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+    byDay.set(dayStr, { in: dayIn, out: dayOut, profit: dayIn - dayOut });
+  }
+
+  // Best day of the week
+  const bestDayEntry = Array.from(byDay.entries())
+    .filter(([, v]) => v.in > 0)
+    .sort(([, a], [, b]) => b.in - a.in)[0];
+
+  const weekMarginLine = (tradingProfit > 0 && salesRevenue > 0)
+    ? `📊 _Profit margin this week: ${Math.round((tradingProfit / salesRevenue) * 100)}%_`
+    : null;
+
+  const lines = [
+    header,
+    `_For: ${businessName}_`,
+    "",
+    `${voice.revenueIcon} *Total ${voice.revenueSection}:*   ${GHS(salesRevenue)}`,
+    operatingCosts > 0 ? `🔴 *Total costs:*              ${GHS(operatingCosts)}` : null,
+    `─────────────────`,
+    tradingProfit > 0 ? `✅ *Weekly ${voice.profitLabel}: +${GHS(tradingProfit)}* 🎉`
+      : tradingProfit < 0 ? `📉 *Weekly Loss: -${GHS(Math.abs(tradingProfit))}*`
+      : `🔄 *Break even this week*`,
+    weekMarginLine,
+  ].filter(Boolean) as string[];
+
+  // vs Last week trend
+  if (lastWeekRevenue > 0 && salesRevenue > 0) {
+    const revDiff = salesRevenue - lastWeekRevenue;
+    const revPct  = Math.abs(Math.round((revDiff / lastWeekRevenue) * 100));
+    lines.push(
+      revDiff > 0
+        ? `📈 _Revenue up ${revPct}% vs last week (${GHS(lastWeekRevenue)})_`
+        : revDiff < 0
+        ? `📉 _Revenue down ${revPct}% vs last week (${GHS(lastWeekRevenue)})_`
+        : `↔️ _Same revenue as last week_`
+    );
+  }
+  if (lastWeekProfit !== 0 && tradingProfit !== 0) {
+    const profDiff = tradingProfit - lastWeekProfit;
+    const profPct  = Math.abs(Math.round((profDiff / Math.abs(lastWeekProfit)) * 100));
+    lines.push(
+      profDiff > 0
+        ? `📈 _Profit up ${profPct}% vs last week_`
+        : `📉 _Profit down ${profPct}% vs last week_`
+    );
+  }
+
+  if (moneyIn !== salesRevenue || moneyOut !== operatingCosts) {
+    lines.push("", "💼 *Total cash movement:*");
+    lines.push(`   💚 All money in:  +${GHS(moneyIn)}`);
+    lines.push(`   🔴 All money out: -${GHS(moneyOut)}`);
+    lines.push(netCash >= 0 ? `   💰 Net: +${GHS(netCash)}` : `   📉 Net: -${GHS(Math.abs(netCash))}`);
+  }
+
+  lines.push("", "📅 *Daily breakdown:*");
+  byDay.forEach((v, dateStr) => {
+    const label = new Date(dateStr + "T00:00:00").toLocaleDateString("en-GH", { weekday: "short", day: "numeric" });
+    if (v.in === 0 && v.out === 0) {
+      lines.push(`   ${label}: — (no records)`);
+    } else {
+      const sign = v.profit >= 0 ? "+" : "-";
+      lines.push(`   ${label}: ${GHS(v.in)} in | ${GHS(v.out)} out | ${sign}${GHS(Math.abs(v.profit))}`);
+    }
+  });
+
+  // Best day callout
+  if (bestDayEntry) {
+    const [bestDayStr] = bestDayEntry;
+    const bestLabel = new Date(bestDayStr + "T00:00:00").toLocaleDateString("en-GH", { weekday: "long" });
+    lines.push("", `🏅 *Best day this week: ${bestLabel}* (${GHS(bestDayEntry[1].in)})`);
+  }
+
+  const topProduct = getTopProduct(weekly);
+  if (topProduct) lines.push(`🏆 *${voice.bestLabel} this week: ${topProduct}*`);
+
+  // Weekly cost breakdown (only when there are 2+ types)
+  if (operatingCosts > 0) {
+    const weekCostBreakdown: Record<string, number> = {};
+    weekly.filter((t) => OPERATING_COST_TYPES.includes(t.type)).forEach((t) => {
+      const label = TRANSACTION_TYPE_LABELS[t.type] ?? t.type;
+      weekCostBreakdown[label] = (weekCostBreakdown[label] ?? 0) + t.amount;
+    });
+    const costEntries = Object.entries(weekCostBreakdown).sort(([, a], [, b]) => b - a);
+    if (costEntries.length > 1) {
+      lines.push("", "🔍 *Cost breakdown this week:*");
+      costEntries.slice(0, 5).forEach(([label, amt]) => lines.push(`   • ${label}: ${GHS(amt)}`));
+    }
+    // AI cost efficiency tip
+    if (tradingProfit < 0 && costEntries[0]) {
+      lines.push("", `💡 _Biggest cost: "${costEntries[0][0]}" (${GHS(costEntries[0][1])}). Reducing this could flip your week!_`);
+    }
+  }
+
+  // Trend note
+  const txCount = weekly.length;
+  const referralTip = buildReferralTip(referralBalance, monthlyReferrals, referralLink, "medium");
+
+  lines.push(
+    "",
+    `📝 Total entries this week: *${txCount}*`,
+    "",
+    tradingProfit > 0
+      ? `_Great week, ${firstName}! You are profitable. Keep it up! 💪_`
+      : tradingProfit < 0
+      ? `_Costs are higher than revenue this week, ${firstName}. Let's make next week better! 💙_`
+      : `_You broke even this week, ${firstName}. Push for more ${voice.revenueSection.toLowerCase()} next week!_`,
+    "",
+    referralTip,
+    "",
+    sig(businessName)
+  );
+
+  return lines.join("\n");
+}
+
+// ─── Monthly report (Medium, Large tiers) ────────────────────────────────────
+
+export function fmtMonthlyReport(
+  allTransactions: Transaction[],
+  ownerName: string,
+  category: BusinessCategory = "provision",
+  businessName = "Your Business",
+  referralLink?: string,
+  referralBalance = 0,
+  monthlyReferrals = 0
+): string {
+  const voice = getVoice(category);
+  const firstName = ownerName.split(" ")[0];
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0, 7); // "YYYY-MM"
+  const monthLabel = now.toLocaleDateString("en-GH", { month: "long", year: "numeric" });
+
+  const monthly = allTransactions.filter((t) => t.createdAt.startsWith(thisMonth));
+
+  const header = `📊 *Monthly Report — ${monthLabel}*`;
+
+  if (monthly.length === 0) {
+    return [
+      header,
+      `_For: ${businessName}_`,
+      "",
+      "No transactions recorded this month yet.",
+      "",
+      sig(businessName),
+    ].join("\n");
+  }
+
+  const moneyIn        = sum(monthly.filter((t) => MONEY_IN_TYPES.includes(t.type)));
+  const moneyOut       = sum(monthly.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
+  const salesRevenue   = sum(monthly.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const operatingCosts = sum(monthly.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const tradingProfit  = salesRevenue - operatingCosts;
+  const netCash        = moneyIn - moneyOut;
+
+  // Active trading days & average daily revenue
+  const activeDaysSet = new Set(monthly.map((t) => t.createdAt.slice(0, 10)));
+  const activeDays = activeDaysSet.size;
+  const avgDailyRevenue = activeDays > 0 ? salesRevenue / activeDays : 0;
+
+  // Top customer this month
+  const monthCustomerMap = new Map<string, number>();
+  monthly.filter((t) => REVENUE_TYPES.includes(t.type) && t.customerName).forEach((t) => {
+    monthCustomerMap.set(t.customerName!, (monthCustomerMap.get(t.customerName!) ?? 0) + t.amount);
+  });
+  const topMonthCustomer = Array.from(monthCustomerMap.entries()).sort(([, a], [, b]) => b - a)[0] as [string, number] | undefined;
+
+  // Category breakdown for costs
+  const costBreakdown: Record<string, number> = {};
+  monthly.filter((t) => OPERATING_COST_TYPES.includes(t.type)).forEach((t) => {
+    const label = TRANSACTION_TYPE_LABELS[t.type] ?? t.type;
+    costBreakdown[label] = (costBreakdown[label] ?? 0) + t.amount;
+  });
+
+  // Weekly sub-totals within the month
+  const weeklyTotals: { label: string; revenue: number; costs: number }[] = [];
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const weeksInMonth = Math.ceil(daysInMonth / 7);
+  for (let w = 0; w < weeksInMonth; w++) {
+    const startDay = w * 7 + 1;
+    const endDay = Math.min((w + 1) * 7, now.getDate());
+    if (startDay > now.getDate()) break;
+    const startStr = `${thisMonth}-${String(startDay).padStart(2, "0")}`;
+    const endStr = `${thisMonth}-${String(endDay).padStart(2, "0")}`;
+    const wTxns = monthly.filter((t) => t.createdAt.slice(0, 10) >= startStr && t.createdAt.slice(0, 10) <= endStr);
+    weeklyTotals.push({
+      label: `Week ${w + 1} (${startDay}–${endDay})`,
+      revenue: sum(wTxns.filter((t) => REVENUE_TYPES.includes(t.type))),
+      costs: sum(wTxns.filter((t) => OPERATING_COST_TYPES.includes(t.type))),
+    });
+  }
+
+  const lines = [
+    header,
+    `_For: ${businessName}_`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "💼 *Income Statement*",
+    "━━━━━━━━━━━━━━━━━━━",
+    `${voice.revenueIcon} *${voice.revenueSection}:*     ${GHS(salesRevenue)}`,
+    operatingCosts > 0 ? `🔴 *Operating costs:*         ${GHS(operatingCosts)}` : null,
+    `─────────────────`,
+    tradingProfit > 0 ? `✅ *${voice.profitLabel}: +${GHS(tradingProfit)}*`
+      : tradingProfit < 0 ? `📉 *Loss: -${GHS(Math.abs(tradingProfit))}*`
+      : `🔄 *Break even*`,
+  ].filter(Boolean) as string[];
+
+  if (moneyIn !== salesRevenue || moneyOut !== operatingCosts) {
+    lines.push("", "━━━━━━━━━━━━━━━━━━━", "💰 *Cash Flow*", "━━━━━━━━━━━━━━━━━━━");
+    lines.push(`💚 Total money in:  ${GHS(moneyIn)}`);
+    lines.push(`🔴 Total money out: ${GHS(moneyOut)}`);
+    lines.push(`─────────────────`);
+    lines.push(netCash >= 0 ? `💰 *Net cash: +${GHS(netCash)}*` : `📉 *Net cash: -${GHS(Math.abs(netCash))}*`);
+  }
+
+  if (Object.keys(costBreakdown).length > 1) {
+    lines.push("", "━━━━━━━━━━━━━━━━━━━", "🔍 *Cost Breakdown*", "━━━━━━━━━━━━━━━━━━━");
+    Object.entries(costBreakdown)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([label, amt]) => lines.push(`   • ${label}: ${GHS(amt)}`));
+  }
+
+  if (weeklyTotals.length > 1) {
+    lines.push("", "━━━━━━━━━━━━━━━━━━━", "📅 *Weekly Breakdown*", "━━━━━━━━━━━━━━━━━━━");
+    weeklyTotals.forEach((w) => {
+      const profit = w.revenue - w.costs;
+      lines.push(`${w.label}:`);
+      lines.push(`   Revenue: ${GHS(w.revenue)} | Costs: ${GHS(w.costs)} | Net: ${profit >= 0 ? "+" : "-"}${GHS(Math.abs(profit))}`);
+    });
+  }
+
+  const topProduct = getTopProduct(monthly);
+  if (topProduct) lines.push("", `🏆 *${voice.bestLabel} this month: ${topProduct}*`);
+  if (topMonthCustomer) lines.push(`👑 *Top customer: ${topMonthCustomer[0]}* (${GHS(topMonthCustomer[1])})`);
+
+  // Activity stats
+  lines.push(
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "📆 *Activity Stats*",
+    "━━━━━━━━━━━━━━━━━━━",
+    `📝 Total entries: *${monthly.length}*`,
+    `🗓️ Trading days:  *${activeDays}* day${activeDays !== 1 ? "s" : ""}`,
+  );
+  if (avgDailyRevenue > 0) lines.push(`📊 Avg daily ${voice.revenueSection.toLowerCase()}: *${GHS(avgDailyRevenue)}*`);
+
+  // Business health score (0-100) based on profit margin
+  let healthScore = 50;
+  if (salesRevenue > 0) {
+    const margin = (tradingProfit / salesRevenue) * 100;
+    healthScore = Math.min(100, Math.max(0, Math.round(50 + margin * 0.5)));
+  }
+  const healthEmoji = healthScore >= 70 ? "🟢" : healthScore >= 40 ? "🟡" : "🔴";
+  const healthLabel = healthScore >= 70 ? "Healthy" : healthScore >= 40 ? "Moderate" : "Needs attention";
+
+  lines.push(
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    `${healthEmoji} *Business Health: ${healthScore}/100 — ${healthLabel}*`,
+    "━━━━━━━━━━━━━━━━━━━"
+  );
+
+  // AI tip — context-aware based on profitability
+  if (tradingProfit < 0) {
+    const worstCostEntry = Object.entries(costBreakdown).sort(([,a],[,b]) => b - a)[0];
+    lines.push(
+      worstCostEntry
+        ? `💡 _AI Tip: Your biggest cost is "${worstCostEntry[0]}" (${GHS(worstCostEntry[1])}). Look for ways to reduce it — it could flip your profitability._`
+        : `💡 _AI Tip: Costs are higher than revenue this month. Review each expense line and cut what isn't essential._`
+    );
+  } else if (salesRevenue > 0 && tradingProfit / salesRevenue < 0.10) {
+    lines.push(`💡 _AI Tip: Your profit margin is under 10% — that's tight. Try raising prices by 5–10% or negotiating better supplier rates._`);
+  } else if (salesRevenue > 0 && tradingProfit / salesRevenue < 0.25) {
+    lines.push(`💡 _AI Tip: ${Math.round((tradingProfit/salesRevenue)*100)}% profit margin. Healthy, but room to grow — push your top product and chase unpaid debts._`);
+  } else if (tradingProfit > 0) {
+    lines.push(`💡 _AI Tip: Strong ${Math.round((tradingProfit/salesRevenue)*100)}% margin! Consider reinvesting ${GHS(tradingProfit * 0.2)} back into stock this month to keep momentum._`);
+  }
+
+  const referralSection = buildReferralTip(referralBalance, monthlyReferrals, referralLink, "full");
+
+  lines.push(
+    "",
+    tradingProfit > 0
+      ? `_Excellent month, ${firstName}! 🎉 ZURIA is proud of you! Keep growing!_`
+      : `_Every month is a chance to improve, ${firstName}. I'm tracking everything for you. 💙_`,
+    "",
+    referralSection,
+    "",
+    sig(businessName)
+  );
+
+  return lines.join("\n");
+}
+
+// ─── Large-tier: Full financial dashboard ────────────────────────────────────
+
+export function fmtFullDashboard(
+  allTransactions: Transaction[],
+  ownerName: string,
+  category: BusinessCategory = "provision",
+  businessName = "Your Business",
+  plan: SubscriptionPlan = "pro"
+): string {
+  const voice = getVoice(category);
+  const firstName = ownerName.split(" ")[0];
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0, 7);
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
+
+  const thisMonthTxns = allTransactions.filter((t) => t.createdAt.startsWith(thisMonth));
+  const lastMonthTxns = allTransactions.filter((t) => t.createdAt.startsWith(lastMonth));
+
+  const thisRevenue = sum(thisMonthTxns.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const lastRevenue = sum(lastMonthTxns.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const thisCosts   = sum(thisMonthTxns.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const thisProfit  = thisRevenue - thisCosts;
+  const lastCosts   = sum(lastMonthTxns.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const lastProfit  = lastRevenue - lastCosts;
+
+  const revTrend = lastRevenue > 0
+    ? ((thisRevenue - lastRevenue) / lastRevenue * 100).toFixed(1)
+    : null;
+  const profitTrend = lastProfit !== 0
+    ? ((thisProfit - lastProfit) / Math.abs(lastProfit) * 100).toFixed(1)
+    : null;
+
+  // Profit margin
+  const thisProfitMargin = thisRevenue > 0 ? Math.round((thisProfit / thisRevenue) * 100) : null;
+  const lastProfitMargin = lastRevenue > 0 ? Math.round((lastProfit / lastRevenue) * 100) : null;
+
+  // Active trading days & cash runway
+  const activeDaysSet = new Set(thisMonthTxns.map((t) => t.createdAt.slice(0, 10)));
+  const activeDays = activeDaysSet.size;
+  const avgDailyCosts = activeDays > 0 ? thisCosts / activeDays : 0;
+  // Runway: how many days of costs are covered by this month's profit?
+  const runwayDays = avgDailyCosts > 0 && thisProfit > 0
+    ? Math.floor(thisProfit / avgDailyCosts)
+    : null;
+
+  // Top product this month
+  const thisMonthTopProduct = getTopProduct(thisMonthTxns);
+
+  // Customer loyalty (top buyers by amount)
+  const customerMap = new Map<string, number>();
+  allTransactions.filter((t) => REVENUE_TYPES.includes(t.type) && t.customerName).forEach((t) => {
+    customerMap.set(t.customerName!, (customerMap.get(t.customerName!) ?? 0) + t.amount);
+  });
+  const topCustomers = Array.from(customerMap.entries())
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
+
+  const monthLabel = now.toLocaleDateString("en-GH", { month: "long", year: "numeric" });
+  const header = `📊 *Full Business Dashboard — ${monthLabel}*`;
+
+  const lines = [
+    header,
+    `_For: ${businessName} | ${plan === "enterprise" ? "ZURIA Enterprise" : "ZURIA Pro"}_`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "📈 *This Month vs Last Month*",
+    "━━━━━━━━━━━━━━━━━━━",
+    `${voice.revenueIcon} Revenue:  ${GHS(thisRevenue)}${revTrend ? ` (${Number(revTrend) >= 0 ? "▲" : "▼"}${Math.abs(Number(revTrend))}% vs last month)` : ""}`,
+    `🔴 Costs:    ${GHS(thisCosts)}`,
+    `─────────────────`,
+    thisProfit >= 0
+      ? `✅ Profit:  +${GHS(thisProfit)}${profitTrend ? ` (${Number(profitTrend) >= 0 ? "▲" : "▼"}${Math.abs(Number(profitTrend))}%)` : ""}`
+      : `📉 Loss:   -${GHS(Math.abs(thisProfit))}`,
+    thisProfitMargin !== null
+      ? `📊 _Margin: ${thisProfitMargin}%${lastProfitMargin !== null ? ` (was ${lastProfitMargin}% last month)` : ""}_`
+      : null,
+    thisMonthTopProduct ? `🏆 _Top product: ${thisMonthTopProduct}_` : null,
+    runwayDays !== null && runwayDays > 0
+      ? `🏃 _Profit runway: ~${runwayDays} days of costs covered by this month's profit_`
+      : null,
+  ].filter(Boolean) as string[];
+
+  if (topCustomers.length > 0) {
+    lines.push("", "━━━━━━━━━━━━━━━━━━━", "👑 *Top Customers (All Time)*", "━━━━━━━━━━━━━━━━━━━");
+    topCustomers.forEach(([name, total], i) => {
+      lines.push(`${i + 1}. ${name} — ${GHS(total)}`);
+    });
+  }
+
+  const allRevenue  = sum(allTransactions.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const allCosts    = sum(allTransactions.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const allProfit   = allRevenue - allCosts;
+  const allMoneyIn  = sum(allTransactions.filter((t) => MONEY_IN_TYPES.includes(t.type)));
+  const allMoneyOut = sum(allTransactions.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
+  const allMargin   = allRevenue > 0 ? Math.round((allProfit / allRevenue) * 100) : null;
+
+  // Profit velocity — is momentum accelerating or decelerating?
+  const velocitySign = thisProfit > lastProfit ? "▲" : thisProfit < lastProfit ? "▼" : "↔️";
+  const velocityNote = (thisRevenue > 0 && lastRevenue > 0)
+    ? `${velocitySign} Profit velocity: ${thisProfit > lastProfit ? "accelerating" : thisProfit < lastProfit ? "decelerating" : "stable"} vs last month`
+    : null;
+
+  const allTimeLines: (string | null)[] = [
+    "", "━━━━━━━━━━━━━━━━━━━", "🏛️ *All-Time Business Totals*", "━━━━━━━━━━━━━━━━━━━",
+    `💰 Total revenue:   ${GHS(allRevenue)}`,
+    `🔴 Total costs:     ${GHS(allCosts)}`,
+    `─────────────────`,
+    allProfit >= 0 ? `✅ All-time profit: +${GHS(allProfit)}` : `📉 All-time loss: -${GHS(Math.abs(allProfit))}`,
+    allMargin !== null ? `📊 _Overall margin: ${allMargin}%_` : null,
+    velocityNote ? `📈 _${velocityNote}_` : null,
+    ``,
+    `💼 All money received: ${GHS(allMoneyIn)}`,
+    `💸 All money paid out: ${GHS(allMoneyOut)}`,
+    `📝 Total transactions: ${allTransactions.length}`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    `_You are a valued ${plan === "enterprise" ? "Enterprise" : "Pro"} member, ${firstName}! 💙_`,
+    `_Need a consultation? ${SUPPORT_WA}_`,
+    "",
+    sig(businessName),
+  ];
+  lines.push(...(allTimeLines.filter(Boolean) as string[]));
+
+  return lines.join("\n");
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Builds a context-aware referral tip for the bottom of WhatsApp reports.
+ *
+ * mode:
+ *  "short"  — one-liner (end-of-day)
+ *  "medium" — two lines (weekly)
+ *  "full"   — full section with separator (monthly)
+ */
+function buildReferralTip(
+  balance: number,
+  monthlyReferrals: number,
+  referralLink: string | undefined,
+  mode: "short" | "medium" | "full"
+): string {
+  const canWithdraw = balance >= WITHDRAWAL_THRESHOLD_GHS;
+  const hitMilestone = balance >= MILESTONE_BALANCE_GHS || monthlyReferrals >= MILESTONE_REFERRALS;
+  const remaining30 = Math.max(0, MILESTONE_REFERRALS - monthlyReferrals);
+  const remainingCash = parseFloat((WITHDRAWAL_THRESHOLD_GHS - balance).toFixed(2));
+  const referralsToWithdraw = Math.max(0, Math.ceil(remainingCash / REFERRAL_REWARD_GHS));
+
+  const linkLine = referralLink
+    ? `Your link: ${referralLink}`
+    : `Open ZURIA app → Refer & Earn → copy your link.`;
+
+  if (mode === "short") {
+    if (hitMilestone) {
+      return `🏆 _You've hit the GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} milestone! Growth features unlocked — well done!_`;
+    }
+    if (canWithdraw) {
+      return `💰 _You can withdraw GHS ${balance.toFixed(2)} now, OR refer ${remaining30} more this month for GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} + Growth FREE!_`;
+    }
+    return `💡 _Refer ${referralsToWithdraw} more friend${referralsToWithdraw !== 1 ? "s" : ""} to reach GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)} cash out. 30 this month = Growth FREE! ${referralLink ?? ""}`.trim() + `_`;
+  }
+
+  if (mode === "medium") {
+    if (hitMilestone) {
+      return [
+        `🏆 *Referral milestone reached!* GHS ${balance.toFixed(2)} earned this month.`,
+        `Growth features unlocked — keep sharing! ${referralLink ?? ""}`,
+      ].join("\n").trim();
+    }
+    if (canWithdraw) {
+      return [
+        `💰 _Earn more: ${remaining30} referrals left to unlock Growth FREE + earn GHS ${MILESTONE_BALANCE_GHS.toFixed(2)}._`,
+        referralLink ? referralLink : `Open ZURIA app → Refer & Earn.`,
+      ].join("\n");
+    }
+    return [
+      `💡 _Refer friends → earn GHS ${REFERRAL_REWARD_GHS.toFixed(2)}/each. ${referralsToWithdraw} more = withdraw cash. ${MILESTONE_REFERRALS} this month = Growth FREE!_`,
+      referralLink ? referralLink : `Open ZURIA app → Refer & Earn.`,
+    ].join("\n");
+  }
+
+  // mode === "full" — monthly report section
+  const lines: string[] = [
+    "━━━━━━━━━━━━━━━━━━━",
+    "🤝 *Refer & Earn*",
+    "━━━━━━━━━━━━━━━━━━━",
+    `Earn *GHS ${REFERRAL_REWARD_GHS.toFixed(2)}* for every business owner you refer to ZURIA.`,
+    "",
+    `💵 *Path 1:* Refer 10 friends → *GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)}* → withdraw cash to MoMo`,
+    `🚀 *Path 2:* Refer ${MILESTONE_REFERRALS} this month → *GHS ${MILESTONE_BALANCE_GHS.toFixed(2)}* + *Growth features FREE* until month end!`,
+    "",
+  ];
+
+  if (hitMilestone) {
+    lines.push(
+      `🏆 *You've already hit the GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} milestone this month!*`,
+      `Open ZURIA app → Refer & Earn → Withdraw to get your cash. 🎊`
+    );
+  } else if (canWithdraw) {
+    lines.push(
+      `✅ *You can withdraw GHS ${balance.toFixed(2)} now* — or hold for ${remaining30} more referrals`,
+      `to unlock Growth FREE + earn GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} total!`
+    );
+  } else {
+    lines.push(`Progress this month: *${monthlyReferrals}/${MILESTONE_REFERRALS}* referrals | *GHS ${balance.toFixed(2)}* earned`);
+    if (referralsToWithdraw > 0) lines.push(`_${referralsToWithdraw} more referral${referralsToWithdraw !== 1 ? "s" : ""} = GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)} cash out_`);
+    if (remaining30 > 0) lines.push(`_${remaining30} more this month = GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} + Growth FREE!_`);
+  }
+
+  lines.push("", linkLine);
+  return lines.join("\n");
+}
+
+// ─── Referral status (user typed "referral" / "my link" / "earnings") ────────
+
+export function fmtReferralStatus(
+  ownerName: string,
+  businessName = "Your Business",
+  referralCode = "",
+  referralBalance = 0,
+  referralCount = 0,
+  monthlyReferrals = 0,
+  referralLink?: string,
+  pendingWithdrawal = false
+): string {
+  const firstName = ownerName.split(" ")[0];
+  const canWithdraw = referralBalance >= WITHDRAWAL_THRESHOLD_GHS;
+  const hitMilestone = referralBalance >= MILESTONE_BALANCE_GHS || monthlyReferrals >= MILESTONE_REFERRALS;
+  const remaining30 = Math.max(0, MILESTONE_REFERRALS - monthlyReferrals);
+  const referralsToWithdraw = Math.max(0, Math.ceil((WITHDRAWAL_THRESHOLD_GHS - referralBalance) / REFERRAL_REWARD_GHS));
+  const link = referralLink ?? (referralCode ? `Your referral link: open ZURIA app → Refer & Earn` : undefined);
+
+  const lines: string[] = [
+    `💰 *Refer & Earn — ${firstName}*`,
+    "",
+    `📊 *Your earnings summary:*`,
+    `   💵 Balance:       *GHS ${referralBalance.toFixed(2)}*`,
+    `   👥 All-time:      *${referralCount} friend${referralCount !== 1 ? "s" : ""} joined*`,
+    `   📅 This month:    *${monthlyReferrals}/${MILESTONE_REFERRALS} referrals*`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "🎯 *Two ways to win:*",
+    "━━━━━━━━━━━━━━━━━━━",
+    `💵 *Path 1:* Reach GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)} → withdraw cash to MoMo`,
+    `🚀 *Path 2:* ${MILESTONE_REFERRALS} referrals this month → GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} + Growth FREE!`,
+    "",
+  ];
+
+  // Status & call to action
+  if (hitMilestone) {
+    lines.push(
+      `🏆 *Milestone reached! You've earned GHS ${referralBalance.toFixed(2)} this month!*`,
+      `Open ZURIA app → Refer & Earn → Withdraw to get your cash. 🎊`
+    );
+  } else if (pendingWithdrawal) {
+    lines.push(`⏳ *You have a pending withdrawal request.* We'll process it soon!`);
+  } else if (canWithdraw) {
+    lines.push(
+      `✅ *You can withdraw GHS ${referralBalance.toFixed(2)} now!*`,
+      ``,
+      `💡 Or hold on — refer ${remaining30} more this month to unlock`,
+      `   GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} total + *Growth features FREE!* 🚀`,
+      ``,
+      `Open ZURIA app → Refer & Earn → tap Withdraw.`
+    );
+  } else {
+    lines.push(
+      `_${referralsToWithdraw} more referral${referralsToWithdraw !== 1 ? "s" : ""} → reach GHS ${WITHDRAWAL_THRESHOLD_GHS.toFixed(2)} (cash out)_`,
+      `_${remaining30} more this month → GHS ${MILESTONE_BALANCE_GHS.toFixed(2)} + Growth FREE!_`
+    );
+  }
+
+  lines.push(
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    `Earn *GHS ${REFERRAL_REWARD_GHS.toFixed(2)}* for every business owner who joins via your link.`,
+    "",
+    link ? `🔗 *Your link:* ${link}` : `Open ZURIA app → Refer & Earn → copy your referral link.`,
+    "",
+    sig(businessName)
+  );
+
+  return lines.join("\n");
+}
 
 function sum(items: Transaction[]): number {
   return items.reduce((acc, t) => acc + t.amount, 0);
@@ -430,4 +1378,14 @@ function getTopProduct(transactions: Transaction[]): string | undefined {
     }
   });
   return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+function getTopCustomer(transactions: Transaction[]): [string, number] | undefined {
+  const counts = new Map<string, number>();
+  transactions.forEach((t) => {
+    if (t.customerName && REVENUE_TYPES.includes(t.type)) {
+      counts.set(t.customerName, (counts.get(t.customerName) ?? 0) + t.amount);
+    }
+  });
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0] as [string, number] | undefined;
 }

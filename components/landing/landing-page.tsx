@@ -5,16 +5,23 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import {
   ArrowRight,
+  BadgeCheck,
   BarChart3,
   Brain,
+  Building2,
   CheckCircle2,
   CloudOff,
+  Cpu,
+  DatabaseZap,
   HandCoins,
+  Languages,
   MessageCircle,
   Package,
   ShieldCheck,
   Sparkles,
+  Star,
   TrendingUp,
+  WifiOff,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -92,12 +99,12 @@ const steps = [
   {
     number: "01",
     title: "Sign in with your phone",
-    text: "No email, no password. Just your Ghanaian phone number and an OTP. You're in within 30 seconds.",
+    text: "No email, no password. Just your Ghanaian phone number. You're in within 30 seconds.",
   },
   {
     number: "02",
     title: "Record in plain language",
-    text: "Type exactly how you think: \"Sold rice 120\", \"Ama owes me 200\", \"Paid ECG 80\". ZURIA does the rest.",
+    text: 'Type exactly how you think: "Sold rice 120", "Ama owes me 200", "Paid ECG 80". ZURIA does the rest.',
   },
   {
     number: "03",
@@ -133,6 +140,212 @@ const whatsappConversation = [
   { side: "zuria", text: "📊 Today · Ama Stores\nIncome: GHS 560\nExpenses: GHS 80\nProfit: GHS 480 🟢\n\nStock alert: Groundnut oil running low!" },
 ];
 
+// ── Pricing data ──────────────────────────────────────────────────────────────
+
+const pricingTiers = [
+  {
+    id: "free",
+    badge: "Always Free",
+    badgeVariant: "outline" as const,
+    name: "Starter Ledger",
+    tagline: "Start your business memory today",
+    price: 0,
+    annualPrice: null,
+    color: "text-muted-foreground",
+    borderColor: "border-white/10",
+    glowColor: "",
+    target: "Market women · Kiosks · Solo hustlers",
+    highlight: false,
+    limits: ["10 AI entries per day", "1 business account", "30-day history"],
+    features: [
+      "Voice & text transaction recording",
+      "AI transaction parsing in 6 local languages",
+      "Sales, expense & debt logging",
+      "Simple debt tracking",
+      "Daily business summary",
+      "Weekly SMS-style report",
+      "Basic business health score",
+      "Low-stock alerts",
+      "Offline-first — works without internet",
+      "WhatsApp PIN security",
+    ],
+    cta: "Start free",
+    ctaVariant: "outline" as const,
+  },
+  {
+    id: "growth",
+    badge: "Most Popular",
+    badgeVariant: "success" as const,
+    name: "ZURIA Growth",
+    tagline: "Your digital shop assistant",
+    price: 20,
+    annualPrice: 200,
+    color: "text-emerald-400",
+    borderColor: "border-emerald-500/30",
+    glowColor: "from-emerald-500/8",
+    target: "Small shops · Salons · MoMo vendors · Food vendors",
+    highlight: true,
+    limits: ["200 AI entries per month", "Unlimited voice notes"],
+    features: [
+      "Everything in Starter Ledger",
+      "Smart transaction categorization",
+      "Auto debt reminders via WhatsApp",
+      "AI-generated sales insights in local language",
+      "AI business tips daily",
+      "Monthly profit reports",
+      "Expense analysis & breakdown",
+      "Top-selling products report",
+      "Customer debt summaries",
+      "Inventory tracking & restock predictions",
+      "Low-stock forecasting",
+      "Multi-device sync",
+      "Export to PDF/Excel",
+      "WhatsApp daily summaries",
+      "Custom business name & branding",
+    ],
+    cta: "Get Growth",
+    ctaVariant: "default" as const,
+  },
+  {
+    id: "pro",
+    badge: "Best Value",
+    badgeVariant: "secondary" as const,
+    name: "ZURIA Pro",
+    tagline: "The African SME operating system",
+    price: 50,
+    annualPrice: 500,
+    color: "text-cyan-400",
+    borderColor: "border-cyan-500/30",
+    glowColor: "from-cyan-500/8",
+    target: "Pharmacies · Restaurants · Hardware shops · Distributors",
+    highlight: false,
+    limits: ["Unlimited AI entries", "All features unlocked"],
+    features: [
+      "Everything in Growth",
+      "AI detects unusual spending patterns",
+      "AI cash-flow forecasting",
+      "Predictive business health scoring",
+      "AI profit leakage detection",
+      "AI recommendations engine",
+      "Staff accounts & employee permissions",
+      "Activity logs & staff sales tracking",
+      "Advanced analytics dashboard",
+      "Profit trends & peak sales hours",
+      "Expense heatmaps",
+      "Debt recovery probability scoring",
+      "Customer purchase history & insights",
+      "Loyal customer tracking",
+      "Auto-generated invoices",
+      "Smart recurring reminders",
+      "Scheduled reports",
+      "AI business coach chatbot",
+      "Biometric login & cloud backup priority",
+    ],
+    cta: "Get Pro",
+    ctaVariant: "outline" as const,
+  },
+  {
+    id: "enterprise",
+    badge: "Full Power",
+    badgeVariant: "warning" as const,
+    name: "ZURIA Enterprise",
+    tagline: "Commercial intelligence infrastructure",
+    price: 100,
+    annualPrice: 1000,
+    color: "text-amber-400",
+    borderColor: "border-amber-500/30",
+    glowColor: "from-amber-500/8",
+    target: "Large retailers · Chains · Distributors · Wholesalers · Franchises",
+    highlight: false,
+    limits: ["Unlimited everything", "Multi-branch ready", "API access"],
+    features: [
+      "Everything in Pro",
+      "Multi-branch management",
+      "Consolidated analytics & regional dashboards",
+      "Branch comparison AI",
+      "Executive KPI dashboards",
+      "AI growth forecasting",
+      "Business valuation estimates",
+      "Expansion recommendations",
+      "Supplier & purchase order management",
+      "Bulk stock intelligence & supplier debt tracking",
+      "Cash-flow simulations",
+      "Tax estimation & audit logs",
+      'Ask AI anything — "Why are profits down?"',
+      "Unlimited staff & department roles",
+      "Approval systems",
+      "POS, MoMo & bank integrations",
+      "Dedicated support & onboarding",
+      "Data migration service",
+    ],
+    cta: "Get Enterprise",
+    ctaVariant: "outline" as const,
+  },
+];
+
+// ── Moat features ─────────────────────────────────────────────────────────────
+
+const moatFeatures = [
+  {
+    icon: DatabaseZap,
+    title: "Business Memory",
+    color: "text-primary",
+    bg: "bg-primary/10",
+    description:
+      "ZURIA remembers your suppliers, customer debts, seasonal sales patterns, spending habits, peak days, and repeat buyers. Not bookkeeping. Memory.",
+    examples: ["Kofi always buys on Fridays", "Groundnut oil spikes before school terms", "Ama still owes from last month"],
+  },
+  {
+    icon: Languages,
+    title: "Local Language AI",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    description:
+      'Voice input in Twi, Ga, Hausa, Ewe, and Fante. "Kofi took bread and owes me 50 cedis." ZURIA parses automatically. That\'s billion-cedi territory in Africa.',
+    examples: ["Twi", "Ga", "Hausa", "Ewe", "Fante", "English"],
+  },
+  {
+    icon: WifiOff,
+    title: "Offline-First Engine",
+    color: "text-cyan-400",
+    bg: "bg-cyan-500/10",
+    description:
+      "Most African SME software fails here. ZURIA works offline, syncs later, and survives poor connectivity. This is a major trust differentiator.",
+    examples: ["Record at Makola with no signal", "Auto-sync when back online", "Never lose a transaction"],
+  },
+  {
+    icon: Cpu,
+    title: "AI Business Coach",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    description:
+      "Daily intelligence that makes ZURIA feel alive. Not just a recorder — an advisor that knows your business as well as you do.",
+    examples: [
+      "Expenses increased 24% this week",
+      "Rice sales rise every Friday",
+      "Recover Ama's debt before month-end",
+    ],
+  },
+  {
+    icon: MessageCircle,
+    title: "WhatsApp Commerce Layer",
+    color: "text-secondary",
+    bg: "bg-secondary/10",
+    description:
+      "Most SMEs live inside WhatsApp. ZURIA turns WhatsApp into a full business operating system. Record, query, and get reports without opening an app.",
+    examples: ['"Sold 3 Coke 45 cedis cash"', '"Who owes me?"', '"Monthly report"'],
+  },
+  {
+    icon: Building2,
+    title: "Multi-Branch Intelligence",
+    color: "text-violet-400",
+    bg: "bg-violet-500/10",
+    description:
+      "Enterprise users get branch management, consolidated analytics, and AI that compares performance across locations — like a mini SAP for African SMEs.",
+    examples: ["Branch A vs Branch B", "Which location wastes most?", "Regional revenue dashboard"],
+  },
+];
+
 // ── Sections ──────────────────────────────────────────────────────────────────
 
 function NavBar() {
@@ -148,6 +361,7 @@ function NavBar() {
         <div className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
           <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
           <Link href="#how-it-works" className="hover:text-foreground transition-colors">How it works</Link>
+          <Link href="#pricing" className="hover:text-foreground transition-colors">Pricing</Link>
           <Link href="#for-you" className="hover:text-foreground transition-colors">For your business</Link>
         </div>
         <Button asChild size="sm">
@@ -181,7 +395,7 @@ function HeroSection() {
             >
               <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                AI-assisted business memory for African SMEs
+                The AI memory system for African businesses
               </span>
             </motion.div>
 
@@ -202,8 +416,10 @@ function HeroSection() {
               transition={{ duration: 0.6, delay: 0.16 }}
               className="mt-6 max-w-lg text-lg leading-7 text-muted-foreground"
             >
-              ZURIA turns everyday business language into clean records, instant reports, and smart alerts —
-              so you always know where your money is going.
+              Old merchants kept wisdom in notebooks and memory.
+              ZURIA transforms that ancient rhythm into{" "}
+              <span className="text-foreground font-medium">living intelligence</span> —
+              a digital accountant, business advisor, debt tracker, and sales engine in one.
             </motion.p>
 
             <motion.div
@@ -218,7 +434,7 @@ function HeroSection() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="default">
-                <Link href="#how-it-works">See how it works</Link>
+                <Link href="#pricing">See plans</Link>
               </Button>
             </motion.div>
 
@@ -228,7 +444,7 @@ function HeroSection() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="mt-8 flex flex-wrap gap-4 text-sm text-muted-foreground"
             >
-              {["No credit card needed", "Works offline", "Ghanaian businesses"].map((item) => (
+              {["No credit card needed", "Works offline", "6 local languages"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-primary" />
                   {item}
@@ -337,9 +553,51 @@ function FeaturesSection() {
   );
 }
 
+function MoatSection() {
+  return (
+    <section className="border-y border-white/[0.06] bg-white/[0.015]">
+      <div className="mx-auto max-w-6xl px-4 py-24">
+        <FadeUp>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <Star className="h-3 w-3" /> Why ZURIA dominates
+          </div>
+          <h2 className="max-w-2xl text-4xl font-black leading-tight md:text-5xl">
+            Features that create an unbeatable moat.
+          </h2>
+          <p className="mt-4 max-w-xl text-muted-foreground">
+            ZURIA is not accounting software, an inventory app, or a bookkeeping tool. That market is crowded.
+            ZURIA is the <span className="text-foreground font-semibold">AI memory system for African businesses.</span>
+          </p>
+        </FadeUp>
+
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {moatFeatures.map((f, i) => (
+            <FadeUp key={f.title} delay={i * 0.07}>
+              <GlassCard className="group h-full hover:border-primary/20 transition-colors duration-300">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${f.bg}`}>
+                  <f.icon className={`h-6 w-6 ${f.color}`} />
+                </div>
+                <h3 className={`mt-4 text-base font-black ${f.color}`}>{f.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{f.description}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {f.examples.map((ex) => (
+                    <span key={ex} className="rounded-lg bg-white/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground">
+                      {ex}
+                    </span>
+                  ))}
+                </div>
+              </GlassCard>
+            </FadeUp>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="border-y border-white/[0.06] bg-white/[0.015]">
+    <section id="how-it-works" className="border-b border-white/[0.06]">
       <div className="mx-auto max-w-6xl px-4 py-24">
         <FadeUp>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
@@ -440,6 +698,162 @@ function DashboardPreviewSection() {
   );
 }
 
+// ── Pricing Section ────────────────────────────────────────────────────────────
+
+function PricingSection() {
+  const adminMomo = "0242176603";
+
+  return (
+    <section id="pricing" className="border-t border-white/[0.06] bg-white/[0.01]">
+      <div className="mx-auto max-w-6xl px-4 py-24">
+        {/* Header */}
+        <FadeUp className="text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
+            <BadgeCheck className="h-3 w-3" /> Transparent pricing
+          </div>
+          <h2 className="text-4xl font-black md:text-5xl">
+            Start free. Scale as you grow.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            Every plan includes our core AI memory engine. Paid plans unlock intelligence, automation, and strategic insight — not just more messages.
+          </p>
+          {/* Annual discount banner */}
+          <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-400">
+            <Sparkles className="h-4 w-4" />
+            Pay annually and get 2 months free — save up to GHS 200/year
+          </div>
+        </FadeUp>
+
+        {/* Tier cards */}
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {pricingTiers.map((tier, i) => (
+            <FadeUp key={tier.id} delay={i * 0.08}>
+              <div
+                className={`relative flex h-full flex-col rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1 ${
+                  tier.highlight
+                    ? "border-emerald-500/40 bg-emerald-500/5 shadow-xl shadow-emerald-500/10"
+                    : `${tier.borderColor} bg-white/[0.025]`
+                } ${tier.glowColor ? `bg-gradient-to-b ${tier.glowColor} to-transparent` : ""}`}
+              >
+                {tier.highlight && (
+                  <div className="pointer-events-none absolute inset-0 -z-10 rounded-3xl bg-emerald-500/5 blur-xl" />
+                )}
+
+                {/* Badge */}
+                <div className="flex items-center justify-between">
+                  <Badge variant={tier.badgeVariant} className="text-[10px]">
+                    {tier.badge}
+                  </Badge>
+                  {tier.highlight && <Star className="h-4 w-4 fill-emerald-400 text-emerald-400" />}
+                </div>
+
+                {/* Name & tagline */}
+                <h3 className={`mt-4 text-xl font-black ${tier.color}`}>{tier.name}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{tier.tagline}</p>
+
+                {/* Price */}
+                <div className="mt-5">
+                  {tier.price === 0 ? (
+                    <p className="text-4xl font-black">Free</p>
+                  ) : (
+                    <>
+                      <p className="text-4xl font-black">
+                        GHS {tier.price}
+                        <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                      </p>
+                      {tier.annualPrice && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          or GHS {tier.annualPrice}/year{" "}
+                          <span className="text-emerald-400 font-medium">
+                            (save GHS {tier.price * 2})
+                          </span>
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Target */}
+                <p className="mt-3 text-[11px] text-muted-foreground leading-5 border-t border-white/[0.06] pt-3">
+                  {tier.target}
+                </p>
+
+                {/* Limits */}
+                <div className="mt-3 space-y-1.5">
+                  {tier.limits.map((limit) => (
+                    <div key={limit} className="flex items-center gap-2">
+                      <Zap className={`h-3.5 w-3.5 shrink-0 ${tier.color}`} />
+                      <span className="text-xs font-medium">{limit}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA */}
+                <div className="mt-5">
+                  <Button asChild variant={tier.ctaVariant} className="w-full">
+                    <Link href="/login">{tier.cta} <ArrowRight className="ml-2 h-3.5 w-3.5" /></Link>
+                  </Button>
+                </div>
+
+                {/* Features */}
+                <ul className="mt-5 space-y-2.5 border-t border-white/[0.06] pt-5 flex-1">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <CheckCircle2 className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tier.color}`} />
+                      <span className="text-xs leading-5 text-muted-foreground">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </FadeUp>
+          ))}
+        </div>
+
+        {/* MoMo payment instructions */}
+        <FadeUp delay={0.3} className="mt-12">
+          <GlassCard className="text-center">
+            <div className="mx-auto max-w-2xl">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10">
+                <span className="text-2xl">📱</span>
+              </div>
+              <h3 className="text-xl font-black">Pay with Mobile Money</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                No card required. Pay directly with MoMo and get activated within 1 hour.
+              </p>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                {[
+                  { network: "MTN MoMo", ussd: "*170#", step: "Send Money" },
+                  { network: "AirtelTigo", ussd: "*110#", step: "Make Payment" },
+                  { network: "Vodafone Cash", ussd: "*110#", step: "Send Money" },
+                ].map((n) => (
+                  <div key={n.network} className="rounded-2xl bg-white/[0.04] px-4 py-4 text-left">
+                    <p className="font-bold text-sm">{n.network}</p>
+                    <p className="mt-1 font-mono text-lg text-primary">{n.ussd}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      → {n.step} → {adminMomo}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-primary/5 border border-primary/10 px-5 py-4">
+                <p className="text-sm text-muted-foreground leading-6">
+                  After paying, open WhatsApp and message ZURIA:{" "}
+                  <span className="font-mono font-bold text-foreground">PAID GROWTH</span>,{" "}
+                  <span className="font-mono font-bold text-foreground">PAID PRO</span>, or{" "}
+                  <span className="font-mono font-bold text-foreground">PAID ENTERPRISE</span>.
+                  <br />We will verify and activate your plan within <strong>1 hour</strong>.
+                </p>
+              </div>
+            </div>
+          </GlassCard>
+        </FadeUp>
+      </div>
+    </section>
+  );
+}
+
 function BusinessTypesSection() {
   return (
     <section id="for-you" className="border-t border-white/[0.06] bg-white/[0.015]">
@@ -503,7 +917,7 @@ function CtaSection() {
                 </Link>
               </Button>
               <Button asChild variant="ghost" size="default">
-                <Link href="#features">Learn more</Link>
+                <Link href="#pricing">See all plans</Link>
               </Button>
             </div>
             <p className="mt-6 text-xs text-muted-foreground">
@@ -527,9 +941,11 @@ function Footer() {
             </span>
             <span className="text-sm font-bold tracking-[0.22em]">ZURIA</span>
           </div>
-          <div className="flex gap-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-foreground transition-colors">How it works</Link>
+            <Link href="#pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+            <Link href="#for-you" className="hover:text-foreground transition-colors">For your business</Link>
             <Link href="/login" className="hover:text-foreground transition-colors">Sign in</Link>
           </div>
           <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} ZURIA. Built for Ghana.</p>
@@ -548,8 +964,10 @@ export function LandingPage() {
       <HeroSection />
       <StatsBar />
       <FeaturesSection />
+      <MoatSection />
       <HowItWorksSection />
       <DashboardPreviewSection />
+      <PricingSection />
       <BusinessTypesSection />
       <CtaSection />
       <Footer />

@@ -1,5 +1,5 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 // Lazy singleton — initialized on first use, not at module load time.
@@ -68,6 +68,15 @@ export async function verifyIdToken(authHeader: string | null) {
   } catch {
     return null;
   }
+}
+
+let _auth: Auth | null = null;
+
+/** Returns the Firebase Admin Auth instance. */
+export function getAdminAuth(): Auth {
+  if (_auth) return _auth;
+  _auth = getAuth(getAdminApp());
+  return _auth;
 }
 
 /**

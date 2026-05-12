@@ -41,7 +41,17 @@ export function OnboardingForm() {
   async function onSubmit(values: FormValues) {
     if (!firebaseUser) return;
 
-    const phone = firebaseUser.phoneNumber ?? "";
+    // Custom token auth has no phoneNumber on the Firebase user object —
+    // we stored it in sessionStorage during the login step.
+    const phone =
+      firebaseUser.phoneNumber ??
+      sessionStorage.getItem("zuria_phone") ??
+      "";
+
+    if (!phone) {
+      form.setError("root", { message: "Could not read your phone number. Please sign out and sign in again." });
+      return;
+    }
 
     try {
       const alreadyRegistered = await isPhoneRegistered(phone);
@@ -69,10 +79,11 @@ export function OnboardingForm() {
         referralCode,
       });
       sessionStorage.removeItem("zuria_ref");
+      sessionStorage.removeItem("zuria_phone");
       setUser(result.user);
       setBusiness(result.business);
 
-      // Send WhatsApp welcome message — best effort, non-blocking
+      // Send WhatsApp welcome + handle referral credit — best effort, non-blocking
       const token = await firebaseUser.getIdToken();
       fetch("/api/welcome", {
         method: "POST",
@@ -82,6 +93,7 @@ export function OnboardingForm() {
           ownerName: values.ownerName,
           businessName: values.businessName,
           category: values.category,
+          referralCode,           // server credits referrer + sends WhatsApp notification
         }),
       }).catch(() => {}); // ignore failures — user is already registered
 

@@ -1,6 +1,7 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
-import type { AppUser, Business, Debt, InventoryItem, Loan, Transaction } from "@/types/domain";
+import type { AppUser, Business, Debt, InventoryItem, Loan, SubscriptionPlan, Transaction } from "@/types/domain";
 
 // ─── User lookup ──────────────────────────────────────────────────────────────
 
@@ -24,6 +25,91 @@ export async function getUserByPhone(normalizedPhone: string): Promise<{ user: A
   return { user, business: bizDoc.data() as Business, pin };
 }
 
+// ─── Subscription helpers ─────────────────────────────────────────────────────
+
+/**
+ * Returns the effective subscription plan.
+ *
+ * Priority order:
+ * 1. Active paid plan (subscriptionPlan + valid subscriptionExpiresAt)
+ * 2. Referral milestone unlock — free users who referred 30+ people this month
+ *    get Growth features until end of that month (referralUnlockExpiresAt)
+ * 3. "free" fallback
+ */
+export function getEffectivePlan(user: AppUser): SubscriptionPlan {
+  const plan = user.subscriptionPlan ?? "free";
+  const now = new Date();
+
+  // 1. Check if a paid plan is still active
+  if (plan !== "free") {
+    const expiresAt = user.subscriptionExpiresAt;
+    if (!expiresAt || new Date(expiresAt) > now) {
+      return plan; // paid plan still valid
+    }
+    // Paid plan expired — fall through to check referral unlock
+  }
+
+  // 2. Check referral milestone unlock (30 referrals this month → Growth)
+  const unlockExpiry = user.referralUnlockExpiresAt;
+  if (unlockExpiry && new Date(unlockExpiry) > now) {
+    return "growth";
+  }
+
+  return "free";
+}
+
+/**
+ * Returns the current reset period key for a plan:
+ *  free   → "YYYY-MM-DD"  (daily reset)
+ *  growth → "YYYY-MM"     (monthly reset)
+ *  pro / enterprise → null (unlimited — no counting)
+ */
+function currentResetKey(plan: SubscriptionPlan): string | null {
+  const now = new Date().toISOString();
+  if (plan === "free")   return now.slice(0, 10); // daily
+  if (plan === "growth") return now.slice(0, 7);  // monthly
+  return null;
+}
+
+/**
+ * Returns how many messages the user has sent in the current period,
+ * automatically resetting the counter if the period has rolled over.
+ * Returns 0 if the plan has no limit (pro / enterprise).
+ */
+export async function getAndMaybeResetMessageCount(user: AppUser, plan: SubscriptionPlan): Promise<number> {
+  const resetKey = currentResetKey(plan);
+  if (!resetKey) return 0; // unlimited plan — never blocked
+
+  const db = getAdminDb();
+  const userRef = db.collection(collections.users).doc(user.id);
+
+  if ((user.whatsappMessageResetKey ?? "") !== resetKey) {
+    // New period — reset count
+    await userRef.update({
+      whatsappMessageCount: 0,
+      whatsappMessageResetKey: resetKey,
+      updatedAt: new Date().toISOString(),
+    });
+    return 0;
+  }
+
+  return (user.whatsappMessageCount ?? 0);
+}
+
+/**
+ * Atomically increments the user's WhatsApp message counter.
+ * Also stamps the reset key so the period is always current.
+ */
+export async function incrementMessageCount(userId: string, plan: SubscriptionPlan): Promise<void> {
+  const resetKey = currentResetKey(plan);
+  if (!resetKey) return; // unlimited — nothing to track
+  await getAdminDb().collection(collections.users).doc(userId).update({
+    whatsappMessageCount: FieldValue.increment(1),
+    whatsappMessageResetKey: resetKey,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 // ─── Read operations ──────────────────────────────────────────────────────────
 
 export async function getTodayTransactions(businessId: string): Promise<Transaction[]> {
@@ -44,6 +130,83 @@ export async function getTodayTransactions(businessId: string): Promise<Transact
       } as Transaction;
     })
     .filter((t) => t.createdAt.startsWith(today));
+}
+
+/**
+ * Returns today's AND yesterday's transactions so the end-of-day report can
+ * show a "vs yesterday" comparison without a second Firestore round-trip.
+ */
+export async function getTodayAndYesterdayTransactions(businessId: string): Promise<Transaction[]> {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+
+  const snap = await getAdminDb()
+    .collection(collections.transactions)
+    .where("businessId", "==", businessId)
+    .orderBy("createdAt", "desc")
+    .limit(500)
+    .get();
+
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+      } as Transaction;
+    })
+    .filter((t) => {
+      const day = t.createdAt.slice(0, 10);
+      return day === today || day === yesterday;
+    });
+}
+
+export async function getWeekTransactions(businessId: string): Promise<Transaction[]> {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysFromMonday);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const snap = await getAdminDb()
+    .collection(collections.transactions)
+    .where("businessId", "==", businessId)
+    .orderBy("createdAt", "desc")
+    .limit(500)
+    .get();
+
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+      } as Transaction;
+    })
+    .filter((t) => t.createdAt.slice(0, 10) >= weekStart.toISOString().slice(0, 10));
+}
+
+export async function getMonthTransactions(businessId: string): Promise<Transaction[]> {
+  const thisMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+  const snap = await getAdminDb()
+    .collection(collections.transactions)
+    .where("businessId", "==", businessId)
+    .orderBy("createdAt", "desc")
+    .limit(1000)
+    .get();
+
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+      } as Transaction;
+    })
+    .filter((t) => t.createdAt.startsWith(thisMonth));
 }
 
 export async function getAllTransactions(businessId: string, max = 100): Promise<Transaction[]> {

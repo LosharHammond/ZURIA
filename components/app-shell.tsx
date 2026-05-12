@@ -3,16 +3,17 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Boxes, Gift, HandCoins, Home, PlusCircle, UserCircle, WifiOff } from "lucide-react";
+import { Bell, Boxes, CrownIcon, Gift, HandCoins, Home, PlusCircle, UserCircle, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
 const nav = [
-  { href: "/dashboard", label: "Home",    icon: Home        },
+  { href: "/dashboard",    label: "Home",   icon: Home        },
   { href: "/transactions", label: "Record", icon: PlusCircle  },
   { href: "/debts",        label: "Debts",  icon: HandCoins   },
   { href: "/inventory",    label: "Stock",  icon: Boxes       },
   { href: "/referrals",    label: "Earn",   icon: Gift        },
+  { href: "/subscription", label: "Plan",   icon: CrownIcon   },
   { href: "/profile",      label: "Me",     icon: UserCircle  },
 ];
 
@@ -67,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Bottom nav ─────────────────────────────────────────────────────── */}
       <nav className="fixed inset-x-2 bottom-2 z-40 rounded-[1.75rem] border border-white/10 bg-[#071514]/95 px-2 py-2 shadow-2xl backdrop-blur-xl md:left-1/2 md:w-[600px] md:-translate-x-1/2">
-        <div className="grid grid-cols-6 gap-0.5">
+        <div className="grid grid-cols-7 gap-0.5">
           {nav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;

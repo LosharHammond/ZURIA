@@ -17,8 +17,10 @@ import { collections } from "@/lib/firebase/collections";
 import { createId } from "@/lib/utils";
 import type { Referral } from "@/types/domain";
 
-export const REFERRAL_REWARD = 0.5;       // GHS per successful invite
-export const REFERRAL_MINIMUM = 20;       // invites needed before withdrawal
+export const REFERRAL_REWARD = 0.5;           // GHS per successful invite
+export const WITHDRAWAL_THRESHOLD = 5.0;     // GHS minimum to request cash out (10 referrals)
+export const MILESTONE_REFERRALS = 30;        // referrals this month → Growth features unlocked
+export const MILESTONE_BALANCE = MILESTONE_REFERRALS * REFERRAL_REWARD; // GHS 15.00
 
 // ─── Generate a deterministic 6-char code from userId ────────────────────────
 
@@ -109,19 +111,40 @@ export async function getUserReferrals(userId: string): Promise<Referral[]> {
 
 // ─── Get fresh referral stats for a user ─────────────────────────────────────
 
-export async function getReferralStats(userId: string) {
-  if (!db) return { balance: 0, count: 0, code: "" };
+export interface ReferralStats {
+  balance: number;
+  count: number;
+  code: string;
+  /** How many referrals the user has made in the current calendar month */
+  monthlyCount: number;
+  /** ISO date string — when the Growth milestone unlock expires (if active) */
+  referralUnlockExpiresAt: string | null;
+}
+
+export async function getReferralStats(userId: string): Promise<ReferralStats> {
+  const empty: ReferralStats = { balance: 0, count: 0, code: "", monthlyCount: 0, referralUnlockExpiresAt: null };
+  if (!db) return empty;
   try {
     const snap = await getDoc(doc(db, collections.users, userId));
-    if (!snap.exists()) return { balance: 0, count: 0, code: "" };
+    if (!snap.exists()) return empty;
     const data = snap.data();
+
+    // Monthly count — reset if stored key doesn't match current month
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const storedKey = (data.referralMonthlyResetKey as string | undefined) ?? "";
+    const monthlyCount = storedKey === thisMonth
+      ? ((data.referralMonthlyCount as number) ?? 0)
+      : 0;
+
     return {
       balance: (data.referralBalance as number) ?? 0,
       count: (data.referralCount as number) ?? 0,
       code: (data.referralCode as string) ?? "",
+      monthlyCount,
+      referralUnlockExpiresAt: (data.referralUnlockExpiresAt as string | undefined) ?? null,
     };
   } catch (err) {
     console.error("[getReferralStats]", err);
-    return { balance: 0, count: 0, code: "" };
+    return empty;
   }
 }

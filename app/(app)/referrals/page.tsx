@@ -5,16 +5,25 @@ import { motion } from "framer-motion";
 import {
   ArrowDownToLine, CheckCircle, Clock, Copy, Gift,
   MessageCircle, Sparkles, TrendingUp, Users, Zap,
-  ShieldCheck, BarChart3, Smartphone, AlertCircle,
+  ShieldCheck, BarChart3, Smartphone, AlertCircle, Star,
+  Lock,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useAppStore } from "@/stores/app-store";
-import { getReferralStats, REFERRAL_REWARD } from "@/lib/services/referral-service";
-import { getUserWithdrawals, submitWithdrawal } from "@/lib/services/withdrawal-service";
-import type { WithdrawalMethod, WithdrawalNetwork, WithdrawalRequest } from "@/types/domain";
+import { useAuth } from "@/providers/auth-provider";
+import {
+  getReferralStats,
+  REFERRAL_REWARD,
+  WITHDRAWAL_THRESHOLD,
+  MILESTONE_REFERRALS,
+  MILESTONE_BALANCE,
+  type ReferralStats,
+} from "@/lib/services/referral-service";
+import { getUserWithdrawals } from "@/lib/services/withdrawal-service";
+import type { WithdrawalNetwork, WithdrawalRequest } from "@/types/domain";
 import { formatMoney } from "@/lib/utils";
 
 // ─── Pre-written shareable message ────────────────────────────────────────────
@@ -79,20 +88,188 @@ const BENEFITS = [
   { icon: Sparkles, label: "Free forever", desc: "No subscriptions, no hidden fees" },
 ];
 
+// ─── Dual-milestone progress bar ──────────────────────────────────────────────
+
+function MilestoneProgress({ balance, monthlyCount }: { balance: number; monthlyCount: number }) {
+  const milestonePct = Math.min(100, (balance / MILESTONE_BALANCE) * 100);
+  const monthlyPct = Math.min(100, (monthlyCount / MILESTONE_REFERRALS) * 100);
+
+  const canWithdraw = balance >= WITHDRAWAL_THRESHOLD;
+  const hitMilestone = balance >= MILESTONE_BALANCE;
+
+  return (
+    <div className="space-y-4">
+      {/* Cash balance progress */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Cash earnings</span>
+          <span className="text-xs font-bold text-foreground">{formatMoney(balance)}</span>
+        </div>
+        {/* Two-marker progress bar */}
+        <div className="relative h-3 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ${
+              hitMilestone ? "bg-amber-400" : canWithdraw ? "bg-emerald-500" : "bg-primary"
+            }`}
+            style={{ width: `${hitMilestone ? 100 : milestonePct}%` }}
+          />
+          {/* GHS 5 marker */}
+          <div
+            className="absolute inset-y-0 w-0.5 bg-white/40"
+            style={{ left: `${(WITHDRAWAL_THRESHOLD / MILESTONE_BALANCE) * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className={`text-[10px] font-semibold ${canWithdraw ? "text-emerald-400" : "text-muted-foreground"}`}>
+            {canWithdraw ? "✅ GHS 5 — can withdraw" : `GHS 5 withdraw (${10 - Math.ceil(balance / REFERRAL_REWARD)} more)`}
+          </span>
+          <span className={`text-[10px] font-semibold ${hitMilestone ? "text-amber-400" : "text-muted-foreground"}`}>
+            {hitMilestone ? "🏆 GHS 15 — milestone hit!" : `GHS 15 milestone (${MILESTONE_REFERRALS - Math.ceil(balance / REFERRAL_REWARD)} more)`}
+          </span>
+        </div>
+      </div>
+
+      {/* Monthly referral progress toward Growth unlock */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Monthly referrals (this month)</span>
+          <span className="text-xs font-bold text-foreground">{monthlyCount} / {MILESTONE_REFERRALS}</span>
+        </div>
+        <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${
+              monthlyCount >= MILESTONE_REFERRALS ? "bg-amber-400" : "bg-indigo-500"
+            }`}
+            style={{ width: `${monthlyPct}%` }}
+          />
+        </div>
+        {monthlyCount >= MILESTONE_REFERRALS ? (
+          <p className="mt-1 text-[10px] font-bold text-amber-400">🏆 30 referrals this month — Growth features unlocked!</p>
+        ) : (
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            {MILESTONE_REFERRALS - monthlyCount} more this month → unlock Growth features FREE 🚀
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Smart earnings card ───────────────────────────────────────────────────────
+
+function EarningsChoiceCard({ balance, monthlyCount, onWithdrawClick }: {
+  balance: number;
+  monthlyCount: number;
+  onWithdrawClick: () => void;
+}) {
+  const canWithdraw = balance >= WITHDRAWAL_THRESHOLD;
+  const hitMilestone = balance >= MILESTONE_BALANCE;
+  const remainingToMilestone = parseFloat((MILESTONE_BALANCE - balance).toFixed(2));
+  const referralsToMilestone = Math.ceil(remainingToMilestone / REFERRAL_REWARD);
+  const referralsToWithdraw = Math.max(0, Math.ceil((WITHDRAWAL_THRESHOLD - balance) / REFERRAL_REWARD));
+
+  if (hitMilestone) {
+    return (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+          <p className="font-bold text-amber-300">You&apos;ve hit the GHS 15 milestone!</p>
+        </div>
+        <p className="text-sm text-muted-foreground leading-5">
+          You referred {Math.floor(balance / REFERRAL_REWARD)}+ friends and earned{" "}
+          <span className="font-bold text-amber-300">{formatMoney(balance)}</span>!{" "}
+          Growth features are unlocked for you this month as a thank-you. 🎁
+        </p>
+        <Button onClick={onWithdrawClick} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold">
+          <ArrowDownToLine className="mr-2 h-4 w-4" />
+          Withdraw {formatMoney(balance)}
+        </Button>
+      </div>
+    );
+  }
+
+  if (canWithdraw) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+          <p className="font-bold text-emerald-300 mb-1">💰 You can withdraw {formatMoney(balance)} now!</p>
+          <p className="text-sm text-muted-foreground leading-5">
+            <span className="font-semibold text-foreground">Or</span> — hold on for just{" "}
+            <span className="font-bold text-amber-300">{referralsToMilestone} more referral{referralsToMilestone !== 1 ? "s" : ""}</span>{" "}
+            and you&apos;ll earn <span className="font-bold text-amber-300">{formatMoney(MILESTONE_BALANCE)}</span> total
+            {" "}+ unlock <span className="font-bold text-indigo-300">ZURIA Growth features FREE</span> for the rest of the month! 🚀
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={onWithdrawClick} variant="outline" className="w-full">
+            <ArrowDownToLine className="mr-2 h-4 w-4" />
+            Withdraw now
+          </Button>
+          <div className="flex items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-center">
+            <div>
+              <p className="text-[10px] font-bold text-amber-300">Hold for milestone</p>
+              <p className="text-[10px] text-muted-foreground">{referralsToMilestone} more = GHS 15 + Growth</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Can't withdraw yet
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">
+          {balance === 0
+            ? `Share your link and earn ${formatMoney(REFERRAL_REWARD)} for every friend who joins!`
+            : `You have ${formatMoney(balance)} — ${referralsToWithdraw} more referral${referralsToWithdraw !== 1 ? "s" : ""} to reach the ${formatMoney(WITHDRAWAL_THRESHOLD)} withdrawal minimum.`}
+        </p>
+        {balance > 0 && (
+          <div className="mt-2 h-2 w-full rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.min(100, (balance / WITHDRAWAL_THRESHOLD) * 100)}%` }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Strategy tip */}
+      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-3">
+        <p className="text-xs font-bold text-indigo-300 mb-1">🎯 Pro tip: aim for the big milestone</p>
+        <p className="text-xs text-muted-foreground leading-4">
+          Refer just <span className="font-bold text-foreground">{Math.max(0, MILESTONE_REFERRALS - monthlyCount)} more people this month</span>{" "}
+          and you&apos;ll earn <span className="font-bold text-amber-300">{formatMoney(MILESTONE_BALANCE)}</span> total
+          {" "}+ unlock <span className="font-bold text-indigo-300">ZURIA Growth features FREE</span> for the whole month —
+          worth <span className="font-bold text-foreground">GHS 20</span>!
+        </p>
+      </div>
+
+      <Button disabled className="w-full opacity-50 cursor-not-allowed">
+        <Lock className="mr-2 h-4 w-4" />
+        Withdraw (need {formatMoney(WITHDRAWAL_THRESHOLD)} min)
+      </Button>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReferralsPage() {
   const { user } = useAppStore();
-  const [stats, setStats] = useState({ balance: 0, count: 0, code: "" });
+  const { firebaseUser } = useAuth();
+  const [stats, setStats] = useState<ReferralStats>({
+    balance: 0, count: 0, code: "", monthlyCount: 0, referralUnlockExpiresAt: null,
+  });
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [msgCopied, setMsgCopied] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [method, setMethod] = useState<WithdrawalMethod>("momo");
   const [network, setNetwork] = useState<WithdrawalNetwork>("MTN");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
+  const [momoNumber, setMomoNumber] = useState("");
+  const [momoName, setMomoName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -137,37 +314,41 @@ export default function ReferralsPage() {
 
   async function handleWithdraw(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !firebaseUser) return;
     setSubmitError("");
-    if (!accountNumber.trim() || !accountName.trim()) {
-      setSubmitError("Fill in all account details.");
+    if (!momoNumber.trim() || !momoName.trim()) {
+      setSubmitError("Enter your MoMo number and the name on the account.");
+      return;
+    }
+    if (stats.balance < WITHDRAWAL_THRESHOLD) {
+      setSubmitError(`You need at least ${formatMoney(WITHDRAWAL_THRESHOLD)} to withdraw. Your balance is ${formatMoney(stats.balance)}.`);
       return;
     }
     setSubmitting(true);
     try {
-      await submitWithdrawal({
-        userId: user.id,
-        ownerName: user.ownerName,
-        phoneNumber: user.phoneNumber,
-        amount: stats.balance,
-        method,
-        accountNumber: accountNumber.trim(),
-        accountName: accountName.trim(),
-        network: method === "momo" ? network : undefined,
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch("/api/referral/withdraw", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ momoNumber: momoNumber.trim(), momoName: momoName.trim(), network }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubmitError(data.error ?? "Failed to submit request. Try again.");
+        return;
+      }
       setShowForm(false);
-      setAccountNumber("");
-      setAccountName("");
+      setMomoNumber("");
+      setMomoName("");
       await load();
     } catch {
-      setSubmitError("Failed to submit request. Try again.");
+      setSubmitError("Failed to submit request. Check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
   }
 
   const hasPendingWithdrawal = withdrawals.some((w) => w.status === "pending" || w.status === "processing");
-  const canWithdraw = stats.balance > 0 && !hasPendingWithdrawal;
 
   if (!user) return null;
 
@@ -179,14 +360,15 @@ export default function ReferralsPage() {
         <p className="text-sm text-primary">Earn while you help others</p>
         <h1 className="mt-1 text-3xl font-black">Refer &amp; Earn</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Earn <span className="font-bold text-primary">{formatMoney(REFERRAL_REWARD)}</span> for every friend who joins ZURIA. Share once, earn forever.
+          Earn <span className="font-bold text-primary">{formatMoney(REFERRAL_REWARD)}</span> for every friend who joins ZURIA.
+          Reach <span className="font-bold text-amber-400">30 referrals</span> this month and unlock <span className="font-bold text-indigo-300">Growth features FREE!</span>
         </p>
       </div>
 
-      {/* ── Earnings counter ── */}
+      {/* ── Earnings counter + milestone progress ── */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <GlassCard>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mb-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15">
               <Gift className="h-7 w-7 text-primary" />
             </div>
@@ -197,14 +379,61 @@ export default function ReferralsPage() {
             <div className="ml-auto flex items-center gap-2 rounded-2xl bg-white/[0.04] px-3 py-2">
               <Users className="h-4 w-4 text-primary" />
               <span className="text-sm font-bold">{stats.count}</span>
-              <span className="text-xs text-muted-foreground">friend{stats.count !== 1 ? "s" : ""} joined</span>
+              <span className="text-xs text-muted-foreground">joined</span>
             </div>
+          </div>
+
+          {!loading && (
+            <MilestoneProgress balance={stats.balance} monthlyCount={stats.monthlyCount} />
+          )}
+        </GlassCard>
+      </motion.div>
+
+      {/* ── Two-milestone explainer ── */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
+        <GlassCard>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-3">Two ways to win</p>
+          <div className="space-y-3">
+            {/* Goal 1: GHS 5 */}
+            <div className="flex gap-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-base font-black text-emerald-400">
+                1
+              </div>
+              <div>
+                <p className="text-sm font-bold text-emerald-300">Earn GHS 5 → Withdraw cash 💵</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-4">
+                  Just <span className="font-semibold text-foreground">10 referrals</span> to reach the minimum.
+                  Request a MoMo payout any time after that — processed within 24 hours.
+                </p>
+              </div>
+            </div>
+
+            {/* Goal 2: GHS 15 / 30 referrals */}
+            <div className="flex gap-3 rounded-xl bg-amber-500/5 border border-amber-500/20 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-base font-black text-amber-400">
+                2
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-300">30 referrals → GHS 15 + Growth FREE 🚀</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-4">
+                  Hold until you refer <span className="font-semibold text-foreground">30 people this month</span> and you earn{" "}
+                  <span className="font-bold text-amber-300">GHS 15.00</span> cash{" "}
+                  <span className="font-bold">AND</span> unlock{" "}
+                  <span className="font-bold text-indigo-300">ZURIA Growth features free</span> until end of month —
+                  monthly reports, AI insights, debt reminders, inventory alerts. Worth GHS 20!
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-center text-muted-foreground pt-1">
+              You can choose either path — or go for both! 🎯
+            </p>
           </div>
         </GlassCard>
       </motion.div>
 
       {/* ── Problem/solution section ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
         <GlassCard>
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">Why your friends need ZURIA</p>
@@ -229,7 +458,7 @@ export default function ReferralsPage() {
       </motion.div>
 
       {/* ── Why ZURIA is amazing ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
         <GlassCard>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-3">What makes ZURIA special</p>
           <div className="grid grid-cols-2 gap-3">
@@ -263,24 +492,16 @@ export default function ReferralsPage() {
             <p className="text-sm text-muted-foreground">Loading your message…</p>
           ) : (
             <>
-              {/* Preview of the message */}
               <div className="mb-3 max-h-52 overflow-y-auto rounded-xl bg-[#25D366]/5 border border-[#25D366]/20 p-3">
                 <pre className="whitespace-pre-wrap text-xs leading-5 text-foreground/80 font-sans">{shareMessage}</pre>
               </div>
 
               <div className="flex gap-2">
-                {/* Copy message */}
-                <Button
-                  variant="outline"
-                  className="flex-1 gap-2"
-                  onClick={copyMessage}
-                >
+                <Button variant="outline" className="flex-1 gap-2" onClick={copyMessage}>
                   {msgCopied
                     ? <><CheckCircle className="h-4 w-4 text-green-400" /> Copied!</>
                     : <><Copy className="h-4 w-4" /> Copy message</>}
                 </Button>
-
-                {/* Share directly on WhatsApp */}
                 <a
                   href={waShareUrl}
                   target="_blank"
@@ -324,7 +545,8 @@ export default function ReferralsPage() {
           {[
             { step: "1", title: "Share your link or message", desc: "Send it to friends, family, group chats — anywhere" },
             { step: "2", title: "They sign up for free", desc: "Takes less than 2 minutes. No payment needed" },
-            { step: "3", title: `You earn ${formatMoney(REFERRAL_REWARD)}`, desc: "Credited to your balance immediately they join" },
+            { step: "3", title: `You earn ${formatMoney(REFERRAL_REWARD)}`, desc: "Credited to your balance the moment they join" },
+            { step: "4", title: "Cash out or keep growing", desc: `Withdraw at GHS 5+, or hold for 30 referrals = GHS 15 + Growth features FREE` },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex gap-3 items-start">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
@@ -345,67 +567,59 @@ export default function ReferralsPage() {
 
         {hasPendingWithdrawal && (
           <div className="flex items-center gap-2 text-sm text-amber-400 mb-3">
-            <Clock className="h-4 w-4" />
-            <span>Your withdrawal is being processed. We will send it to you very soon!</span>
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>Your withdrawal is being processed — we&apos;ll send it to you very soon!</span>
           </div>
         )}
 
-        {!canWithdraw && !hasPendingWithdrawal && stats.balance === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No earnings yet. Share your message above and earn {formatMoney(REFERRAL_REWARD)} for every friend who joins!
-          </p>
-        )}
-
-        {canWithdraw && !showForm && (
-          <Button onClick={() => setShowForm(true)} className="w-full">
-            <ArrowDownToLine className="mr-2 h-4 w-4" />
-            Withdraw {formatMoney(stats.balance)}
-          </Button>
-        )}
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : !hasPendingWithdrawal && !showForm ? (
+          <EarningsChoiceCard
+            balance={stats.balance}
+            monthlyCount={stats.monthlyCount}
+            onWithdrawClick={() => setShowForm(true)}
+          />
+        ) : null}
 
         {showForm && (
           <form className="space-y-3" onSubmit={handleWithdraw}>
+            <div className="rounded-xl bg-primary/5 border border-primary/15 px-3 py-2.5">
+              <p className="text-xs text-muted-foreground">Withdrawal amount</p>
+              <p className="text-lg font-black text-primary">{formatMoney(stats.balance)}</p>
+            </div>
+
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Payment method</p>
-              <Select value={method} onChange={(e) => setMethod(e.target.value as WithdrawalMethod)}>
-                <option value="momo">Mobile Money (MoMo) — instant</option>
-                <option value="bank">Bank Account — 1–2 working days</option>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">MoMo network</p>
+              <Select value={network} onChange={(e) => setNetwork(e.target.value as WithdrawalNetwork)}>
+                <option value="MTN">MTN MoMo</option>
+                <option value="Vodafone">Vodafone Cash</option>
+                <option value="AirtelTigo">AirtelTigo Money</option>
               </Select>
             </div>
 
-            {method === "momo" && (
-              <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">Network</p>
-                <Select value={network} onChange={(e) => setNetwork(e.target.value as WithdrawalNetwork)}>
-                  <option value="MTN">MTN MoMo</option>
-                  <option value="Vodafone">Vodafone Cash</option>
-                  <option value="AirtelTigo">AirtelTigo Money</option>
-                </Select>
-              </div>
-            )}
-
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">
-                {method === "momo" ? "MoMo number" : "Account number"}
-              </p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">MoMo number</p>
               <Input
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder={method === "momo" ? "0241234567" : "Bank account number"}
+                value={momoNumber}
+                onChange={(e) => setMomoNumber(e.target.value)}
+                placeholder="0241234567"
                 inputMode="tel"
               />
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">
-                {method === "momo" ? "Name on MoMo" : "Account name"}
-              </p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Name on MoMo account</p>
               <Input
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                placeholder="Full name on account"
+                value={momoName}
+                onChange={(e) => setMomoName(e.target.value)}
+                placeholder="Full name as registered on MoMo"
               />
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Money will be sent within 24 hours. You will receive a WhatsApp confirmation.
+            </p>
 
             {submitError && <p className="text-xs text-destructive">{submitError}</p>}
 

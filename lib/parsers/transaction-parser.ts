@@ -263,12 +263,43 @@ interface VoteMap {
   add: (type: TransactionType, points: number, signal: string) => void;
 }
 
+// ─── 6b. FOREIGN CURRENCY DETECTION ─────────────────────────────────────────
+// Detects explicit foreign currency markers. When present without a GHS marker,
+// we note the foreign currency and reduce confidence (the amount is likely not GHS).
+const FOREIGN_CURRENCY_MAP: Record<string, string> = {
+  "\\$": "USD", "usd": "USD", "dollar": "USD", "dollars": "USD",
+  "€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR",
+  "£": "GBP", "gbp": "GBP", "pound": "GBP", "pounds": "GBP",
+  "₦": "NGN", "ngn": "NGN", "naira": "NGN", "nairas": "NGN",
+  "fcfa": "XOF", "cfa": "XOF", "xof": "XOF",
+  "rand": "ZAR", "zar": "ZAR", "r ": "ZAR",
+};
+
+function detectForeignCurrency(raw: string): string | null {
+  const lower = raw.toLowerCase();
+  for (const [marker, code] of Object.entries(FOREIGN_CURRENCY_MAP)) {
+    const re = new RegExp(`(^|\\s|\\d)${marker}(\\s|\\d|$)`, "i");
+    if (re.test(lower)) return code;
+  }
+  return null;
+}
+
+function hasGhsCurrency(raw: string): boolean {
+  return /\b(ghs|gh₵|₵|cedis?)\b/i.test(raw);
+}
+
 // ─── 7. MAIN PARSER ──────────────────────────────────────────────────────────
 export function parseTransaction(input: string): ParsedTransaction {
   const raw = input.trim();
   if (!raw) return emptyParsed();
 
   const norm = preprocess(raw);
+
+  // Detect foreign currency before GHS extraction
+  const foreignCurrency = detectForeignCurrency(raw);
+  const hasCediMarker   = hasGhsCurrency(raw);
+  // If a foreign currency is mentioned but no GHS marker, flag it
+  const isForeignCurrencyEntry = foreignCurrency !== null && !hasCediMarker;
 
   const amount = extractAmount(norm);
   const quantity = extractQuantity(norm);
@@ -278,7 +309,16 @@ export function parseTransaction(input: string): ParsedTransaction {
   const customerNameNormalized = customerName ? customerName.toLowerCase().trim() : null;
   const productName = extractProduct(raw, norm, type, customerName);
   const category = detectCategory(norm, type);
-  const confidence = computeConfidence({ amount, type, productName, customerName, paymentMethod, score, signals });
+  let confidence = computeConfidence({ amount, type, productName, customerName, paymentMethod, score, signals });
+  // Penalise confidence when the amount is likely in a foreign currency
+  if (isForeignCurrencyEntry) confidence = Math.max(0.10, parseFloat((confidence - 0.25).toFixed(2)));
+
+  // When a foreign currency was detected, note it in parserSignals so the UI
+  // can warn the user ("this might be in USD, not GHS"). The domain type keeps
+  // currency: "GHS, Cedis" since ZURIA only records GHS transactions.
+  const finalSignals = isForeignCurrencyEntry
+    ? [...signals, `foreign-currency:${foreignCurrency}`]
+    : signals;
 
   return {
     type,
@@ -293,15 +333,22 @@ export function parseTransaction(input: string): ParsedTransaction {
     confidence,
     currency: "GHS, Cedis",
     syncStatus: "pending",
-    parserSignals: signals,
+    parserSignals: finalSignals,
   };
 }
 
 // ─── 8. PREPROCESSING ────────────────────────────────────────────────────────
 function preprocess(raw: string): string {
   let text = raw.toLowerCase().trim();
-  // Normalize Cedi symbols
-  text = text.replace(/[₵]/g, " ").replace(/\bgh₵\b/gi, " ").replace(/\bghs\b/gi, " ").replace(/\bcedis?\b/gi, " ");
+  // Normalize Cedi symbols → canonical token "gscur" so extractAmount can
+  // prioritise currency-prefixed numbers (e.g. "sold 3 bags for GHS 500" → 500).
+  // We use a sentinel token rather than stripping so the position information
+  // is preserved for the regex in extractAmount.
+  text = text
+    .replace(/gh₵/gi, " gscur ")
+    .replace(/[₵]/g, " gscur ")
+    .replace(/\bghs\b/gi, " gscur ")
+    .replace(/\bcedis?\b/gi, " gscur ");
   // Normalize commas in numbers
   text = text.replace(/(\d),(\d{3})/g, "$1$2");
   // Fix common typos word by word
@@ -323,34 +370,130 @@ function preprocess(raw: string): string {
 
 // ─── 9. PRIMITIVE EXTRACTORS ─────────────────────────────────────────────────
 function extractAmount(text: string): number {
-  // Handle word numbers: fifty cedis, two hundred etc.
-  const wordAmounts: Record<string, number> = {
-    ten: 10, twenty: 20, thirty: 30, forty: 40, fifty: 50,
-    sixty: 60, seventy: 70, eighty: 80, ninety: 90,
-    hundred: 100, thousand: 1000, "one hundred": 100, "two hundred": 200,
-    "three hundred": 300, "four hundred": 400, "five hundred": 500,
-    "six hundred": 600, "seven hundred": 700, "eight hundred": 800,
-    "nine hundred": 900, "one thousand": 1000, "two thousand": 2000,
-    "five thousand": 5000, "ten thousand": 10000,
-  };
-  for (const [phrase, val] of Object.entries(wordAmounts)) {
-    if (text.includes(phrase)) return val;
-  }
-  // k/m suffixes: 1.5k, 2m
+  // ── 1. Prioritise numbers that immediately follow a currency marker ──────────
+  // preprocess() replaces GHS / ₵ / cedis with the sentinel "gscur", so we
+  // match that token here. This guarantees "sold 3 bags rice for GHS 500"
+  // returns 500, not 3 (the quantity).
+  const currencyFirst = text.match(/\bgscur\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/);
+  if (currencyFirst) return Number(currencyFirst[1].replace(/,/g, ""));
+
+  // ── 2. k / m suffixes: 1.5k, 2m ────────────────────────────────────────────
   const kilo = text.match(/\b(\d+(?:\.\d+)?)\s*k\b/i);
   if (kilo) return Number(kilo[1]) * 1000;
   const mega = text.match(/\b(\d+(?:\.\d+)?)\s*m\b/i);
-  if (mega && Number(mega[1]) < 1000) return Number(mega[1]) * 1000000;
-  // Standard number
+  if (mega && Number(mega[1]) < 1000) return Number(mega[1]) * 1_000_000;
+
+  // ── 3. Standard numeric literal (always wins over word forms when present) ──
   const plain = text.match(/\b(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)\b/);
-  return plain ? Number(plain[1].replace(/,/g, "")) : 0;
+  if (plain) return Number(plain[1].replace(/,/g, ""));
+
+  // ── 4. Composite Ghanaian English: "two fifty" = 250, "one eighty" = 180 ───
+  // Pattern: <single-digit-word> <tens-word>  →  hundreds + tens
+  const compositeHundredTens = text.match(
+    /\b(one|two|three|four|five|six|seven|eight|nine)\s+(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/i
+  );
+  if (compositeHundredTens) {
+    const H: Record<string, number> = { one:100, two:200, three:300, four:400, five:500, six:600, seven:700, eight:800, nine:900 };
+    const T: Record<string, number> = { twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90 };
+    const h = H[compositeHundredTens[1].toLowerCase()];
+    const t = T[compositeHundredTens[2].toLowerCase()];
+    if (h && t) return h + t;
+  }
+
+  // ── 5. Two-word tens: "thirty five" = 35, "forty two" = 42 ─────────────────
+  const twoWordTens = text.match(
+    /\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+(one|two|three|four|five|six|seven|eight|nine)\b/i
+  );
+  if (twoWordTens) {
+    const T: Record<string, number> = { twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90 };
+    const O: Record<string, number> = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9 };
+    const t = T[twoWordTens[1].toLowerCase()];
+    const o = O[twoWordTens[2].toLowerCase()];
+    if (t && o) return t + o;
+  }
+
+  // ── 6. Word-number lookup — LONGEST PHRASE FIRST, word-boundary aware ───────
+  // Using RegExp(\b...\b) prevents "one" matching inside "stone", "phone",
+  // "seven" matching inside "seventeen", etc.
+  // For Twi amounts (non-ASCII chars like ɔ), fall back to includes() since
+  // \b doesn't work reliably around Unicode characters.
+  const wordAmounts: [RegExp, number][] = [
+    // Twi amounts (non-ASCII → plain includes via the regex flag approach still works)
+    [/\bapem\b/i,           1000],
+    [/ɔha/,                  100],
+    // Compound thousands (longest first so "twenty thousand" beats "thousand")
+    [/\btwenty\s+thousand\b/i, 20000],
+    [/\bfifteen\s+thousand\b/i,15000],
+    [/\btwelve\s+thousand\b/i, 12000],
+    [/\beleven\s+thousand\b/i, 11000],
+    [/\bten\s+thousand\b/i,    10000],
+    [/\bnine\s+thousand\b/i,    9000],
+    [/\beight\s+thousand\b/i,   8000],
+    [/\bseven\s+thousand\b/i,   7000],
+    [/\bsix\s+thousand\b/i,     6000],
+    [/\bfive\s+thousand\b/i,    5000],
+    [/\bfour\s+thousand\b/i,    4000],
+    [/\bthree\s+thousand\b/i,   3000],
+    [/\btwo\s+thousand\b/i,     2000],
+    [/\bone\s+thousand\b/i,     1000],
+    // Compound hundreds (longest first)
+    [/\bnine\s+hundred\b/i,      900],
+    [/\beight\s+hundred\b/i,     800],
+    [/\bseven\s+hundred\b/i,     700],
+    [/\bsix\s+hundred\b/i,       600],
+    [/\bfive\s+hundred\b/i,      500],
+    [/\bfour\s+hundred\b/i,      400],
+    [/\bthree\s+hundred\b/i,     300],
+    [/\btwo\s+hundred\b/i,       200],
+    [/\bone\s+hundred\b/i,       100],
+    [/\ba\s+hundred\b/i,         100],
+    // Single word amounts (after all compounds)
+    [/\bthousand\b/i,           1000],
+    [/\bhundred\b/i,             100],
+    [/\bninety\b/i,               90],
+    [/\beighty\b/i,               80],
+    [/\bseventy\b/i,              70],
+    [/\bsixty\b/i,                60],
+    [/\bfifty\b/i,                50],
+    [/\bforty\b/i,                40],
+    [/\bthirty\b/i,               30],
+    [/\btwenty\b/i,               20],
+    [/\bfifteen\b/i,              15],
+    [/\bfourteen\b/i,             14],
+    [/\bthirteen\b/i,             13],
+    [/\btwelve\b/i,               12],
+    [/\beleven\b/i,               11],
+    [/\bten\b/i,                  10],
+    [/\bnine\b/i,                  9],
+    [/\beight\b/i,                 8],
+    [/\bseven\b/i,                 7],
+    [/\bsix\b/i,                   6],
+    [/\bfive\b/i,                  5],
+    [/\bfour\b/i,                  4],
+    [/\bthree\b/i,                 3],
+    [/\btwo\b/i,                   2],
+    [/\bone\b/i,                   1],
+  ];
+  for (const [re, val] of wordAmounts) {
+    if (re.test(text)) return val;
+  }
+
+  return 0;
 }
 
 function extractQuantity(text: string): number | null {
-  const qty = text.match(
+  // 1. Explicit unit suffixes: "5 bags", "3 bottles", "10 pcs", etc.
+  const unitMatch = text.match(
     /\b(\d+)\s*(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|rolls?|tins?|sachets?|cups?|litres?|liters?|kilos?|kilograms?|grams?|yards?|metres?|meters?|dozens?|pairs?|boxes?|bundles?|trays?|flats?|sets?|kits?|tubs?|jars?|cans?|wraps?)\b/i
   );
-  return qty ? Number(qty[1]) : null;
+  if (unitMatch) return Number(unitMatch[1]);
+
+  // 2. "x" / "×" notation: "10x sugar", "3x malt", "5 × rice"
+  //    Must be followed by a non-digit character to avoid matching "10x50" amounts.
+  const xMatch = text.match(/\b(\d+)\s*[x×]\s*(?=[a-zA-Z])/i);
+  if (xMatch) return Number(xMatch[1]);
+
+  return null;
 }
 
 function detectPaymentMethod(text: string): PaymentMethod {
@@ -394,7 +537,14 @@ function voteOnType(norm: string, raw: string): { type: TransactionType; score: 
   for (const [type, score] of scores) {
     if (score > bestScore) { best = type; bestScore = score; }
   }
-  if (bestScore <= 0) best = extractAmount(norm) > 0 ? "sale" : "expense";
+  if (bestScore <= 0) {
+    // Last-resort heuristic: expense-leaning keywords win over "sale" default
+    const hasExpenseHint = /\b(bought|buy|paid|pay|spent|expense|cost|fee|bill|rent|salary|wages?|fuel|transport|purchase|buying)\b/.test(norm);
+    const hasDebtHint    = /\b(owes?|credit|owe me|give on credit)\b/.test(norm);
+    if (hasDebtHint)    best = "debt";
+    else if (hasExpenseHint) best = "expense";
+    else best = extractAmount(norm) > 0 ? "sale" : "expense";
+  }
 
   return { type: best, score: bestScore, signals: signalMap.get(best) ?? [] };
 }
@@ -1006,8 +1156,9 @@ function extractProduct(raw: string, norm: string, type: TransactionType, custom
   if (type === "salary" || type === "tax") return null;
 
   let cleaned = raw
-    .replace(/(?:ghs|gh₵|₵|cedis?)?\s*\d+(?:[,.]?\d+)?(?:\s*k)?\b/gi, " ")
+    .replace(/(?:ghs|gh₵|₵|gscur|cedis?)?\s*\d+(?:[,.]?\d+)?(?:\s*k)?\b/gi, " ")
     .replace(/\b(?:\d+\s*)?(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|rolls?|tins?|sachets?|cups?|litres?|kilos?|grams?|dozens?|boxes?|bundles?|trays?|flats?|sets?|tubs?|jars?|cans?)\b/gi, " ")
+    .replace(/\bgscur\b/gi, " ")
     .replace(/\b(?:sold|sell|sales?|paid|pay|bought|buy|spent|received|collected|stock|restock|expense|expenses?|cash|momo|bank|transfer|from|to|for|the|a|an|my|me|on|credit|wholesale|supplier|vendor|salary|wages?|tax|levy|rent|loan|borrow|withdrew|invest|refund|lent|advance|was|is|has)\b/gi, " ");
   if (customer) cleaned = cleaned.replace(new RegExp(customer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), " ");
 

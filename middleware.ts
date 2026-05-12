@@ -11,6 +11,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
   "/referrals",
   "/welcome",
+  "/subscription",
 ];
 
 // Routes that should redirect to dashboard if already authenticated

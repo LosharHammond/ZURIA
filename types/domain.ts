@@ -99,6 +99,149 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   transfer: "Money moved",
 };
 
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+/**
+ * ZURIA Subscription Plans
+ *  free       → Starter Ledger  — 10 AI entries/day, 30-day history
+ *  growth     → ZURIA Growth    — GHS 20/month, 200 entries/month
+ *  pro        → ZURIA Pro       — GHS 50/month, unlimited
+ *  enterprise → ZURIA Enterprise— GHS 100/month, unlimited + multi-branch
+ */
+export type SubscriptionPlan = "free" | "growth" | "pro" | "enterprise";
+
+export interface SubscriptionTier {
+  plan: SubscriptionPlan;
+  /** Marketing label shown to users */
+  label: string;
+  /** Sub-brand name e.g. "ZURIA Growth" */
+  brand: string;
+  priceGHS: number;
+  /**
+   * Daily limit for "free", monthly limit for "growth", null = unlimited.
+   * The period is stored in the plan itself so callers don't need to branch.
+   */
+  limitPeriod: "daily" | "monthly" | null;
+  messageLimit: number | null;
+  features: string[];
+  reports: ("daily" | "weekly" | "monthly" | "full_dashboard")[];
+}
+
+export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
+  free: {
+    plan: "free",
+    label: "Starter Ledger",
+    brand: "ZURIA Free",
+    priceGHS: 0,
+    limitPeriod: "daily",
+    messageLimit: 10,
+    features: [
+      "Voice/text transaction recording",
+      "AI transaction parsing (Twi, Ga, Hausa, Ewe, Fante, English)",
+      "Sales, expense & debt logging",
+      "Simple debt tracking",
+      "Daily business summary",
+      "Weekly SMS-style report",
+      "Basic business health score",
+      "Low-stock alerts",
+      "Offline-first — works without internet",
+      "Up to 10 AI entries per day",
+      "30-day transaction history",
+    ],
+    reports: ["daily", "weekly"],
+  },
+  growth: {
+    plan: "growth",
+    label: "ZURIA Growth",
+    brand: "ZURIA Growth",
+    priceGHS: 20,
+    limitPeriod: "monthly",
+    messageLimit: 200,
+    features: [
+      "Everything in Starter Ledger",
+      "200 AI entries per month",
+      "Unlimited voice notes",
+      "Smart transaction categorization",
+      "Auto debt reminders via WhatsApp",
+      "AI-generated sales insights in local language",
+      "AI business tips daily",
+      "Monthly profit reports",
+      "Expense analysis & breakdown",
+      "Top-selling products report",
+      "Customer debt summaries",
+      "Inventory tracking & restock predictions",
+      "Low-stock forecasting",
+      "Multi-device sync",
+      "Export to PDF/Excel",
+      "WhatsApp daily summaries",
+      "Custom business name & branding",
+    ],
+    reports: ["daily", "weekly", "monthly"],
+  },
+  pro: {
+    plan: "pro",
+    label: "ZURIA Pro",
+    brand: "ZURIA Pro",
+    priceGHS: 50,
+    limitPeriod: null,
+    messageLimit: null,
+    features: [
+      "Everything in ZURIA Growth",
+      "Unlimited AI entries",
+      "AI detects unusual spending patterns",
+      "AI cash-flow forecasting",
+      "Predictive business health scoring",
+      "AI profit leakage detection",
+      "AI recommendations engine",
+      "Staff accounts & employee permissions",
+      "Activity logs & staff sales tracking",
+      "Advanced analytics dashboard",
+      "Profit trends & peak sales hours",
+      "Expense heatmaps",
+      "Debt recovery probability scoring",
+      "Customer purchase history & smart insights",
+      "Loyal customer tracking",
+      "Auto-generated invoices",
+      "Smart recurring reminders",
+      "Scheduled reports",
+      "AI business coach chatbot",
+      "Biometric login & cloud backup priority",
+    ],
+    reports: ["daily", "weekly", "monthly", "full_dashboard"],
+  },
+  enterprise: {
+    plan: "enterprise",
+    label: "ZURIA Enterprise",
+    brand: "ZURIA Enterprise",
+    priceGHS: 100,
+    limitPeriod: null,
+    messageLimit: null,
+    features: [
+      "Everything in ZURIA Pro",
+      "Multi-branch management",
+      "Consolidated analytics & regional dashboards",
+      "Branch comparison AI",
+      "Executive KPI dashboards",
+      "AI growth forecasting",
+      "Business valuation estimates",
+      "Expansion recommendations",
+      "Supplier management & purchase orders",
+      "Bulk stock intelligence & supplier debt tracking",
+      "Cash-flow simulations",
+      "Tax estimation & audit logs",
+      "Advanced financial exports",
+      "Ask AI anything — natural language queries",
+      "Unlimited staff & department roles",
+      "Approval systems",
+      "POS, MoMo & bank integrations",
+      "API access",
+      "Dedicated support & onboarding assistance",
+      "Data migration service",
+    ],
+    reports: ["daily", "weekly", "monthly", "full_dashboard"],
+  },
+};
+
 // ─── User & Business ──────────────────────────────────────────────────────────
 
 export interface AppUser {
@@ -110,9 +253,29 @@ export interface AppUser {
   preferredLanguage: PreferredLanguage;
   referralCode?: string;
   referralBalance?: number;
-  referralCount?: number;
+  referralCount?: number;          // all-time total
+  referralMonthlyCount?: number;   // referrals this calendar month
+  referralMonthlyResetKey?: string; // "YYYY-MM" — resets each new month
+  /**
+   * If set and in the future, this user has earned Growth features by
+   * referring 30 people in the current calendar month.
+   * Expires at midnight on the last day of the month.
+   */
+  referralUnlockExpiresAt?: string;
   referredBy?: string;
   whatsappPin?: string;
+  // ── Subscription ─────────────────────────────────────────────────────────
+  subscriptionPlan?: SubscriptionPlan;       // defaults to "free"
+  subscriptionExpiresAt?: string | null;     // ISO timestamp; null on free (no expiry)
+  /**
+   * Message counter for the current period.
+   * Free  → resets every calendar day  (reset key = "YYYY-MM-DD")
+   * Growth→ resets every calendar month (reset key = "YYYY-MM")
+   */
+  whatsappMessageCount?: number;
+  /** The period key when the counter was last reset. Format depends on plan:
+   *  "YYYY-MM-DD" for free (daily reset) | "YYYY-MM" for growth (monthly reset) */
+  whatsappMessageResetKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -122,10 +285,29 @@ export interface AppUser {
 export interface Referral {
   id: string;
   referrerId: string;
-  refereeId: string;
-  refereePhone: string;
+  refereeId: string;      // Firebase UID of the new user
+  refereePhone: string;   // Phone number of the new user
   amount: number;
   createdAt: string;
+}
+
+// ─── Payment claim (persisted when user sends "PAID GROWTH/PRO/ENTERPRISE") ──
+
+export type PaymentClaimStatus = "pending" | "verified" | "rejected";
+
+export interface PaymentClaim {
+  id: string;
+  userId: string;
+  ownerName: string;
+  phone: string;
+  plan: SubscriptionPlan;
+  annual: boolean;
+  amount: number;          // GHS amount expected
+  status: PaymentClaimStatus;
+  businessName: string;
+  claimedAt: string;       // ISO timestamp when user sent the claim
+  verifiedAt?: string;     // ISO timestamp when admin activated the plan
+  verifiedBy?: string;     // Admin UID who activated
 }
 
 // ─── Withdrawal ───────────────────────────────────────────────────────────────
@@ -186,7 +368,7 @@ export interface Transaction {
   createdAt: string;
   synced?: string;
   syncStatus: SyncStatus;
-  source: "manual" | "voice" | "imported";
+  source: "manual" | "voice" | "imported" | "system";
 }
 
 // ─── Debt (customer owes you for goods on credit) ─────────────────────────────

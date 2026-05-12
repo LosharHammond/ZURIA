@@ -123,6 +123,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "referrerId", "order": "ASCENDING" },
+        { "fieldPath": "refereePhone", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "referrals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "referrerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -139,6 +147,22 @@
       "fields": [
         { "fieldPath": "phoneNumber", "order": "ASCENDING" },
         { "fieldPath": "onboardingComplete", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentClaims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "claimedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paymentClaims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "claimedAt", "order": "DESCENDING" }
       ]
     }
   ],

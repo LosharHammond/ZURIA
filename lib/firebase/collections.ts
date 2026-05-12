@@ -10,5 +10,6 @@ export const collections = {
   whatsappSessions: "whatsapp_sessions",
   referrals: "referrals",
   withdrawals: "withdrawals",
+  paymentClaims: "payment_claims",
   errors: "errors",
 } as const;

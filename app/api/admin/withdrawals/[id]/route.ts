@@ -1,9 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb, verifyAdminToken } from "@/lib/firebase/admin";
+import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
-import { createTransferRecipient, initiateTransfer, paystackConfigured } from "@/lib/services/paystack-service";
-import type { WithdrawalRequest } from "@/types/domain";
+import type { Transaction, WithdrawalRequest } from "@/types/domain";
+import { createId } from "@/lib/utils";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Paystack automated transfer is disabled — withdrawals are processed manually.
+// The Paystack service code is preserved in lib/services/paystack-service.ts
+// and can be re-enabled by importing it and restoring the transfer block below.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +25,7 @@ export async function PATCH(
 
   const { action, note } = await req.json() as { action: "approve" | "reject"; note?: string };
   if (action !== "approve" && action !== "reject") {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    return NextResponse.json({ error: "action must be 'approve' or 'reject'" }, { status: 400 });
   }
 
   const { id } = await params;
@@ -31,76 +38,82 @@ export async function PATCH(
   if (wd.status !== "pending") return NextResponse.json({ error: "Already processed" }, { status: 409 });
 
   const now = new Date().toISOString();
+  const firstName = wd.ownerName.split(" ")[0];
 
+  // ── Reject ────────────────────────────────────────────────────────────────
   if (action === "reject") {
     await wdRef.update({ status: "rejected", processedAt: now, note: note ?? "" });
+
+    if (wd.phoneNumber) {
+      sendText(`whatsapp:${wd.phoneNumber}`, [
+        `😔 *Withdrawal update, ${firstName}*`,
+        ``,
+        `Your withdrawal request of *GHS ${wd.amount.toFixed(2)}* could not be processed at this time.`,
+        note ? `Reason: ${note}` : `Please contact us for more information.`,
+        ``,
+        `Your balance has not been changed — you can try again later.`,
+        `_— ZURIA_`,
+      ].join("\n")).catch(() => {});
+    }
+
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  // ── Approve: deduct balance immediately, then try Paystack transfer ─────────
-  await Promise.all([
-    wdRef.update({ status: "processing", processedAt: now }),
+  // ── Approve: deduct balance + update status + record transaction ──────────
+  // Load user data to get businessId for the transaction record
+  const userSnap = await db.collection(collections.users).doc(wd.userId).get();
+  const businessId = (userSnap.data()?.businessId as string | undefined) ?? null;
+
+  const writes: Promise<unknown>[] = [
+    wdRef.update({ status: "approved", processedAt: now, note: note ?? "Manual transfer completed" }),
     db.collection(collections.users).doc(wd.userId).update({
       referralBalance: FieldValue.increment(-wd.amount),
       updatedAt: now,
     }),
-  ]);
+  ];
 
-  if (!paystackConfigured()) {
-    await wdRef.update({ status: "approved", note: "Processed manually (Paystack not configured)" });
-    return NextResponse.json({ ok: true, status: "approved", manual: true });
+  // Record the withdrawal as a transaction so it appears in all-time stats
+  if (businessId) {
+    const txn: Transaction = {
+      id: createId("txn"),
+      businessId,
+      userId: wd.userId,
+      type: "withdrawal",
+      amount: wd.amount,
+      quantity: null,
+      productName: "Referral Withdrawal",
+      customerName: null,
+      customerNameNormalized: null,
+      category: "referral",
+      paymentMethod: "momo",
+      currency: "GHS, Cedis",
+      notes: `Referral earnings withdrawal — ${wd.network ?? "MoMo"} ${wd.accountNumber} (${wd.accountName})`,
+      rawText: `Referral withdrawal GHS ${wd.amount.toFixed(2)}`,
+      confidence: 1,
+      createdAt: now,
+      syncStatus: "synced",
+      source: "system",
+    };
+    writes.push(
+      db.collection(collections.transactions).doc(txn.id).set({ ...txn, synced: now })
+    );
   }
 
-  try {
-    const { recipientCode, error: recipientError } = await createTransferRecipient(wd);
-    if (recipientError || !recipientCode) {
-      await Promise.all([
-        wdRef.update({ status: "failed", note: `Recipient error: ${recipientError}` }),
-        db.collection(collections.users).doc(wd.userId).update({
-          referralBalance: FieldValue.increment(wd.amount),
-          updatedAt: now,
-        }),
-      ]);
-      return NextResponse.json({ error: recipientError ?? "Could not create recipient" }, { status: 502 });
-    }
+  await Promise.all(writes);
 
-    const { transferCode, status: txStatus, error: txError } = await initiateTransfer({
-      amountGHS: wd.amount,
-      recipientCode,
-      reference: id,
-      reason: `ZURIA referral earnings — ${wd.ownerName}`,
-    });
-
-    if (txError || !transferCode) {
-      await Promise.all([
-        wdRef.update({ status: "failed", note: `Transfer error: ${txError}` }),
-        db.collection(collections.users).doc(wd.userId).update({
-          referralBalance: FieldValue.increment(wd.amount),
-          updatedAt: now,
-        }),
-      ]);
-      return NextResponse.json({ error: txError ?? "Transfer failed" }, { status: 502 });
-    }
-
-    const finalStatus = txStatus === "success" ? "approved" : "processing";
-    await wdRef.update({
-      paystackRecipientCode: recipientCode,
-      paystackTransferCode: transferCode,
-      paystackReference: id,
-      status: finalStatus,
-    });
-
-    return NextResponse.json({ ok: true, status: finalStatus, transferCode });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    // Refund on exception
-    await Promise.allSettled([
-      wdRef.update({ status: "failed", note: `Exception: ${msg}` }),
-      db.collection(collections.users).doc(wd.userId).update({
-        referralBalance: FieldValue.increment(wd.amount),
-        updatedAt: now,
-      }),
-    ]);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  if (wd.phoneNumber) {
+    sendText(`whatsapp:${wd.phoneNumber}`, [
+      `✅ *Payment sent, ${firstName}!* 🎉`,
+      ``,
+      `*GHS ${wd.amount.toFixed(2)}* has been sent to your MoMo:`,
+      `${wd.network ?? "MoMo"} · ${wd.accountNumber}`,
+      ``,
+      `Please check your MoMo account. If you have any issues, reply to this message.`,
+      ``,
+      `Thank you for sharing ZURIA with others — keep going! 💪`,
+      `_— ZURIA_`,
+    ].join("\n")).catch(() => {});
   }
+
+  return NextResponse.json({ ok: true, status: "approved" });
 }
