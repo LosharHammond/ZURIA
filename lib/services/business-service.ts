@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { AppUser, Business, BusinessCategory, PreferredLanguage } from "@/types/domain";
 import { createId } from "@/lib/utils";
-import { generateReferralCode, creditReferrer } from "@/lib/services/referral-service";
+import { generateReferralCode } from "@/lib/services/referral-service";
 
 export async function getAppUser(userId: string): Promise<AppUser | undefined> {
   if (!db) return undefined;
@@ -44,9 +44,11 @@ export async function getBusiness(businessId: string): Promise<Business | undefi
 export async function isPhoneRegistered(phoneNumber: string): Promise<boolean> {
   if (!db) return false;
   const { collection, getDocs, query, where, limit } = await import("firebase/firestore");
-  const q = query(collection(db, "users"), where("phoneNumber", "==", phoneNumber), where("onboardingComplete", "==", true), limit(1));
+  // Single-field query (no composite index required). Check onboardingComplete in JS.
+  const q = query(collection(db, "users"), where("phoneNumber", "==", phoneNumber), limit(1));
   const snap = await getDocs(q);
-  return !snap.empty;
+  if (snap.empty) return false;
+  return snap.docs[0].data().onboardingComplete === true;
 }
 
 export async function saveOnboarding(input: {
@@ -94,10 +96,9 @@ export async function saveOnboarding(input: {
     setDoc(doc(db, collections.users, input.userId), { ...userWithPin, serverUpdatedAt: serverTimestamp() }, { merge: true })
   ]);
 
-  // Credit the person who referred this user (non-blocking)
-  if (input.referralCode) {
-    creditReferrer(input.referralCode, input.userId, input.phoneNumber).catch(() => {});
-  }
+  // Referral crediting is handled server-side by POST /api/welcome (called after
+  // onboarding completes). Doing it client-side here too would double-credit the
+  // referrer, so we intentionally skip the client-side call.
 
   return { user, business };
 }

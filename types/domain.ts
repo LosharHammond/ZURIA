@@ -116,7 +116,14 @@ export interface SubscriptionTier {
   label: string;
   /** Sub-brand name e.g. "ZURIA Growth" */
   brand: string;
+  /** Monthly price in GHS */
   priceGHS: number;
+  /**
+   * Annual price in GHS — equivalent to 10 months (2 months free).
+   * null for free plan (no paid annual option).
+   * This is the CANONICAL annual price used by both the UI and payment API.
+   */
+  annualPriceGHS: number | null;
   /**
    * Daily limit for "free", monthly limit for "growth", null = unlimited.
    * The period is stored in the plan itself so callers don't need to branch.
@@ -133,6 +140,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     label: "Starter Ledger",
     brand: "ZURIA Free",
     priceGHS: 0,
+    annualPriceGHS: null,
     limitPeriod: "daily",
     messageLimit: 10,
     features: [
@@ -155,6 +163,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     label: "ZURIA Growth",
     brand: "ZURIA Growth",
     priceGHS: 20,
+    annualPriceGHS: 180,   // GHS 180/yr — 2 months free (10 × 20 = 200, save 20)
     limitPeriod: "monthly",
     messageLimit: 200,
     features: [
@@ -183,6 +192,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     label: "ZURIA Pro",
     brand: "ZURIA Pro",
     priceGHS: 50,
+    annualPriceGHS: 500,   // GHS 500/yr — 2 months free (10 × 50 = 500)
     limitPeriod: null,
     messageLimit: null,
     features: [
@@ -214,6 +224,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     label: "ZURIA Enterprise",
     brand: "ZURIA Enterprise",
     priceGHS: 100,
+    annualPriceGHS: 1000,  // GHS 1000/yr — 2 months free (10 × 100 = 1000)
     limitPeriod: null,
     messageLimit: null,
     features: [
@@ -313,7 +324,7 @@ export interface PaymentClaim {
 // ─── Withdrawal ───────────────────────────────────────────────────────────────
 
 export type WithdrawalMethod = "momo" | "bank";
-export type WithdrawalNetwork = "MTN" | "Vodafone" | "AirtelTigo";
+export type WithdrawalNetwork = "MTN" | "Vodafone" | "AirtelTigo" | "Telecel";
 export type WithdrawalStatus = "pending" | "processing" | "approved" | "rejected" | "failed";
 
 export interface WithdrawalRequest {
@@ -514,6 +525,27 @@ export interface DashboardData {
   chartData: ChartPoint[];
   summary: DailySummary;
   syncStatus: SyncStatus;
+}
+
+// ─── Paystack Payment Session ─────────────────────────────────────────────────
+
+export type PaystackPaymentStatus = "pending" | "success" | "failed" | "abandoned";
+
+export interface PaystackPayment {
+  id: string;                  // Firestore doc ID (= reference)
+  reference: string;           // Paystack payment reference
+  userId: string;
+  phone: string;
+  plan: SubscriptionPlan;
+  annual: boolean;
+  amountGHS: number;
+  status: PaystackPaymentStatus;
+  authorizationUrl: string;
+  accessCode: string;
+  createdAt: string;
+  paidAt?: string;
+  channel?: string;            // "mobile_money" | "card" | "bank_transfer"
+  paystackStatus?: string;     // raw Paystack status string
 }
 
 // ─── Parser output ────────────────────────────────────────────────────────────

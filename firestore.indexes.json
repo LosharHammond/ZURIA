@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "businessId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     },
     {
@@ -13,8 +13,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "businessId", "order": "ASCENDING" },
-        { "fieldPath": "type", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "type",       "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     },
     {
@@ -23,14 +23,14 @@
       "fields": [
         { "fieldPath": "businessId", "order": "ASCENDING" },
         { "fieldPath": "syncStatus", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "debts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "businessId",     "order": "ASCENDING" },
         { "fieldPath": "lastActivityAt", "order": "DESCENDING" }
       ]
     },
@@ -38,7 +38,7 @@
       "collectionGroup": "debts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "businessId",   "order": "ASCENDING" },
         { "fieldPath": "customerName", "order": "ASCENDING" }
       ]
     },
@@ -46,8 +46,8 @@
       "collectionGroup": "debts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "businessId",        "order": "ASCENDING" },
+        { "fieldPath": "status",            "order": "ASCENDING" },
         { "fieldPath": "outstandingAmount", "order": "DESCENDING" }
       ]
     },
@@ -55,7 +55,7 @@
       "collectionGroup": "loans",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "businessId",     "order": "ASCENDING" },
         { "fieldPath": "lastActivityAt", "order": "DESCENDING" }
       ]
     },
@@ -63,8 +63,8 @@
       "collectionGroup": "loans",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
-        { "fieldPath": "direction", "order": "ASCENDING" },
+        { "fieldPath": "businessId",       "order": "ASCENDING" },
+        { "fieldPath": "direction",        "order": "ASCENDING" },
         { "fieldPath": "counterpartyName", "order": "ASCENDING" }
       ]
     },
@@ -72,9 +72,9 @@
       "collectionGroup": "loans",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
-        { "fieldPath": "direction", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "businessId",       "order": "ASCENDING" },
+        { "fieldPath": "direction",        "order": "ASCENDING" },
+        { "fieldPath": "status",           "order": "ASCENDING" },
         { "fieldPath": "counterpartyName", "order": "ASCENDING" }
       ]
     },
@@ -83,14 +83,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "businessId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+        { "fieldPath": "updatedAt",  "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "inventory",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "businessId",  "order": "ASCENDING" },
         { "fieldPath": "productName", "order": "ASCENDING" }
       ]
     },
@@ -98,7 +98,7 @@
       "collectionGroup": "withdrawals",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "userId",    "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -106,7 +106,15 @@
       "collectionGroup": "withdrawals",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "withdrawals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -115,7 +123,15 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "referrerId", "order": "ASCENDING" },
-        { "fieldPath": "refereeId", "order": "ASCENDING" }
+        { "fieldPath": "refereeId",  "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "referrals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "referrerId",  "order": "ASCENDING" },
+        { "fieldPath": "refereePhone","order": "ASCENDING" }
       ]
     },
     {
@@ -123,15 +139,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "referrerId", "order": "ASCENDING" },
-        { "fieldPath": "refereePhone", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "referrals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "referrerId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     },
     {
@@ -142,27 +150,108 @@
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "payment_claims",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "phoneNumber", "order": "ASCENDING" },
-        { "fieldPath": "onboardingComplete", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "paymentClaims",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "status",    "order": "ASCENDING" },
         { "fieldPath": "claimedAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "paymentClaims",
+      "collectionGroup": "payment_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId",    "order": "ASCENDING" },
+        { "fieldPath": "claimedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payment_claims",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "claimedAt", "order": "DESCENDING" }
+        { "fieldPath": "plan",   "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "whatsapp_sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state",     "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "whatsapp_sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone",     "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "telegram_links",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state",     "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "telegram_links",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId",    "order": "ASCENDING" },
+        { "fieldPath": "state",     "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phoneNumber",      "order": "ASCENDING" },
+        { "fieldPath": "onboardingComplete","order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "referrals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "referrerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId",    "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "withdrawals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId",              "order": "ASCENDING" },
+        { "fieldPath": "paystackReference",   "order": "ASCENDING" }
       ]
     }
   ],

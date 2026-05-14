@@ -6,7 +6,7 @@ import { FirebaseBootstrap } from "@/providers/firebase-bootstrap";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://zuria.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://zuria.vercel.app";
 const OG_TITLE = "ZURIA | Know where your money goes";
 const OG_DESC = "Free WhatsApp business helper for Ghanaian traders. Track sales, debts & profit — just text it. No accountant needed.";
 
@@ -54,8 +54,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
-        <FirebaseBootstrap />
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          <FirebaseBootstrap />
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

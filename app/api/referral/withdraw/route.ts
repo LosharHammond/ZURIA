@@ -1,14 +1,29 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { FieldValue } from "firebase-admin/firestore";
 import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
 import { createId } from "@/lib/utils";
+import {
+  createTransferRecipient,
+  initiateTransfer,
+  paystackConfigured,
+} from "@/lib/services/paystack-service";
 
 export const dynamic = "force-dynamic";
 
 // The admin's WhatsApp number — receives a message every time a withdrawal is requested
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
 const WITHDRAWAL_THRESHOLD = 5.0; // GHS minimum
+
+const MOMO_NETWORKS = ["MTN", "Vodafone", "AirtelTigo", "Telecel"] as const;
+
+const WithdrawSchema = z.object({
+  momoNumber: z.string().min(8).max(15).regex(/^\+?\d+$/, "Invalid MoMo number"),
+  momoName:   z.string().min(1).max(80).trim(),
+  network:    z.enum(MOMO_NETWORKS, { errorMap: () => ({ message: "Network must be MTN, Vodafone, AirtelTigo, or Telecel" }) }),
+});
 
 // POST /api/referral/withdraw
 // User submits a MoMo withdrawal request.
@@ -20,44 +35,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: {
-    momoNumber: string;
-    momoName: string;
-    network: string;
-  };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { momoNumber, momoName, network } = body;
-  if (!momoNumber?.trim() || !momoName?.trim() || !network?.trim()) {
-    return NextResponse.json({ error: "MoMo number, name, and network are required" }, { status: 400 });
+  const parsed = WithdrawSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { status: 422 }
+    );
   }
+
+  const { momoNumber, momoName, network } = parsed.data;
 
   const db = getAdminDb();
   const uid = decoded.uid;
 
-  // Load the user's current data
-  const userSnap = await db.collection(collections.users).doc(uid).get();
-  if (!userSnap.exists) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-  const userData = userSnap.data()!;
-  const balance = (userData.referralBalance as number) ?? 0;
-  const ownerName = (userData.ownerName as string) ?? "User";
-  const userPhone = (userData.phoneNumber as string) ?? "";
+  // BUG-8/9/10 FIX: All three critical steps — balance read, threshold check,
+  // pending-withdrawal guard, document creation, and balance deduction — must
+  // happen atomically inside a single Firestore transaction.
+  //
+  // Previous code read the balance and pending status in separate await calls,
+  // then wrote the withdrawal document, then deducted the balance in yet another
+  // await.  Two concurrent requests could both pass the threshold check and the
+  // pending check before either deduction committed, resulting in:
+  //   • Double-withdrawal (user paid twice their balance)
+  //   • Withdrawal document existing without a balance deduction (free money)
+  //
+  // The Firestore transaction serialises all writers; only the first commit wins.
 
-  // Enforce minimum withdrawal balance
-  if (balance < WITHDRAWAL_THRESHOLD) {
-    return NextResponse.json(
-      { error: `You need at least GHS ${WITHDRAWAL_THRESHOLD.toFixed(2)} to withdraw. Your balance is GHS ${balance.toFixed(2)}.` },
-      { status: 400 }
-    );
-  }
-
-  // Block if there's already a pending withdrawal
+  // Pending-withdrawal pre-check — Firestore transactions cannot run collection
+  // queries, so we check before entering the transaction as a fast early exit.
+  // This is best-effort; the atomic balance deduction inside the transaction is
+  // the authoritative race guard — balance cannot go negative.
   const pendingSnap = await db
     .collection(collections.withdrawals)
     .where("userId", "==", uid)
@@ -68,67 +82,209 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You already have a pending withdrawal. Please wait for it to be processed." }, { status: 409 });
   }
 
-  // Save the withdrawal request
-  const id = createId("wd");
+  const userRef = db.collection(collections.users).doc(uid);
+  const id  = createId("wd");
   const now = new Date().toISOString();
-  const withdrawalData = {
-    id,
-    userId: uid,
-    ownerName,
-    phoneNumber: userPhone,
-    amount: balance,
-    method: "momo" as const,
-    network,
-    accountNumber: momoNumber.trim(),
-    accountName: momoName.trim(),
-    status: "pending" as const,
-    createdAt: now,
-  };
 
-  await db.collection(collections.withdrawals).doc(id).set(withdrawalData);
+  // Variables are populated inside the Firestore transaction below.
+  // The non-null assertions on use are safe: the transaction throws on any
+  // path that does not assign them, so the catch block returns before we reach
+  // any subsequent code that references these.
+  let balance   = 0;
+  let ownerName = "";
+  let userPhone = "";
 
-  // ── Notify admin on WhatsApp ──────────────────────────────────────────────
-  if (ADMIN_PHONE) {
-    const adminMsg = [
-      `💰 *New ZURIA Withdrawal Request*`,
-      ``,
-      `From: *${ownerName}*`,
-      `WhatsApp: ${userPhone}`,
-      `Amount: *GHS ${balance.toFixed(2)}*`,
-      ``,
-      `MoMo Network: ${network}`,
-      `MoMo Number: ${momoNumber.trim()}`,
-      `Name on Account: ${momoName.trim()}`,
-      ``,
-      `Reference ID: \`${id}\``,
-      ``,
-      `_Please transfer the money and mark as complete in the ZURIA admin panel._`,
-    ].join("\n");
+  try {
+    await db.runTransaction(async (txn) => {
+      // 1. Read user document (inside transaction for serialised, up-to-date read)
+      const userSnap = await txn.get(userRef);
+      if (!userSnap.exists) {
+        throw Object.assign(new Error("User not found"), { statusCode: 404 });
+      }
+      const userData = userSnap.data()!;
+      balance   = (userData.referralBalance as number) ?? 0;
+      ownerName = (userData.ownerName   as string) ?? "User";
+      userPhone = (userData.phoneNumber as string) ?? "";
 
-    sendText(`whatsapp:${ADMIN_PHONE}`, adminMsg).catch((err) =>
-      console.error("[withdraw] Admin notification failed:", err)
-    );
+      // 2. Enforce minimum withdrawal balance (inside transaction — authoritative)
+      if (balance < WITHDRAWAL_THRESHOLD) {
+        throw Object.assign(
+          new Error(`You need at least GHS ${WITHDRAWAL_THRESHOLD.toFixed(2)} to withdraw. Your balance is GHS ${balance.toFixed(2)}.`),
+          { statusCode: 400 }
+        );
+      }
+
+      // 3. Write the withdrawal document atomically with the balance deduction
+      const withdrawalRef = db.collection(collections.withdrawals).doc(id);
+      txn.set(withdrawalRef, {
+        id,
+        userId:        uid,
+        ownerName,
+        phoneNumber:   userPhone,
+        amount:        balance,
+        method:        "momo" as const,
+        network,
+        accountNumber: momoNumber.trim(),
+        accountName:   momoName.trim(),
+        status:        "pending" as const,
+        createdAt:     now,
+      });
+
+      // ── CRITICAL: Deduct referral balance atomically with the document write ─
+      // This prevents users from submitting multiple withdrawals before the first
+      // one completes. The webhook (transfer.failed) restores the balance on failure.
+      // Admin rejection also restores the balance (see admin/withdrawals/[id] PATCH).
+      txn.update(userRef, {
+        referralBalance: FieldValue.increment(-balance),
+        updatedAt:       now,
+      });
+    });
+  } catch (err: unknown) {
+    const e = err as { statusCode?: number; message?: string };
+    const statusCode = e?.statusCode ?? 500;
+    const message    = e?.message    ?? "Internal server error";
+    if (statusCode < 500) {
+      return NextResponse.json({ error: message }, { status: statusCode });
+    }
+    console.error("[withdraw] transaction failed:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
-  // ── Confirm to user on WhatsApp ───────────────────────────────────────────
-  if (userPhone) {
-    const firstName = ownerName.split(" ")[0];
-    const userMsg = [
-      `✅ *Withdrawal request received, ${firstName}!*`,
-      ``,
-      `Amount: *GHS ${balance.toFixed(2)}*`,
-      `MoMo: ${network} · ${momoNumber.trim()}`,
-      ``,
-      `We will process it and send the money to your MoMo number within 24 hours. 😊`,
-      ``,
-      `_Thank you for sharing ZURIA with others! 🙏_`,
-      `_— ZURIA_`,
-    ].join("\n");
+  const withdrawalData = {
+    id,
+    userId:        uid,
+    ownerName,
+    phoneNumber:   userPhone,
+    amount:        balance,
+    method:        "momo" as const,
+    network,
+    accountNumber: momoNumber.trim(),
+    accountName:   momoName.trim(),
+    status:        "pending" as const,
+    createdAt:     now,
+  };
 
-    sendText(`whatsapp:${userPhone}`, userMsg).catch((err) =>
-      console.error("[withdraw] User confirmation failed:", err)
-    );
+  // ── Auto-initiate Paystack transfer if configured ─────────────────────────
+  if (paystackConfigured()) {
+    (async () => {
+      try {
+        const { recipientCode, error: recError } = await createTransferRecipient({
+          ...withdrawalData,
+          id,
+          paystackRecipientCode: undefined,
+          paystackTransferCode:  undefined,
+          paystackReference:     undefined,
+        });
+
+        if (recError || !recipientCode) {
+          console.error("[withdraw] createTransferRecipient failed:", recError);
+          // Fall through to admin notification
+          notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
+          return;
+        }
+
+        const transferRef = `WD-${id}`;
+        const { transferCode, status: tStatus, error: txError } = await initiateTransfer({
+          amountGHS:     balance,
+          recipientCode,
+          reference:     transferRef,
+          reason:        `ZURIA referral earnings — ${ownerName} (${userPhone})`,
+        });
+
+        if (txError) {
+          console.error("[withdraw] initiateTransfer failed:", txError);
+          notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
+          return;
+        }
+
+        // Update withdrawal record with Paystack details
+        await db.collection(collections.withdrawals).doc(id).update({
+          paystackRecipientCode: recipientCode,
+          paystackTransferCode:  transferCode,
+          paystackReference:     transferRef,
+          status:                tStatus === "success" ? "approved" : "processing",
+          processedAt:           tStatus === "success" ? new Date().toISOString() : null,
+        });
+
+        // Notify user
+        if (userPhone) {
+          const firstName = ownerName.split(" ")[0];
+          const msg =
+            tStatus === "success"
+              ? [
+                  `✅ *Payment sent, ${firstName}!* 🎉`,
+                  ``,
+                  `*GHS ${balance.toFixed(2)}* has been sent to:`,
+                  `${network} · ${momoNumber.trim()}`,
+                  ``,
+                  `Please check your MoMo. Thank you for sharing ZURIA! 💪`,
+                  `_— ZURIA_`,
+                ].join("\n")
+              : [
+                  `✅ *Withdrawal submitted, ${firstName}!*`,
+                  ``,
+                  `*GHS ${balance.toFixed(2)}* is being processed to:`,
+                  `${network} · ${momoNumber.trim()}`,
+                  ``,
+                  `You'll get a confirmation when it lands. Usually within minutes. 😊`,
+                  `_— ZURIA_`,
+                ].join("\n");
+          sendText(`whatsapp:${userPhone}`, msg).catch(() => {});
+        }
+      } catch (err) {
+        console.error("[withdraw] Paystack auto-transfer error:", err);
+        notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
+      }
+    })();
+  } else {
+    // Paystack not configured — fall back to manual admin notification
+    notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
+
+    // Confirm to user
+    if (userPhone) {
+      const firstName = ownerName.split(" ")[0];
+      sendText(`whatsapp:${userPhone}`, [
+        `✅ *Withdrawal request received, ${firstName}!*`,
+        ``,
+        `Amount: *GHS ${balance.toFixed(2)}*`,
+        `MoMo: ${network} · ${momoNumber.trim()}`,
+        ``,
+        `We will process it and send the money within 24 hours. 😊`,
+        ``,
+        `_Thank you for sharing ZURIA! 🙏_`,
+        `_— ZURIA_`,
+      ].join("\n")).catch(() => {});
+    }
   }
 
   return NextResponse.json({ ok: true, id });
+}
+
+function notifyAdminManual(
+  id: string,
+  ownerName: string,
+  userPhone: string,
+  balance: number,
+  network: string,
+  momoNumber: string,
+  momoName: string
+) {
+  if (!ADMIN_PHONE) return;
+  sendText(`whatsapp:${ADMIN_PHONE}`, [
+    `💰 *New ZURIA Withdrawal Request*`,
+    ``,
+    `From: *${ownerName}*`,
+    `WhatsApp: ${userPhone}`,
+    `Amount: *GHS ${balance.toFixed(2)}*`,
+    ``,
+    `MoMo Network: ${network}`,
+    `MoMo Number: ${momoNumber.trim()}`,
+    `Name on Account: ${momoName.trim()}`,
+    ``,
+    `Reference ID: \`${id}\``,
+    ``,
+    `_Paystack auto-transfer unavailable — please process manually._`,
+  ].join("\n")).catch((err) =>
+    console.error("[withdraw] Admin notification failed:", err)
+  );
 }

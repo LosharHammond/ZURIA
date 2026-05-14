@@ -27,13 +27,19 @@ export async function GET(req: NextRequest) {
 
     const users = recentUsers.docs.map((d) => {
       const data = d.data();
+      // Mask phone numbers in admin responses to protect PII
+      const rawPhone = (data.phoneNumber as string) ?? "";
+      const maskedPhone = rawPhone.length > 6
+        ? `${rawPhone.slice(0, rawPhone.length - 6)}****${rawPhone.slice(-2)}`
+        : "****";
       return {
         id: d.id,
         ownerName: data.ownerName ?? "—",
-        phoneNumber: data.phoneNumber ?? "—",
+        phoneNumber: maskedPhone,
         onboardingComplete: data.onboardingComplete ?? false,
         businessId: data.businessId ?? null,
         preferredLanguage: data.preferredLanguage ?? "english",
+        subscriptionPlan: data.subscriptionPlan ?? "free",
         createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt ?? null,
       };
     });
@@ -77,8 +83,8 @@ export async function GET(req: NextRequest) {
       errors,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[admin/stats]", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Log full error server-side but never expose internal details to the client
+    console.error("[admin/stats]", err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

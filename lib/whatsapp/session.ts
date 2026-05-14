@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import type { AppUser, Business, Debt, InventoryItem, Loan, SubscriptionPlan, Transaction } from "@/types/domain";
+import { sendText } from "@/lib/whatsapp/client";
 
 // ─── User lookup ──────────────────────────────────────────────────────────────
 
@@ -264,13 +265,13 @@ export async function saveTransaction(txn: Transaction, senderPhone?: string): P
     ...txn,
     createdAt: new Date(txn.createdAt),
     synced: new Date().toISOString(),
-    source: "whatsapp",
+    source: "manual",   // WhatsApp voice/text entries are classified as manual input
     ...(senderPhone ? { senderPhone } : {}),
   });
 
   await Promise.all([
     applyDebtEffect(txn),
-    applyInventoryEffect(txn),
+    applyInventoryEffect(txn, senderPhone),
     applyLoanEffect(txn),
   ]);
 }
@@ -280,7 +281,9 @@ export async function saveTransaction(txn: Transaction, senderPhone?: string): P
 async function applyDebtEffect(txn: Transaction): Promise<void> {
   if (!txn.customerName || (txn.type !== "debt" && txn.type !== "repayment")) return;
 
-  const existing = await findDebt(txn.businessId, txn.customerName);
+  // Normalize name to prevent duplicate records for "Ama" vs "ama" vs " Ama "
+  const normalizedName = txn.customerName.trim().toLowerCase();
+  const existing = await findDebt(txn.businessId, normalizedName);
   const now = new Date().toISOString();
 
   if (txn.type === "debt") {
@@ -295,7 +298,7 @@ async function applyDebtEffect(txn: Transaction): Promise<void> {
       : {
           id: `debt_${crypto.randomUUID()}`,
           businessId: txn.businessId,
-          customerName: txn.customerName,
+          customerName: normalizedName,
           originalAmount: txn.amount,
           outstandingAmount: txn.amount,
           repaymentHistory: [],
@@ -332,19 +335,22 @@ async function findDebt(businessId: string, customerName: string): Promise<Debt 
 
 // ─── Side-effect: inventory ───────────────────────────────────────────────────
 
-async function applyInventoryEffect(txn: Transaction): Promise<void> {
+async function applyInventoryEffect(txn: Transaction, ownerPhone?: string): Promise<void> {
   if (!txn.productName || !txn.quantity || (txn.type !== "sale" && txn.type !== "stock_purchase")) return;
 
   const existing = await findInventory(txn.businessId, txn.productName);
   const now = new Date().toISOString();
   const delta = txn.type === "stock_purchase" ? txn.quantity : -txn.quantity;
+  const newQty = Math.max(0, (existing?.quantity ?? 0) + delta);
+  const threshold = existing?.lowStockThreshold ?? 5;
+
   const next = existing
-    ? { ...existing, quantity: Math.max(0, (existing.quantity ?? 0) + delta), updatedAt: now }
+    ? { ...existing, quantity: newQty, updatedAt: now }
     : {
         id: `stock_${crypto.randomUUID()}`,
         businessId: txn.businessId,
         productName: txn.productName,
-        quantity: Math.max(0, delta),
+        quantity: newQty,
         lowStockThreshold: 5,
         currency: "GHS, Cedis",
         updatedAt: now,
@@ -353,6 +359,26 @@ async function applyInventoryEffect(txn: Transaction): Promise<void> {
       };
 
   await getAdminDb().collection(collections.inventory).doc(next.id).set(next, { merge: true });
+
+  // ── Low-stock alert ── fire-and-forget WhatsApp notification ────────────────
+  // Only alert when a *sale* brings stock *below or at* the threshold for the
+  // first time (i.e., previous qty was above threshold).
+  const prevQty = existing?.quantity ?? 0;
+  const wasAbove = prevQty > threshold;
+  const isNowAtOrBelow = newQty <= threshold;
+
+  if (txn.type === "sale" && wasAbove && isNowAtOrBelow && ownerPhone) {
+    const alert = [
+      `⚠️ *Low stock alert!*`,
+      ``,
+      `*${txn.productName}* is running low — only *${newQty}* left.`,
+      ``,
+      `_Restock soon to avoid running out! Reply "stock" to see your full inventory._`,
+    ].join("\n");
+
+    // Non-blocking — don't let a notification failure break the transaction save
+    sendText(`whatsapp:${ownerPhone}`, alert).catch(() => {});
+  }
 }
 
 async function findInventory(businessId: string, productName: string) {

@@ -23,6 +23,8 @@ interface AppState {
   setNotifications: (notifications: SmartNotification[]) => void;
   setOffline: (offline: boolean) => void;
   setLoading: (loading: boolean) => void;
+  /** Call on logout — clears all user-scoped data so stale records never leak to the next session. */
+  clearUserData: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -43,4 +45,15 @@ export const useAppStore = create<AppState>((set) => ({
   setNotifications: (notifications) => set({ notifications }),
   setOffline: (offline) => set({ offline }),
   setLoading: (loading) => set({ loading }),
+  clearUserData: () =>
+    set({
+      user: undefined,
+      business: undefined,
+      transactions: [],
+      debts: [],
+      loans: [],
+      inventory: [],
+      notifications: [],
+      loading: false,
+    }),
 }));

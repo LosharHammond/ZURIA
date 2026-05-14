@@ -6,7 +6,9 @@ import { createTransaction } from "@/lib/services/transaction-service";
 import { useAppStore } from "@/stores/app-store";
 
 export function useTransactionEntry() {
-  const { business, user, addTransaction } = useAppStore();
+  const business = useAppStore((s) => s.business);
+  const user = useAppStore((s) => s.user);
+  const addTransaction = useAppStore((s) => s.addTransaction);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

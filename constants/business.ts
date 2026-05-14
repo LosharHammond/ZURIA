@@ -26,7 +26,8 @@ export const LANGUAGES: { value: PreferredLanguage; label: string }[] = [
 export const GHANA_CEDI = new Intl.NumberFormat("en-GH", {
   style: "currency",
   currency: "GHS",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 // ─── Transaction type groupings for UI ───────────────────────────────────────

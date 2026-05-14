@@ -37,6 +37,7 @@ function getSoldPrefix(cat?: BusinessCategory) {
 export default function DashboardPage() {
   const data = useBusinessData();
   const category = useAppStore((s) => s.business?.category);
+  const effectivePlan = useAppStore((s) => s.user?.subscriptionPlan ?? "free");
   const waNumber = process.env.NEXT_PUBLIC_WA_NUMBER;
   const [composerPrefill, setComposerPrefill] = useState("");
 
@@ -179,7 +180,11 @@ export default function DashboardPage() {
           <SalesChart data={data.chartData} />
         </div>
         <div className="space-y-6">
-          <HealthScore value={data.healthScore} />
+          <HealthScore
+            value={data.healthScore}
+            breakdown={data.healthScoreBreakdown}
+            plan={effectivePlan}
+          />
           <DailySummaryCard summary={data.summary} ownerName={data.user?.ownerName} />
         </div>
       </div>

@@ -11,5 +11,9 @@ export const collections = {
   referrals: "referrals",
   withdrawals: "withdrawals",
   paymentClaims: "payment_claims",
+  payments: "payments",
+  telegramLinks: "telegram_links",
   errors: "errors",
+  // Idempotency keys — used to deduplicate webhook retries across serverless instances
+  idempotencyKeys: "idempotency_keys",
 } as const;

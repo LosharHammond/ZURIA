@@ -1,11 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyAdminToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
 import { fmtSubscriptionActivated } from "@/lib/whatsapp/formatter";
-import type { SubscriptionPlan } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
+
+const ActivateSchema = z.object({
+  plan:         z.enum(["growth", "pro", "enterprise"]),
+  durationDays: z.number().int().min(1).max(3650).optional().default(30),
+  claimId:      z.string().max(80).optional(),
+});
 
 // PATCH /api/admin/subscriptions/[userId]
 // Body: { plan: "growth" | "pro" | "enterprise", durationDays?: number }
@@ -22,12 +28,23 @@ export async function PATCH(
   }
 
   const { userId } = await params;
-  const body = await req.json() as { plan: SubscriptionPlan; durationDays?: number; claimId?: string };
-  const { plan, durationDays = 30, claimId } = body;
 
-  if (!["growth", "pro", "enterprise"].includes(plan)) {
-    return NextResponse.json({ error: "plan must be 'growth', 'pro', or 'enterprise'" }, { status: 400 });
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+
+  const parsed = ActivateSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { status: 422 }
+    );
+  }
+
+  const { plan, durationDays, claimId } = parsed.data;
 
   const db = getAdminDb();
   const userRef = db.collection(collections.users).doc(userId);

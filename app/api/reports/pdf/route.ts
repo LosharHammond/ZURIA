@@ -48,7 +48,16 @@ export async function GET(req: NextRequest) {
 
   const plan = (userData.subscriptionPlan as SubscriptionPlan) ?? "free";
   const expiresAt = userData.subscriptionExpiresAt as string | null;
-  const effectivePlan: SubscriptionPlan = (plan !== "free" && !isExpired(expiresAt)) ? plan : "free";
+  const referralUnlockExpiresAt = userData.referralUnlockExpiresAt as string | null;
+
+  // Determine effective plan — mirrors getEffectivePlan() from lib/whatsapp/session.ts
+  let effectivePlan: SubscriptionPlan = "free";
+  if (plan !== "free" && !isExpired(expiresAt)) {
+    effectivePlan = plan;
+  } else if (referralUnlockExpiresAt && !isExpired(referralUnlockExpiresAt)) {
+    // Referral milestone unlock: 30 referrals this month → Growth features
+    effectivePlan = "growth";
+  }
 
   if (!PDF_ALLOWED_PLANS.includes(effectivePlan)) {
     return NextResponse.json({ error: "PDF reports require ZURIA Growth or above." }, { status: 403 });
@@ -202,6 +211,16 @@ interface ReportData {
   dailyBreakdown: { date: string; revenue: number; costs: number; net: number }[];
 }
 
+/** Escape user-supplied strings before embedding in HTML to prevent XSS */
+function esc(s: string | null | undefined): string {
+  return (s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildPdfHtml(d: ReportData): string {
   const planLabel = d.plan === "growth" ? "ZURIA Growth" : d.plan === "pro" ? "ZURIA Pro" : "ZURIA Enterprise";
   const profitColor = d.profit >= 0 ? "#10b981" : "#f43f5e";
@@ -214,7 +233,7 @@ function buildPdfHtml(d: ReportData): string {
     const color = isIn ? "#10b981" : isOut ? "#f43f5e" : "#94a3b8";
     const sign  = isIn ? "+" : isOut ? "−" : "";
     const date  = new Date(t.createdAt).toLocaleDateString("en-GH", { day: "numeric", month: "short" });
-    const desc  = (t.productName || t.rawText || "—").slice(0, 55);
+    const desc  = esc((t.productName || t.rawText || "—").slice(0, 55));
     return `
       <tr>
         <td style="padding:9px 12px;color:#64748b;font-size:11px;white-space:nowrap;">${date}</td>
@@ -226,7 +245,7 @@ function buildPdfHtml(d: ReportData): string {
 
   const debtRows = d.debts.map((debt) => `
     <tr>
-      <td style="padding:8px 12px;font-size:12px;">${debt.customerName ?? "Unknown"}</td>
+      <td style="padding:8px 12px;font-size:12px;">${esc(debt.customerName ?? "Unknown")}</td>
       <td style="padding:8px 12px;font-size:12px;font-weight:700;color:#f59e0b;text-align:right;">${fmt(debt.outstandingAmount)}</td>
     </tr>`).join("\n");
 
@@ -259,8 +278,9 @@ function buildPdfHtml(d: ReportData): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${d.reportLabel} — ${d.businessName}</title>
+  <title>${esc(d.reportLabel)} — ${esc(d.businessName)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <meta name="facebook-domain-verification" content="n989mewu5qfkx5aedst180ccsful2i" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
   <style>
@@ -436,9 +456,9 @@ function buildPdfHtml(d: ReportData): string {
       </div>
       <div class="plan-badge">${planLabel}</div>
     </div>
-    <div class="report-title">${d.reportLabel}</div>
+    <div class="report-title">${esc(d.reportLabel)}</div>
     <div class="report-meta">
-      <strong>${d.businessName}</strong> &nbsp;·&nbsp; Owner: <strong>${d.ownerName}</strong>
+      <strong>${esc(d.businessName)}</strong> &nbsp;·&nbsp; Owner: <strong>${esc(d.ownerName)}</strong>
       &nbsp;·&nbsp; Generated: ${d.generatedAt}
     </div>
   </div>
@@ -572,7 +592,7 @@ function buildPdfHtml(d: ReportData): string {
     <div class="footer-gen">
       ${planLabel} Report<br />
       ${d.generatedAt}<br />
-      <span style="color:rgba(255,255,255,0.2);">Confidential — for ${d.ownerName} only</span>
+      <span style="color:rgba(255,255,255,0.2);">Confidential — for ${esc(d.ownerName)} only</span>
     </div>
   </div>
 

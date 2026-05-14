@@ -110,10 +110,10 @@ export function OnboardingForm() {
 
       <form className="mt-6 space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <Field label="Your name" error={form.formState.errors.ownerName?.message}>
-          <Input placeholder="e.g. Ama Darko" {...form.register("ownerName")} />
+          <Input placeholder="e.g. Ama Darko" autoComplete="name" {...form.register("ownerName")} />
         </Field>
         <Field label="Business name" error={form.formState.errors.businessName?.message}>
-          <Input placeholder="e.g. Ama's Provision Store" {...form.register("businessName")} />
+          <Input placeholder="e.g. Ama's Provision Store" autoComplete="organization" {...form.register("businessName")} />
         </Field>
         <Field label="Type of business">
           <Select {...form.register("category")}>
@@ -121,7 +121,7 @@ export function OnboardingForm() {
           </Select>
         </Field>
         <Field label="Location" error={form.formState.errors.location?.message}>
-          <Input placeholder="e.g. Madina Market, Accra" {...form.register("location")} />
+          <Input placeholder="e.g. Madina Market, Accra" autoComplete="address-level2" {...form.register("location")} />
         </Field>
         <Field label="Preferred language">
           <Select {...form.register("preferredLanguage")}>
@@ -146,6 +146,7 @@ export function OnboardingForm() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
+                autoComplete="new-password"
                 className="text-center text-xl tracking-[0.4em]"
                 {...form.register("whatsappPin")}
               />
@@ -156,6 +157,7 @@ export function OnboardingForm() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
+                autoComplete="new-password"
                 className="text-center text-xl tracking-[0.4em]"
                 {...form.register("whatsappPinConfirm")}
               />

@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { Debt } from "@/types/domain";
@@ -29,7 +29,7 @@ function mapDebt(data: Record<string, unknown>): Debt {
   } as Debt;
 }
 
-export async function fetchDebts(businessId: string): Promise<Debt[]> {
+export async function fetchDebts(businessId: string, max = 200): Promise<Debt[]> {
   if (!db) return [];
 
   // Try with composite index (businessId + lastActivityAt). Falls back if index not yet deployed.
@@ -38,6 +38,7 @@ export async function fetchDebts(businessId: string): Promise<Debt[]> {
       collection(db, collections.debts),
       where("businessId", "==", businessId),
       orderBy("lastActivityAt", "desc"),
+      limit(max),
     );
     const snap = await getDocs(q);
     return snap.docs.map((d) => mapDebt(d.data()));
@@ -46,7 +47,11 @@ export async function fetchDebts(businessId: string): Promise<Debt[]> {
   }
 
   try {
-    const q = query(collection(db, collections.debts), where("businessId", "==", businessId));
+    const q = query(
+      collection(db, collections.debts),
+      where("businessId", "==", businessId),
+      limit(max),
+    );
     const snap = await getDocs(q);
     const items = snap.docs.map((d) => mapDebt(d.data()));
     return items.sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));

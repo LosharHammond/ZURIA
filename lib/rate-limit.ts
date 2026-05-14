@@ -1,5 +1,20 @@
 // Simple in-memory rate limiter — works per process instance.
 // For multi-instance deployments, replace with Redis-backed solution.
+//
+// SECURITY WARNING: In serverless / multi-instance deployments (e.g. Vercel,
+// Cloud Run), each instance maintains its own independent store. A single
+// attacker can exhaust the per-instance limit on one instance and retry on
+// another, effectively multiplying the allowed attempts by the number of
+// running instances. For production use with security-critical limits
+// (e.g. forgot-pin, login), replace this with a shared Redis store such as
+// @upstash/ratelimit + Upstash Redis.
+if (process.env.NODE_ENV === "production") {
+  console.warn(
+    "[rate-limit] WARNING: Using in-memory rate limiter in production. " +
+    "Limits are per-instance and will not be enforced across multiple serverless instances. " +
+    "Replace with a Redis-backed solution for reliable rate limiting."
+  );
+}
 
 interface Bucket {
   count: number;

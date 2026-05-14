@@ -8,6 +8,7 @@ import {
   increment,
   limit,
   query,
+  runTransaction,
   setDoc,
   updateDoc,
   where,
@@ -64,37 +65,70 @@ export async function creditReferrer(
   // Don't allow self-referral
   if (referrerId === refereeId) return null;
 
-  // Don't credit twice for the same referee
-  const dupQ = query(
-    collection(db, collections.referrals),
-    where("referrerId", "==", referrerId),
-    where("refereeId", "==", refereeId),
-    limit(1)
-  );
-  const dup = await getDocs(dupQ);
-  if (!dup.empty) return null;
+  // Deterministic doc ID = referrerId_refereeId prevents duplicate credits even
+  // under concurrent calls (TOCTOU-safe via Firestore transaction).
+  const refDocId = `${referrerId}_${refereeId}`;
+  const refDocRef = doc(db, collections.referrals, refDocId);
+  const referrerRef = doc(db, collections.users, referrerId);
 
-  // Record the referral
-  const refId = createId("ref");
-  const now = new Date().toISOString();
-  const referral: Referral = {
-    id: refId,
-    referrerId,
-    refereeId,
-    refereePhone,
-    amount: REFERRAL_REWARD,
-    createdAt: now,
-  };
-  await setDoc(doc(db, collections.referrals, refId), referral);
+  let creditedReferrerId: string | null = null;
 
-  // Credit referrer's balance and count
-  await updateDoc(doc(db, collections.users, referrerId), {
-    referralBalance: increment(REFERRAL_REWARD),
-    referralCount: increment(1),
-    updatedAt: now,
-  });
+  try {
+    await runTransaction(db, async (tx) => {
+      const refSnap = await tx.get(refDocRef);
+      if (refSnap.exists()) return; // Already credited — idempotent exit
 
-  return referrerId;
+      const referrerSnap = await tx.get(referrerRef);
+      const referrerData = referrerSnap.data() ?? {};
+
+      const now = new Date().toISOString();
+      const thisMonth = now.slice(0, 7); // "YYYY-MM"
+
+      const storedMonthKey = (referrerData.referralMonthlyResetKey as string) ?? "";
+      const oldMonthlyCount = storedMonthKey === thisMonth
+        ? ((referrerData.referralMonthlyCount as number) ?? 0)
+        : 0; // reset if month rolled over
+      const newMonthlyCount = oldMonthlyCount + 1;
+
+      // Milestone fires when this referral CROSSES the threshold from below
+      const justHitMilestone =
+        newMonthlyCount >= MILESTONE_REFERRALS &&
+        oldMonthlyCount < MILESTONE_REFERRALS;
+
+      const endOfMonth = new Date();
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1, 1);
+      endOfMonth.setHours(0, 0, 0, 0);
+
+      const referral: Referral = {
+        id: refDocId,
+        referrerId,
+        refereeId,
+        refereePhone,
+        amount: REFERRAL_REWARD,
+        createdAt: now,
+      };
+      tx.set(refDocRef, referral);
+
+      const updatePayload: Record<string, unknown> = {
+        referralBalance: increment(REFERRAL_REWARD),
+        referralCount: increment(1),
+        referralMonthlyCount: newMonthlyCount,
+        referralMonthlyResetKey: thisMonth,
+        updatedAt: now,
+      };
+      if (justHitMilestone) {
+        updatePayload.referralUnlockExpiresAt = endOfMonth.toISOString();
+      }
+      tx.update(referrerRef, updatePayload);
+
+      creditedReferrerId = referrerId;
+    });
+  } catch (err) {
+    console.error("[creditReferrer] transaction failed:", err);
+    return null;
+  }
+
+  return creditedReferrerId;
 }
 
 // ─── Get all referrals made by a user ────────────────────────────────────────

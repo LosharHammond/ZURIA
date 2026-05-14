@@ -17,6 +17,7 @@ import {
   Languages,
   MessageCircle,
   Package,
+  Send,
   ShieldCheck,
   Sparkles,
   Star,
@@ -27,6 +28,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ServiceBanner } from "@/components/ui/service-banner";
+
+const TELEGRAM_BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "ZuriaBot";
 
 // ── Animation helpers ─────────────────────────────────────────────────────────
 
@@ -59,8 +63,8 @@ function FadeUp({
 const features = [
   {
     icon: MessageCircle,
-    title: "WhatsApp-native recording",
-    text: 'Type "Sold rice 120" and ZURIA understands instantly. No forms, no training, no accountant needed.',
+    title: "Chat-native recording",
+    text: 'Type "Sold rice 120" on WhatsApp or Telegram and ZURIA understands instantly. No forms, no training, no accountant needed.',
     badge: "Core",
   },
   {
@@ -98,8 +102,8 @@ const features = [
 const steps = [
   {
     number: "01",
-    title: "Sign in with your phone",
-    text: "No email, no password. Just your Ghanaian phone number. You're in within 30 seconds.",
+    title: "Sign in with phone & PIN",
+    text: "No email, no password. Your Ghanaian phone number and a 4-digit PIN — the same one used on WhatsApp and Telegram. You're in within 30 seconds.",
   },
   {
     number: "02",
@@ -328,11 +332,11 @@ const moatFeatures = [
   },
   {
     icon: MessageCircle,
-    title: "WhatsApp Commerce Layer",
+    title: "WhatsApp & Telegram Commerce",
     color: "text-secondary",
     bg: "bg-secondary/10",
     description:
-      "Most SMEs live inside WhatsApp. ZURIA turns WhatsApp into a full business operating system. Record, query, and get reports without opening an app.",
+      "Most SMEs live inside chat apps. ZURIA works on both WhatsApp and Telegram — a full business operating system. Record, query, and get reports without opening an app.",
     examples: ['"Sold 3 Coke 45 cedis cash"', '"Who owes me?"', '"Monthly report"'],
   },
   {
@@ -433,7 +437,12 @@ function HeroSection() {
                   Start for free <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="default">
+              <Button asChild variant="outline" size="default" className="gap-2 border-[#229ED9]/40 text-[#5AC8FA] hover:bg-[#229ED9]/10">
+                <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noopener noreferrer">
+                  <Send className="h-4 w-4" /> Use on Telegram
+                </a>
+              </Button>
+              <Button asChild variant="ghost" size="default">
                 <Link href="#pricing">See plans</Link>
               </Button>
             </motion.div>
@@ -821,10 +830,11 @@ function PricingSection() {
                 No card required. Pay directly with MoMo and get activated within 1 hour.
               </p>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   { network: "MTN MoMo", ussd: "*170#", step: "Send Money" },
-                  { network: "AirtelTigo", ussd: "*110#", step: "Make Payment" },
+                  { network: "Telecel Cash", ussd: "*100#", step: "Send Money" },
+                  { network: "AirtelTigo", ussd: "*185#", step: "Make Payment" },
                   { network: "Vodafone Cash", ussd: "*110#", step: "Send Money" },
                 ].map((n) => (
                   <div key={n.network} className="rounded-2xl bg-white/[0.04] px-4 py-4 text-left">
@@ -839,7 +849,9 @@ function PricingSection() {
 
               <div className="mt-5 rounded-2xl bg-primary/5 border border-primary/10 px-5 py-4">
                 <p className="text-sm text-muted-foreground leading-6">
-                  After paying, open WhatsApp and message ZURIA:{" "}
+                  After paying, message ZURIA on{" "}
+                  <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noopener noreferrer" className="text-[#5AC8FA] underline underline-offset-2">Telegram</a>{" "}
+                  or WhatsApp:{" "}
                   <span className="font-mono font-bold text-foreground">PAID GROWTH</span>,{" "}
                   <span className="font-mono font-bold text-foreground">PAID PRO</span>, or{" "}
                   <span className="font-mono font-bold text-foreground">PAID ENTERPRISE</span>.
@@ -916,6 +928,11 @@ function CtaSection() {
                   Start free — phone only <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
+              <Button asChild variant="outline" size="default" className="gap-2 border-[#229ED9]/40 text-[#5AC8FA] hover:bg-[#229ED9]/10">
+                <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noopener noreferrer">
+                  <Send className="h-4 w-4" /> Chat on Telegram
+                </a>
+              </Button>
               <Button asChild variant="ghost" size="default">
                 <Link href="#pricing">See all plans</Link>
               </Button>
@@ -947,6 +964,14 @@ function Footer() {
             <Link href="#pricing" className="hover:text-foreground transition-colors">Pricing</Link>
             <Link href="#for-you" className="hover:text-foreground transition-colors">For your business</Link>
             <Link href="/login" className="hover:text-foreground transition-colors">Sign in</Link>
+            <a
+              href={`https://t.me/${TELEGRAM_BOT}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[#5AC8FA] hover:text-[#5AC8FA]/80 transition-colors"
+            >
+              <Send className="h-3.5 w-3.5" /> Telegram
+            </a>
           </div>
           <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} ZURIA. Built for Ghana.</p>
         </div>
@@ -961,6 +986,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen">
       <NavBar />
+      <ServiceBanner />
       <HeroSection />
       <StatsBar />
       <FeaturesSection />

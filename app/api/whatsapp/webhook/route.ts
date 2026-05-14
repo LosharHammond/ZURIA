@@ -1,10 +1,12 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { handleMessage } from "@/lib/whatsapp/handler";
 import { normalizePhone, twimlReply } from "@/lib/whatsapp/client";
 import { fmtSystemError } from "@/lib/whatsapp/formatter";
 import { logError } from "@/lib/server/error-logger";
 import { rateLimit } from "@/lib/rate-limit";
+import { getAdminDb } from "@/lib/firebase/admin";
+import { collections } from "@/lib/firebase/collections";
 
 export const dynamic = "force-dynamic";
 
@@ -55,16 +57,24 @@ function isTwilioSignatureValid(
   }
 
   const expected = createHmac("sha1", authToken).update(sigBase).digest("base64");
-  return expected === signature;
+  // Use timing-safe comparison to prevent HMAC timing-oracle attacks
+  try {
+    return timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(signature, "utf8"));
+  } catch {
+    // Buffer lengths differ → signatures cannot match
+    return false;
+  }
 }
 
 // ─── MessageSid deduplication ─────────────────────────────────────────────────
-// Twilio may retry a webhook if our server is slow. Track recent MessageSids for
-// 5 minutes so duplicate deliveries don't create duplicate transactions.
+// Twilio may retry a webhook if our server is slow. Track recent MessageSids in
+// two layers:
+//  1. In-process Map (fast — catches retries within the same serverless instance)
+//  2. Firestore atomic write (cross-instance — catches retries on different pods)
 const recentSids = new Map<string, number>(); // sid → timestamp
 const SID_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-function isDuplicateSid(sid: string): boolean {
+function isInMemoryDuplicate(sid: string): boolean {
   if (!sid) return false;
   const now = Date.now();
   // Prune stale entries
@@ -74,6 +84,36 @@ function isDuplicateSid(sid: string): boolean {
   if (recentSids.has(sid)) return true;
   recentSids.set(sid, now);
   return false;
+}
+
+/**
+ * Atomically claim a MessageSid in Firestore.
+ * Returns true if this instance is the *first* to process this SID (not a duplicate).
+ * Uses Firestore's create-only semantics: if the doc already exists, it throws
+ * and we know it's a duplicate.
+ */
+async function claimMessageSid(sid: string): Promise<boolean> {
+  if (!sid) return true;
+  try {
+    const db = getAdminDb();
+    const ref = db.collection(collections.idempotencyKeys).doc(`wa_${sid}`);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists) throw new Error("duplicate");
+      tx.set(ref, { sid, processedAt: new Date().toISOString() });
+    });
+    return true; // claimed successfully — not a duplicate
+  } catch (err) {
+    if (err instanceof Error && err.message === "duplicate") return false;
+    // Firestore error (network, quota, etc.) — fail open to avoid dropping messages
+    console.warn("[webhook] Firestore SID claim failed, processing anyway:", err instanceof Error ? err.message : err);
+    return true;
+  }
+}
+
+// Legacy alias kept for internal use
+function isDuplicateSid(sid: string): boolean {
+  return isInMemoryDuplicate(sid);
 }
 
 // 4-digit PINs are never logged — mask before any console/Firestore write
@@ -110,10 +150,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const messageSid = (form.get("MessageSid") as string | null) ?? "";
+
+  // Layer 1: fast in-process check (same serverless instance)
   if (isDuplicateSid(messageSid)) {
-    // Twilio retry — return 200 with the empty TwiML so Twilio stops retrying
-    console.info("[webhook] duplicate MessageSid, skipping:", messageSid);
+    console.info("[webhook] duplicate MessageSid (in-process), skipping:", messageSid);
     return xml(twimlReply(""));
+  }
+
+  // Layer 2: cross-instance Firestore atomic claim (different serverless pods)
+  if (messageSid) {
+    const claimed = await claimMessageSid(messageSid);
+    if (!claimed) {
+      console.info("[webhook] duplicate MessageSid (Firestore), skipping:", messageSid);
+      return xml(twimlReply(""));
+    }
   }
 
   const from = (form.get("From") as string | null) ?? "";
@@ -125,7 +175,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const phone = normalizePhone(from);
   const safeBody = maskIfPin(body); // never log raw 4-digit PINs
-  console.info("[webhook] incoming", phone, safeBody.slice(0, 40));
+  // Mask phone in logs to avoid leaking PII to server log aggregators
+  const maskedPhone = phone.length > 6
+    ? `${phone.slice(0, phone.length - 6)}****${phone.slice(-2)}`
+    : "****";
+  console.info("[webhook] incoming", maskedPhone, safeBody.slice(0, 40));
 
   // Rate limit: max 20 messages per phone per minute
   const { allowed } = rateLimit(`wa:${phone}`, 20, 60_000);

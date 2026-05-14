@@ -79,6 +79,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── Referrals ───────────────────────────────────────────────────────────
+    // Written exclusively by Admin SDK (server) in referral-service.ts.
+    // Clients must never read or write referral records directly.
+    match /referrals/{referralId} {
+      allow read, write: if false;
+    }
+
+    // ─── Payment Claims ──────────────────────────────────────────────────────
+    // Written by Admin SDK when a user sends "PAID GROWTH" etc. via WhatsApp.
+    // Verified by admin routes — never accessible from the client.
+    match /paymentClaims/{claimId} {
+      allow read, write: if false;
+    }
+
     // ─── Withdrawals ────────────────────────────────────────────────────────
     // Users can create and read their own withdrawals. Only Admin SDK updates status.
     match /withdrawals/{withdrawalId} {

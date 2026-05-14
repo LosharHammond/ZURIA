@@ -22,71 +22,88 @@
 import type { ParsedTransaction, PaymentMethod, TransactionType } from "@/types/domain";
 import { compactName } from "@/lib/utils";
 
-// ─── 1. TYPO CORRECTION MAP (120 entries) ────────────────────────────────────
+// ─── 1. TYPO CORRECTION MAP (140+ entries) ───────────────────────────────────
 const TYPO_MAP: Record<string, string> = {
   // sold / sell
   seld: "sold", saled: "sold", slod: "sold", saold: "sold", sall: "sold",
   sols: "sold", seled: "sold", solld: "sold", solt: "sold", solted: "sold",
   selld: "sold", "sell'd": "sold", sellng: "selling", slld: "sold",
+  sle: "sale", sals: "sales", sael: "sale",
   // bought / buy
   bort: "bought", baught: "bought", buyed: "bought", bougth: "bought",
   bogth: "bought", bougght: "bought", bught: "bought", bougt: "bought",
   bot: "bought", byut: "bought", byued: "bought", byed: "bought",
+  baout: "bought",
   // paid / pay
   payed: "paid", paied: "paid", payid: "paid", payd: "paid",
-  pd: "paid", piad: "paid", paeid: "paid", payedd: "paid",
+  pd: "paid", paeid: "paid", payedd: "paid",
   // expense / expenses
   espense: "expense", expence: "expense", expens: "expense", expenss: "expense",
   expese: "expense", expns: "expense", exps: "expense", expen: "expense",
+  exspense: "expense", epense: "expense",
   // salary / wages
   sallary: "salary", salery: "salary", salry: "salary", salari: "salary",
   salay: "salary", slary: "salary", slry: "salary", sallry: "salary",
+  salaery: "salary",
   waged: "wages", wage: "wages", wags: "wages", wge: "wages",
   // debt
   dept: "debt", dbt: "debt", dbet: "debt", det: "debt", dat: "debt",
-  dets: "debt", dbtt: "debt",
+  dets: "debt", dbtt: "debt", dedt: "debt",
   // received / collected
   recieved: "received", recived: "received", recevied: "received",
   receve: "received", recvd: "received", rcvd: "received", recvied: "received",
+  recievd: "received",
   colected: "collected", colect: "collected", colectd: "collected",
   clectd: "collected", colcts: "collected",
   // transfer
   tranfer: "transfer", transfar: "transfer", transefr: "transfer",
   transfor: "transfer", transfr: "transfer", txfer: "transfer",
-  trnsfr: "transfer", transfre: "transfer",
+  trnsfr: "transfer", transfre: "transfer", trasfer: "transfer",
   // restock
   restok: "restock", restokd: "restock", restokt: "restock",
-  resstok: "restock", retock: "restock", rstok: "restock",
+  resstok: "restock", retock: "restock", rstok: "restock", restck: "restock",
   // borrowed / borrow
   borowed: "borrowed", borrrowed: "borrowed", borrwed: "borrowed",
   borrd: "borrowed", borwd: "borrowed", borrew: "borrowed",
-  borwe: "borrow", borwr: "borrower",
+  borwe: "borrow", borwr: "borrower", borroew: "borrow",
   // repaid / settled
-  repaied: "repaid", setteled: "settled", setled: "settled",
-  setteld: "settled", settlled: "settled", seteld: "settled",
+  repaied: "repaid", repiad: "repaid",
+  setteled: "settled", setled: "settled", setteld: "settled",
+  settlled: "settled", seteld: "settled",
   // withdrew / withdrawal
   withdew: "withdrew", withdrawl: "withdrawal", witdrew: "withdrew",
   witdraw: "withdrawal", wdrew: "withdrew", wdrw: "withdrawal",
   withdrl: "withdrawal",
   // invested
   investd: "invested", inveted: "invested", invst: "invested",
-  invsted: "invested", invstd: "invested",
+  invsted: "invested", invstd: "invested", ivested: "invested",
   // levy / tax / customs
   levey: "levy", levie: "levy", levvy: "levy",
   cutoms: "customs", custms: "customs", cstoms: "customs",
+  taks: "tax", taxs: "tax",
   // refund
   refand: "refund", refudn: "refund", refnd: "refund", rfund: "refund",
+  refud: "refund",
   // gave / lent
   gve: "gave", givn: "given", len: "lent", led: "lent",
+  giev: "gave", gaved: "gave",
   // money / cash / momo
   momoey: "money", monay: "money", mony: "money", monie: "money",
   cassh: "cash", csh: "cash", cask: "cash", monney: "money",
+  // pesewa / pesewas
+  peswa: "pesewa", peswas: "pesewas",
   // other common
   pymt: "payment", paymnt: "payment", pymnt: "payment",
   rcpt: "receipt", recp: "receipt", stk: "stock", stck: "stock",
   invntory: "inventory", invetory: "inventory",
   crdt: "credit", cred: "credit", bal: "balance", balnce: "balance",
+  ballance: "balance",
   txn: "transaction", dpst: "deposit",
+  // Ghanaian English common patterns
+  custmer: "customer", costomer: "customer", customar: "customer",
+  supllier: "supplier", suplier: "supplier",
+  invioce: "invoice", inovice: "invoice", invoce: "invoice",
+  proffit: "profit", prfit: "profit", prft: "profit",
 };
 
 // ─── 2. GHANAIAN PRODUCTS (280 items) ────────────────────────────────────────
@@ -231,6 +248,8 @@ const GH_TWI_PIDGIN: string[] = [
   // Twi sell/buy
   "ton","tɔn","tonton","mi ton","i ton","a ton",
   "to","tɔ","mi to","i to","mi buy","i buy",
+  // Twi want/pay — "mepɛ" = "I want/I paid for"
+  "mepɛ","me pɛ","mɛpɛ","mɛ pɛ",
   // Twi money / pay
   "sika","pa sika","gye sika","ne sika","fa sika","bɔ","hyia",
   "kudi","ego","owo","kɔb","kɔbo",
@@ -289,8 +308,11 @@ function hasGhsCurrency(raw: string): boolean {
 }
 
 // ─── 7. MAIN PARSER ──────────────────────────────────────────────────────────
+// Maximum safe input length — prevents RegEx DoS on pathological inputs.
+const MAX_INPUT_LENGTH = 500;
+
 export function parseTransaction(input: string): ParsedTransaction {
-  const raw = input.trim();
+  const raw = input.trim().slice(0, MAX_INPUT_LENGTH);
   if (!raw) return emptyParsed();
 
   const norm = preprocess(raw);
@@ -376,6 +398,15 @@ function extractAmount(text: string): number {
   // returns 500, not 3 (the quantity).
   const currencyFirst = text.match(/\bgscur\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/);
   if (currencyFirst) return Number(currencyFirst[1].replace(/,/g, ""));
+
+  // ── 1b. Pesewa amounts: "50 pesewas" → 0.50, "250 pesewas" → 2.50 ──────────
+  // Pesewas are 1/100 of a Cedi. Detect "X pesewa(s)" and convert to GHS.
+  const pesewa = text.match(/\b(\d+)\s+pesewas?\b/i);
+  if (pesewa) return Number(pesewa[1]) / 100;
+
+  // ── 1c. "half" / "a half" / "half cedi" → 0.50; "quarter" → 0.25 ───────────
+  if (/\b(half a cedi|half cedi|gscur\s*half|half\s+gscur)\b/i.test(text)) return 0.50;
+  if (/\b(quarter cedi|quarter gscur|gscur\s*quarter)\b/i.test(text)) return 0.25;
 
   // ── 2. k / m suffixes: 1.5k, 2m ────────────────────────────────────────────
   const kilo = text.match(/\b(\d+(?:\.\d+)?)\s*k\b/i);
@@ -493,6 +524,24 @@ function extractQuantity(text: string): number | null {
   const xMatch = text.match(/\b(\d+)\s*[x×]\s*(?=[a-zA-Z])/i);
   if (xMatch) return Number(xMatch[1]);
 
+  // 3. Word-form quantities: "three bags rice", "two bottles fanta"
+  //    Only applies when followed by a unit word to avoid conflating with amounts.
+  const wordQtyMap: [RegExp, number][] = [
+    [/\bone\b/i,   1], [/\btwo\b/i,  2], [/\bthree\b/i, 3],
+    [/\bfour\b/i,  4], [/\bfive\b/i, 5], [/\bsix\b/i,   6],
+    [/\bseven\b/i, 7], [/\beight\b/i,8], [/\bnine\b/i,  9],
+    [/\bten\b/i,  10], [/\beleven\b/i,11],[/\btwelve\b/i,12],
+  ];
+  const unitPattern = /\b(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|rolls?|tins?|sachets?|cups?|litres?|liters?|kilos?|kilograms?|grams?|yards?|metres?|meters?|dozens?|pairs?|boxes?|bundles?|trays?|sets?)\b/i;
+  for (const [re, val] of wordQtyMap) {
+    const wm = text.match(re);
+    if (wm) {
+      // Check that a unit word appears near this word-number
+      const afterWord = text.slice(wm.index! + wm[0].length, wm.index! + wm[0].length + 25);
+      if (unitPattern.test(afterWord)) return val;
+    }
+  }
+
   return null;
 }
 
@@ -595,7 +644,7 @@ function runExpenseVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(maintenance|repair|fix(?:ing)?|service charge|service fee)\b/.test(norm)) add(t, 8, "maintenance");
   if (/\b(subscription|dues|membership|annual fee)\b/.test(norm)) add(t, 8, "subscription");
   if (/\b(printing|stationery|packaging|nylon|bags)\b/.test(norm)) add(t, 7, "supplies");
-  if (/\b(tro.?tro|taxi|uber|bolt|bus fare|fare|lorry|lorry fare)\b/.test(norm)) add(t, 8, "transport expense");
+  if (/\b(transport(?:ation)?|tro.?tro|taxi|uber|bolt|bus fare|fare|lorry|lorry fare)\b/.test(norm)) add(t, 8, "transport expense");
   if (/\b(food|lunch|chop|snack|refreshment)\b/.test(norm) && !/\b(sold|sell|ton)\b/.test(norm)) add(t, 5, "food expense");
   if (/\b(party|event|celebration|funeral|ceremony)\b/.test(norm) && /\b(paid|spent|bought)\b/.test(norm)) add(t, 6, "event expense");
   if (/\b(advertising|advert|promotion|flyer|banner|radio|tv)\b/.test(norm)) add(t, 7, "advertising");
@@ -615,6 +664,8 @@ function runExpenseVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(dem charge|they charge|charged me)\b/.test(norm)) add(t, 7, "charged");
   if (/\b(clearing|clearing charges|customs clearance)\b/.test(norm)) add(t, 6, "clearing");
   if (/\b(waste|wastage|loss|damaged goods)\b/.test(norm)) add(t, 5, "loss/wastage");
+  // Twi: "mepɛ X" = "I paid for / I bought X" → expense signal
+  if (/mep[ɛε]|m[ɛe]p[ɛε]/i.test(norm)) add(t, 8, "twi:mepɛ:paid/bought");
 }
 
 // ── DEBT (27 signals) ─────────────────────────────────────────────────────────
@@ -712,6 +763,8 @@ function runStockPurchaseVotes(norm: string, _raw: string, add: VoteMap["add"]) 
   if (/\b(clearing|clear goods|clear stock)\b/.test(norm)) add(t, 7, "clearing goods");
   if (/\b(foodstuffs?|foodstuff)\b/.test(norm) && /\b(bought|purchased|pay)\b/.test(norm)) add(t, 9, "foodstuff purchase");
   if (/\b(market trip|market run|went to market)\b/.test(norm)) add(t, 8, "market trip");
+  // Twi: "mepɛ X" with a product name suggests a stock purchase
+  if (/mep[ɛε]|m[ɛe]p[ɛε]/i.test(norm) && GH_PRODUCTS.some((p) => norm.includes(p))) add(t, 7, "twi:mepɛ:stock");
 }
 
 // ── COST (29 signals) ─────────────────────────────────────────────────────────
@@ -1242,17 +1295,35 @@ function computeConfidence(input: {
   signals: string[];
 }): number {
   let c = 0.30;
+
+  // Amount present is the strongest single signal
   if (input.amount > 0) c += 0.25;
-  if (input.score >= 14) c += 0.22;
+
+  // Vote-engine score tiers
+  if (input.score >= 20)      c += 0.26; // very high — multiple strong signals agree
+  else if (input.score >= 14) c += 0.22;
   else if (input.score >= 10) c += 0.16;
-  else if (input.score >= 6) c += 0.10;
-  else if (input.score >= 2) c += 0.05;
-  if (input.productName) c += 0.10;
+  else if (input.score >= 6)  c += 0.10;
+  else if (input.score >= 2)  c += 0.05;
+
+  // Supporting entity extraction
+  if (input.productName)  c += 0.10;
   if (input.customerName) c += 0.08;
+
+  // Payment method is explicit — user said "momo", "bank", or "cash"
   if (input.paymentMethod !== "unknown") c += 0.06;
-  if (input.signals.length >= 3) c += 0.05;
-  if (input.signals.length >= 5) c += 0.03;
-  return Math.min(0.99, Number(c.toFixed(2)));
+
+  // Signal diversity (number of independent matching patterns)
+  if (input.signals.length >= 5) c += 0.05;
+  else if (input.signals.length >= 3) c += 0.03;
+
+  // Penalise: amount=0 with no product or customer is almost certainly wrong
+  if (input.amount === 0 && !input.productName && !input.customerName) c -= 0.10;
+
+  // Penalise: score ≤ 0 means the type is a last-resort guess
+  if (input.score <= 0) c -= 0.08;
+
+  return Math.min(0.99, Math.max(0.10, Number(c.toFixed(2))));
 }
 
 // ─── 15. EMPTY PARSE RESULT ──────────────────────────────────────────────────
@@ -1272,4 +1343,33 @@ function emptyParsed(): ParsedTransaction {
     syncStatus: "pending",
     parserSignals: [],
   };
+}
+
+// ─── 16. DUPLICATE DETECTION ──────────────────────────────────────────────────
+/**
+ * Returns a stable fingerprint for deduplication.
+ * Two messages with the same fingerprint within a short time window
+ * should be treated as accidental duplicates.
+ *
+ * The fingerprint is: normalised text (lowercased, whitespace-collapsed, punctuation stripped).
+ * Callers should also check a time window (e.g. < 60 seconds apart).
+ */
+export function getTransactionFingerprint(rawText: string): string {
+  return rawText
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Returns true when `candidate` is a likely duplicate of any item in `recentFingerprints`.
+ * Pass the fingerprints of the last ~10 transactions for the session.
+ */
+export function isDuplicateTransaction(
+  candidate: string,
+  recentFingerprints: string[]
+): boolean {
+  const fp = getTransactionFingerprint(candidate);
+  return recentFingerprints.some((r) => r === fp);
 }

@@ -12,6 +12,7 @@ const PROTECTED_PREFIXES = [
   "/referrals",
   "/welcome",
   "/subscription",
+  "/onboarding", // new users must be authenticated to complete onboarding
 ];
 
 // Routes that should redirect to dashboard if already authenticated
@@ -20,8 +21,15 @@ const AUTH_PREFIXES = ["/login", "/verify"];
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Check for the auth session cookie (set by auth-provider on sign-in)
-  const isAuthenticated = !!req.cookies.get("zuria_auth");
+  // Check for the auth session cookie (set by auth-provider on sign-in).
+  // NOTE: This only verifies cookie presence for page-level redirects.
+  // The cookie value is NOT cryptographically verified here because Edge
+  // middleware cannot call Firebase Admin SDK. All API routes perform their
+  // own server-side token verification via verifyIdToken / verifyAdminToken.
+  // A user who sets an arbitrary cookie value will reach the dashboard HTML
+  // but every authenticated API call will still return 401/403.
+  const cookieVal = req.cookies.get("zuria_auth")?.value ?? "";
+  const isAuthenticated = cookieVal.length > 0;
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   const isAuthPage = AUTH_PREFIXES.some((p) => pathname.startsWith(p));

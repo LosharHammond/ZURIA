@@ -104,15 +104,48 @@ export function fmtDebts(debts: Debt[], businessName = "Your Business"): string 
     return ["✅ *Nobody owes you anything right now!*", "", "You are clear. 🎉 Well done!", "", sig(businessName)].join("\n");
   }
 
+  const now = Date.now();
+  const DAY_MS = 86_400_000;
+
   const total = open.reduce((acc, d) => acc + d.outstandingAmount, 0);
   const lines = [`💰 *People who owe you (${open.length}):*`, ""];
 
-  open.slice(0, 10).forEach((d, i) => {
-    lines.push(`${i + 1}. ${d.customerName ?? "Unknown"} — *${GHS(d.outstandingAmount)}*`);
+  // Sort: oldest debts first so overdue items surface at the top
+  const sorted = [...open].sort((a, b) => {
+    const dateA = new Date(a.createdAt ?? 0).getTime();
+    const dateB = new Date(b.createdAt ?? 0).getTime();
+    return dateA - dateB;
+  });
+
+  const overdue30: string[] = [];
+  const overdue7: string[] = [];
+
+  sorted.slice(0, 10).forEach((d, i) => {
+    const ageDays = d.createdAt
+      ? Math.floor((now - new Date(d.createdAt).getTime()) / DAY_MS)
+      : 0;
+
+    let ageSuffix = "";
+    if (ageDays >= 30) {
+      ageSuffix = ` 🚨 _${ageDays}d overdue_`;
+      if (d.customerName) overdue30.push(d.customerName);
+    } else if (ageDays >= 7) {
+      ageSuffix = ` ⚠️ _${ageDays}d_`;
+      if (d.customerName) overdue7.push(d.customerName);
+    }
+
+    lines.push(`${i + 1}. ${d.customerName ?? "Unknown"} — *${GHS(d.outstandingAmount)}*${ageSuffix}`);
   });
 
   if (open.length > 10) lines.push(`_...and ${open.length - 10} more_`);
   lines.push("", `*Total owed to you: ${GHS(total)}*`);
+
+  if (overdue30.length) {
+    lines.push("", `🚨 *Very overdue (30+ days):* ${overdue30.join(", ")}`, `_Consider sending a firm reminder or visiting them in person._`);
+  } else if (overdue7.length) {
+    lines.push("", `⚠️ *Overdue (7+ days):* ${overdue7.join(", ")}`, `_Time to follow up — send a gentle reminder._`);
+  }
+
   lines.push("", '_Say their name and amount to record a payment, e.g. "Ama paid 50"_');
   lines.push("", sig(businessName));
   return lines.join("\n");
@@ -256,6 +289,18 @@ export function fmtHelp(
     `📞 Message us directly: ${SUPPORT_WA}`,
     "We reply Monday – Saturday, 8am – 8pm 🇬🇭",
     "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "📱 *WhatsApp Sandbox reminder*",
+    "━━━━━━━━━━━━━━━━━━━",
+    "",
+    "⚠️ WhatsApp Business API is temporarily down.",
+    "You are using the *sandbox* (testing mode).",
+    "Sandbox sessions expire every *72 hours*.",
+    "To rejoin, send exactly: *join contrast-pull*",
+    "",
+    "For a better experience with *no expiry*, use Telegram:",
+    "👉 https://t.me/ZuriaBot",
+    "",
     "_Just type naturally — I will understand! 🙂_",
     "",
     sig(businessName),
@@ -283,7 +328,7 @@ export function fmtWelcome(ownerName: string, businessName: string, category: Bu
     "",
     `Congratulations on setting up *${businessName}* ${voiceEmoji}`,
     "",
-    "I'm your personal business helper — available 24/7, right here on WhatsApp.",
+    "I'm your personal business helper — available 24/7 on WhatsApp and Telegram.",
     "I remember *everything* for you, so you never lose track again! 💪",
     "",
     "━━━━━━━━━━━━━━━━━━━",
@@ -304,6 +349,17 @@ export function fmtWelcome(ownerName: string, businessName: string, category: Bu
     "You set a 4-digit PIN during registration.",
     "Type it anytime I ask to unlock your account.",
     "_Keep it safe — don't share it with anyone!_ 🙏",
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "📱 *WhatsApp Sandbox Note*",
+    "━━━━━━━━━━━━━━━━━━━",
+    "",
+    "⚠️ You are using the *WhatsApp Sandbox* (testing mode).",
+    "Your sandbox session expires every *72 hours*.",
+    "To reconnect, send: *join contrast-pull*",
+    "",
+    "For a smoother experience with no expiry, switch to Telegram:",
+    "👉 https://t.me/ZuriaBot",
     "",
     "━━━━━━━━━━━━━━━━━━━",
     "🆘 *Need help?*",
@@ -351,8 +407,19 @@ export function fmtUnregistered(): string {
     "",
     "To use ZURIA on WhatsApp:",
     "1️⃣ Create your free account at the ZURIA app",
-    "2️⃣ Set your 4-digit WhatsApp PIN during setup",
+    "2️⃣ Set your 4-digit PIN during setup",
     "3️⃣ Come back here and start recording!",
+    "",
+    "━━━━━━━━━━━━━━━━━━━",
+    "📱 *WhatsApp Sandbox Users*",
+    "━━━━━━━━━━━━━━━━━━━",
+    "",
+    "You are on the *WhatsApp Sandbox* (testing mode).",
+    "Your session expires every *72 hours* — to rejoin, send:",
+    "*join contrast-pull*",
+    "",
+    "Or use *Telegram* for a seamless experience (no expiry):",
+    "👉 https://t.me/ZuriaBot",
     "",
     "_ZURIA is your free business helper — it remembers everything for you. 😊_",
     "",
@@ -431,14 +498,21 @@ export function fmtSubscribePlans(
     `   Amount: GHS 20, 50, or 100`,
     `   Reference: your WhatsApp number`,
     "",
-    `*AirtelTigo Money:* Dial *110#* → Make Payment`,
+    `*Telecel Cash:* Dial *100#* → Send Money`,
+    `   Enter number: *${ADMIN_MOMO}* → Amount → Reference: your number`,
+    "",
+    `*AirtelTigo Money:* Dial *185#* → Make Payment`,
     `   Enter number: *${ADMIN_MOMO}* → Amount → Reference: your number`,
     "",
     `*Vodafone Cash:* Dial *110#* → Send Money`,
     `   Enter number: *${ADMIN_MOMO}* → Amount → Reference: your number`,
     "",
-    "After paying, reply here:",
+    "After paying, reply here or on Telegram:",
     "   *PAID GROWTH* | *PAID PRO* | *PAID ENTERPRISE*",
+    "",
+    "📱 *WhatsApp Sandbox users:* your session expires every 72h.",
+    "   Rejoin by sending: *join contrast-pull*",
+    "   Or use Telegram (no expiry): https://t.me/ZuriaBot",
     "",
     "We activate your plan within *1 hour*. 🙏",
     "",
@@ -460,14 +534,19 @@ export function fmtSubscribePlans(
 // ─── Subscription required (free daily limit hit) ────────────────────────────
 
 export function fmtSubscriptionRequired(
-  dailyLimit: number,
+  limit: number,
   businessName = "Your Business",
-  referralLink?: string
+  referralLink?: string,
+  period: "daily" | "monthly" = "daily"
 ): string {
+  const limitLabel = period === "monthly" ? `${limit} monthly` : `${limit} daily`;
+  const resetNote = period === "monthly"
+    ? "_Your monthly limit resets on the 1st of next month. 📅_"
+    : "_Your limit resets tomorrow at midnight. 🌙_";
   return [
-    `🚫 *You've used all ${dailyLimit} free AI entries for today.*`,
+    `🚫 *You've used all ${limitLabel} AI entries.*`,
     "",
-    "_Your limit resets tomorrow at midnight. 🌙_",
+    resetNote,
     "",
     "Want unlimited access? Upgrade to a paid plan:",
     "",
@@ -491,17 +570,23 @@ export function fmtSubscriptionRequired(
     "━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
     "💳 *Pay with MoMo in 3 steps:*",
-    `1️⃣  *MTN:* Dial *170#* → Send Money → *${ADMIN_MOMO}*`,
-    `    *AirtelTigo/Vodafone:* Dial *110#* → Send Money → *${ADMIN_MOMO}*`,
+    `1️⃣  *MTN:* Dial *170#* | *Telecel:* Dial *100#*`,
+    `    *AirtelTigo:* Dial *185#* | *Vodafone:* Dial *110#*`,
+    `    → Send Money → *${ADMIN_MOMO}*`,
     "2️⃣  Enter the amount (GHS 20, 50, or 100)",
     "3️⃣  Use your WhatsApp number as the reference",
     "",
-    "Then reply here:",
+    "Then reply here or on Telegram:",
     "   *PAID GROWTH* | *PAID PRO* | *PAID ENTERPRISE*",
     "",
     "Your plan activates within *1 hour*. 🙏",
     "",
-    `Prefer to wait? Come back tomorrow — your ${dailyLimit} free entries reset at midnight.`,
+    "📱 *WhatsApp Sandbox:* If your session expired, send *join contrast-pull* to rejoin.",
+    "   Or switch to Telegram (no expiry): https://t.me/ZuriaBot",
+    "",
+    period === "monthly"
+      ? `Prefer to wait? Your ${limit} entries reset on the 1st of next month.`
+      : `Prefer to wait? Come back tomorrow — your ${limit} free entries reset at midnight.`,
     "",
     "━━━━━━━━━━━━━━━━━━━━━━━━",
     "🤝 *Earn Growth for FREE — Refer & Earn!*",
@@ -732,7 +817,11 @@ export function fmtWeeklyReport(
   businessName = "Your Business",
   referralLink?: string,
   referralBalance = 0,
-  monthlyReferrals = 0
+  monthlyReferrals = 0,
+  openDebtCount = 0,
+  openDebtTotal = 0,
+  overdueDebt7Count = 0,   // debts older than 7 days
+  overdueDebt30Count = 0   // debts older than 30 days
 ): string {
   const voice = getVoice(category);
   const firstName = ownerName.split(" ")[0];
@@ -881,6 +970,24 @@ export function fmtWeeklyReport(
     }
   }
 
+  // ── Overdue debt summary ─────────────────────────────────────────────────
+  if (overdueDebt30Count > 0) {
+    lines.push(
+      "",
+      `🚨 *${overdueDebt30Count} debt${overdueDebt30Count !== 1 ? "s" : ""} are 30+ days overdue!* Type _"who owes me"_ to follow up.`
+    );
+  } else if (overdueDebt7Count > 0) {
+    lines.push(
+      "",
+      `⚠️ *${overdueDebt7Count} debt${overdueDebt7Count !== 1 ? "s" : ""} unpaid for 7+ days.* Type _"who owes me"_ to see the list.`
+    );
+  } else if (openDebtCount > 0) {
+    lines.push(
+      "",
+      `📋 *${openDebtCount} customer${openDebtCount !== 1 ? "s" : ""} owe${openDebtCount === 1 ? "s" : ""} you ${GHS(openDebtTotal)} total.* Type _"who owes me"_ to review.`
+    );
+  }
+
   // Trend note
   const txCount = weekly.length;
   const referralTip = buildReferralTip(referralBalance, monthlyReferrals, referralLink, "medium");
@@ -912,7 +1019,11 @@ export function fmtMonthlyReport(
   businessName = "Your Business",
   referralLink?: string,
   referralBalance = 0,
-  monthlyReferrals = 0
+  monthlyReferrals = 0,
+  openDebtCount = 0,
+  openDebtTotal = 0,
+  overdueDebt7Count = 0,
+  overdueDebt30Count = 0
 ): string {
   const voice = getVoice(category);
   const firstName = ownerName.split(" ")[0];
@@ -1063,6 +1174,27 @@ export function fmtMonthlyReport(
     lines.push(`💡 _AI Tip: ${Math.round((tradingProfit/salesRevenue)*100)}% profit margin. Healthy, but room to grow — push your top product and chase unpaid debts._`);
   } else if (tradingProfit > 0) {
     lines.push(`💡 _AI Tip: Strong ${Math.round((tradingProfit/salesRevenue)*100)}% margin! Consider reinvesting ${GHS(tradingProfit * 0.2)} back into stock this month to keep momentum._`);
+  }
+
+  // ── Overdue debt summary ─────────────────────────────────────────────────
+  if (overdueDebt30Count > 0) {
+    lines.push(
+      "",
+      "━━━━━━━━━━━━━━━━━━━",
+      `🚨 *Overdue debts: ${overdueDebt30Count} customer${overdueDebt30Count !== 1 ? "s" : ""} owe${overdueDebt30Count === 1 ? "s" : ""} you for 30+ days*`,
+      `_Type "who owes me" to review and chase them up. Old debts can become bad debts!_`,
+      "━━━━━━━━━━━━━━━━━━━"
+    );
+  } else if (overdueDebt7Count > 0) {
+    lines.push(
+      "",
+      `⚠️ *${overdueDebt7Count} debt${overdueDebt7Count !== 1 ? "s" : ""} unpaid for 7+ days* — type _"who owes me"_ to follow up.`
+    );
+  } else if (openDebtCount > 0) {
+    lines.push(
+      "",
+      `📋 *Outstanding debts: ${openDebtCount} customer${openDebtCount !== 1 ? "s" : ""}, ${GHS(openDebtTotal)} total* — type _"who owes me"_ to review.`
+    );
   }
 
   const referralSection = buildReferralTip(referralBalance, monthlyReferrals, referralLink, "full");

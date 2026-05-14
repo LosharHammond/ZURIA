@@ -1,0 +1,68 @@
+{
+  "framework": "nextjs",
+  "regions": ["iad1"],
+
+  "functions": {
+    "app/api/whatsapp/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/whatsapp/session-status/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/reports/pdf/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/payments/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/payments/initialize/route.ts": {
+      "maxDuration": 20
+    },
+    "app/api/payments/verify/route.ts": {
+      "maxDuration": 20
+    },
+    "app/api/referral/withdraw/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/admin/**": {
+      "maxDuration": 30
+    },
+    "app/api/**": {
+      "maxDuration": 20
+    }
+  },
+
+  "headers": [
+    {
+      "source": "/api/whatsapp/webhook",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/(dashboard|transactions|debts|inventory|notifications|profile|admin|referrals|welcome|subscription|onboarding|login|verify|forgot-pin)(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
+
+  "rewrites": [],
+  "redirects": [],
+
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install"
+}

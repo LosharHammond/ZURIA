@@ -55,13 +55,15 @@ export function TransactionComposer({ initialText, onInitialUsed }: Props) {
   const category = useAppStore((s) => s.business?.category);
   const hints = getHints(category);
 
-  // Sync external prefill (from quick action buttons on dashboard)
+  // Sync external prefill (from quick action buttons on dashboard).
+  // `setText` is stable (Zustand setter). `onInitialUsed` is wrapped in
+  // useCallback by the parent but we include it to satisfy the rules of hooks.
   useEffect(() => {
     if (initialText) {
       setText(initialText);
       onInitialUsed?.();
     }
-  }, [initialText]); // eslint-disable-line
+  }, [initialText, setText, onInitialUsed]);
 
   const typeLabel = parsed ? (TRANSACTION_TYPE_LABELS[parsed.type] ?? parsed.type.replace(/_/g, " ")) : null;
   const isIn      = parsed ? MONEY_IN_TYPES.includes(parsed.type) : false;

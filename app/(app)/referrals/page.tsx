@@ -294,8 +294,8 @@ export default function ReferralsPage() {
   useEffect(() => { load(); }, [user?.id]);
 
   const referralLink = typeof window !== "undefined"
-    ? `${window.location.origin}/login?ref=${stats.code}`
-    : `/login?ref=${stats.code}`;
+    ? `${window.location.origin}/?ref=${stats.code}`
+    : `/?ref=${stats.code}`;
 
   const shareMessage = user ? buildShareMessage(referralLink, user.ownerName) : "";
   const waShareUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
@@ -595,6 +595,7 @@ export default function ReferralsPage() {
                 <option value="MTN">MTN MoMo</option>
                 <option value="Vodafone">Vodafone Cash</option>
                 <option value="AirtelTigo">AirtelTigo Money</option>
+                <option value="Telecel">Telecel Money</option>
               </Select>
             </div>
 

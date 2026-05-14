@@ -118,10 +118,19 @@ async function applyDebtEffect(transaction: Transaction): Promise<void> {
   if (!db || !transaction.customerName) return;
   if (transaction.type !== "debt" && transaction.type !== "repayment") return;
 
-  const existing = await findDebt(transaction.businessId, transaction.customerName);
+  // Normalize name to prevent duplicate records for "Ama" vs "ama" vs " Ama "
+  // Must match the normalization logic in lib/whatsapp/session.ts:applyDebtEffect
+  const normalizedName = transaction.customerName.trim().toLowerCase();
+  const existing = await findDebt(transaction.businessId, normalizedName);
   const now = new Date().toISOString();
 
   if (transaction.type === "debt") {
+    // Prefer the original (display) casing from the transaction for new records,
+    // but always query / match by the normalized (lowercase) form.
+    // Title-case the stored name so the debt list looks professional ("Kofi" not "kofi").
+    const displayName = transaction.customerName
+      ? transaction.customerName.trim().replace(/\b\w/g, (c) => c.toUpperCase())
+      : normalizedName.replace(/\b\w/g, (c) => c.toUpperCase());
     const next: Debt = existing
       ? {
           ...existing,
@@ -133,7 +142,7 @@ async function applyDebtEffect(transaction: Transaction): Promise<void> {
       : {
           id: createId("debt"),
           businessId: transaction.businessId,
-          customerName: transaction.customerName,
+          customerName: displayName,             // title-cased for display
           originalAmount: transaction.amount,
           outstandingAmount: transaction.amount,
           repaymentHistory: [],
@@ -164,12 +173,13 @@ async function applyDebtEffect(transaction: Transaction): Promise<void> {
   }
 }
 
-async function findDebt(businessId: string, customerName: string): Promise<Debt | undefined> {
+async function findDebt(businessId: string, normalizedCustomerName: string): Promise<Debt | undefined> {
   if (!db) return undefined;
+  // Always query by the already-normalized name (caller is responsible for normalizing)
   const q = query(
     collection(db, collections.debts),
     where("businessId", "==", businessId),
-    where("customerName", "==", customerName),
+    where("customerName", "==", normalizedCustomerName),
     limit(1),
   );
   const snap = await getDocs(q);

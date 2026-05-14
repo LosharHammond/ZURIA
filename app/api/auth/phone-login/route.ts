@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
@@ -14,13 +15,24 @@ function normalisePhone(raw: string): string {
   return `+${digits}`;
 }
 
-// POST /api/auth/phone-login
-// Called from the login form. Returns a Firebase custom token the client uses
-// to sign in — no OTP or SMS required.
-// Security: rate-limited to 5 attempts per phone per hour.
-
+/**
+ * POST /api/auth/phone-login
+ *
+ * Two-stage flow (single endpoint):
+ *
+ * Stage 1 — phone only: { phone }
+ *   Returns { isNewUser: true }  → client redirects to /onboarding
+ *   Returns { isNewUser: false } → client shows PIN input
+ *
+ * Stage 2 — phone + PIN: { phone, pin }
+ *   Verifies PIN against stored whatsappPin.
+ *   Returns { token, phone }     → client signs in with custom token
+ *   Returns 401 on wrong PIN
+ *
+ * Security: rate-limited to 8 attempts per phone per hour.
+ */
 export async function POST(req: Request) {
-  let body: { phone?: string };
+  let body: { phone?: string; pin?: string };
   try {
     body = await req.json();
   } catch {
@@ -34,13 +46,19 @@ export async function POST(req: Request) {
 
   const phone = normalisePhone(rawPhone);
   if (!/^\+\d{10,15}$/.test(phone)) {
-    return NextResponse.json({ error: "Enter a valid phone number, e.g. 0241234567 or +233241234567" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Enter a valid phone number, e.g. 0241234567 or +233241234567" },
+      { status: 400 }
+    );
   }
 
-  // Rate limit: 5 login attempts per phone per hour
-  const { allowed } = rateLimit(`login:${phone}`, 5, 60 * 60 * 1000);
+  // Rate limit per phone (shared across both stages)
+  const { allowed } = rateLimit(`login:${phone}`, 8, 60 * 60 * 1000);
   if (!allowed) {
-    return NextResponse.json({ error: "Too many attempts. Please wait an hour and try again." }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many attempts. Please wait an hour and try again." },
+      { status: 429 }
+    );
   }
 
   try {
@@ -53,25 +71,54 @@ export async function POST(req: Request) {
       .limit(1)
       .get();
 
-    let uid: string;
-    if (!snap.empty) {
-      // Returning user — use their existing UID so they see their own data
-      uid = snap.docs[0].id;
-    } else {
-      // Brand-new user — generate a stable UID derived from their phone
-      // (stored as a plain doc until they complete onboarding)
-      const { createId } = await import("@/lib/utils");
-      uid = createId("usr");
+    // ── Stage 1: phone-only check ──────────────────────────────────────────
+    if (!body.pin) {
+      return NextResponse.json({ isNewUser: snap.empty });
     }
 
-    // Generate a short-lived Firebase custom token the client can sign in with.
-    // We embed the phone number in the token claims so the onboarding form can
-    // read it without a separate round-trip.
-    const customToken = await getAdminAuth().createCustomToken(uid, { phone });
+    // ── Stage 2: PIN verification ──────────────────────────────────────────
+    if (snap.empty) {
+      // Phone not registered — don't hint at which field is wrong
+      return NextResponse.json(
+        { error: "Incorrect phone number or PIN. Please try again." },
+        { status: 401 }
+      );
+    }
 
-    return NextResponse.json({ token: customToken, phone, isNewUser: snap.empty });
+    const userDoc  = snap.docs[0];
+    const userData = userDoc.data();
+    const uid      = userDoc.id;
+    const storedPin: string | undefined = userData.whatsappPin;
+
+    // If user has no PIN set yet, guide them to the app
+    if (!storedPin) {
+      return NextResponse.json(
+        { error: "No PIN is set for this account. Open the ZURIA app → Profile → Set PIN." },
+        { status: 403 }
+      );
+    }
+
+    // Constant-time comparison to prevent timing-based PIN enumeration attacks
+    const pinBuf    = Buffer.from(String(body.pin));
+    const storedBuf = Buffer.from(storedPin);
+    const isCorrect =
+      pinBuf.length === storedBuf.length &&
+      crypto.timingSafeEqual(pinBuf, storedBuf);
+    if (!isCorrect) {
+      return NextResponse.json(
+        { error: "Incorrect PIN. Please try again." },
+        { status: 401 }
+      );
+    }
+
+    // PIN correct — issue a short-lived Firebase custom token
+    const customToken = await getAdminAuth().createCustomToken(uid, { phone });
+    return NextResponse.json({ token: customToken, phone, isNewUser: false });
   } catch (err) {
     console.error("[phone-login]", err);
-    return NextResponse.json({ error: "Authentication failed. Please try again." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Authentication failed. Please try again." },
+      { status: 500 }
+    );
   }
 }

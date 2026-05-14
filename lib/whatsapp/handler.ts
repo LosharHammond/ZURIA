@@ -41,12 +41,13 @@ import {
   verifyPin,
 } from "@/lib/whatsapp/security";
 import { logError } from "@/lib/server/error-logger";
-import { MONEY_IN_TYPES, MONEY_OUT_TYPES } from "@/types/domain";
-import type { BusinessCategory, SubscriptionPlan, Transaction } from "@/types/domain";
+import { MONEY_IN_TYPES, MONEY_OUT_TYPES, SUBSCRIPTION_TIERS } from "@/types/domain";
+import type { BusinessCategory, Debt, PaystackPayment, SubscriptionPlan, Transaction } from "@/types/domain";
 import { sendText } from "@/lib/whatsapp/client";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { APP_URL, SUPPORT_WA_LINK } from "@/lib/config";
+import { initializePayment } from "@/lib/services/paystack-service";
 
 // Admin number for subscription payment notifications
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
@@ -256,7 +257,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
 
   // ── Build referral link for this user (used in several messages below) ───
   const referralCode = user.referralCode ?? "";
-  const referralLink = referralCode ? `${APP_URL}/login?ref=${referralCode}` : undefined;
+  const referralLink = referralCode ? `${APP_URL}/?ref=${referralCode}` : undefined;
 
   // ── How many referrals this month (for milestone progress) ───────────────
   const thisMonthKey = new Date().toISOString().slice(0, 7);
@@ -284,7 +285,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
 
     if (usedCount >= limit) {
       // Hard block — show subscription prompt (do NOT count this call)
-      return fmtSubscriptionRequired(limit, bName, referralLink);
+      return fmtSubscriptionRequired(limit, bName, referralLink, effectivePlan === "growth" ? "monthly" : "daily");
     }
 
     // Increment atomically (fire-and-forget — minor over-count on failure is acceptable)
@@ -395,6 +396,117 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
   return fmtNotFound(business.category, bName);
 }
 
+// ─── Subscribe intent handler — generates Paystack checkout links ─────────────
+
+function makeRef(): string {
+  const ts   = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `ZURIA-${ts}-${rand}`;
+}
+
+async function handleSubscribeIntent(
+  userId: string,
+  phone: string,
+  businessName: string,
+  ownerName: string,
+  currentPlan: SubscriptionPlan
+): Promise<string> {
+  const email = `${phone.replace("+", "")}@zuria.app`;
+  const firstName = ownerName.split(" ")[0];
+
+  // Generate payment links for the two most common upgrade paths
+  const upgradePlans: SubscriptionPlan[] =
+    currentPlan === "free"
+      ? ["growth", "pro"]
+      : currentPlan === "growth"
+      ? ["pro", "enterprise"]
+      : ["enterprise"];
+
+  interface PlanLink { plan: SubscriptionPlan; url: string; amountGHS: number }
+  const links: PlanLink[] = [];
+
+  for (const p of upgradePlans) {
+    const tier     = SUBSCRIPTION_TIERS[p];
+    const amountGHS = tier.priceGHS;
+    const reference = makeRef();
+    const callbackUrl = `${APP_URL}/subscription/callback?ref=${reference}`;
+
+    try {
+      const result = await initializePayment({
+        email,
+        amountGHS,
+        reference,
+        callbackUrl,
+        metadata: { userId, phone, ownerName, plan: p, annual: false, amountGHS },
+        label: ownerName || "ZURIA Customer",
+      });
+
+      if (!result.error && result.authorizationUrl) {
+        // Persist pending payment
+        const paymentDoc: PaystackPayment = {
+          id:               reference,
+          reference,
+          userId,
+          phone,
+          plan:             p,
+          annual:           false,
+          amountGHS,
+          status:           "pending",
+          authorizationUrl: result.authorizationUrl,
+          accessCode:       result.accessCode,
+          createdAt:        new Date().toISOString(),
+        };
+        getAdminDb()
+          .collection(collections.payments)
+          .doc(reference)
+          .set(paymentDoc)
+          .catch(() => {});
+
+        links.push({ plan: p, url: result.authorizationUrl, amountGHS });
+      }
+    } catch {
+      // Ignore individual plan errors — we'll show what we can
+    }
+  }
+
+  if (links.length === 0) {
+    // Fallback to static plans page if Paystack links fail
+    return fmtSubscribePlans(currentPlan, businessName);
+  }
+
+  const planLabels: Record<SubscriptionPlan, string> = {
+    free:       "Free",
+    growth:     "ZURIA Growth",
+    pro:        "ZURIA Pro",
+    enterprise: "ZURIA Enterprise",
+  };
+
+  const lines = [
+    `💳 *Upgrade your ZURIA plan, ${firstName}!*`,
+    ``,
+    `Pay securely via MoMo, bank transfer, or card — activates instantly after payment.`,
+    ``,
+  ];
+
+  links.forEach(({ plan: p, url, amountGHS }) => {
+    lines.push(
+      `*${planLabels[p]}* — GHS ${amountGHS}/month`,
+      url,
+      ``
+    );
+  });
+
+  lines.push(
+    `🌐 Or visit your subscription page:`,
+    `${APP_URL}/subscription`,
+    ``,
+    `_Payment links expire in 30 minutes. Reply *"subscribe"* for a fresh link._`,
+    `_— ZURIA (${businessName})_`
+  );
+
+  return lines.join("\n");
+}
+
 // ─── Payment claim handler ────────────────────────────────────────────────────
 
 async function handlePaymentClaim(
@@ -460,7 +572,14 @@ async function handlePaymentClaim(
       `Body: { "plan": "${plan}", "durationDays": ${annual ? 365 : 30}, "claimId": "${claimId}" }`,
       ``,
       `_Check MoMo: look for GHS ${amount} from ${fromPhone} with reference matching their WhatsApp number._`,
-    ].join("\n")).catch(() => {});
+    ].join("\n")).catch((err) => {
+      // Log so admin can manually review the payment claim in Firestore
+      logError("[handler] admin payment-claim notification", err, {
+        phone: fromPhone,
+        meta: { claimId, plan, userId },
+        severity: "warn",
+      }).catch(() => {});
+    });
   }
 
   return [
@@ -502,7 +621,9 @@ async function handleQuery(
   const canFull    = plan === "pro" || plan === "enterprise";
 
   if (intent === "subscribe") {
-    return fmtSubscribePlans(plan, businessName);
+    const uid   = (user?.id         as string | undefined) ?? "";
+    const phone = (user?.phoneNumber as string | undefined) ?? "";
+    return await handleSubscribeIntent(uid, phone, businessName, ownerName, plan);
   }
 
   if (intent === "full_dashboard") {
@@ -513,14 +634,22 @@ async function handleQuery(
 
   if (intent === "monthly_report") {
     if (!canMonthly) return gateMsg("monthly report", "ZURIA Growth", "growth", businessName);
-    const txns = await getMonthTransactions(businessId);
-    return fmtMonthlyReport(txns, ownerName, category, businessName, referralLink, referralBalance, monthlyReferrals);
+    const [txns, openDebts] = await Promise.all([
+      getMonthTransactions(businessId),
+      getOpenDebts(businessId),
+    ]);
+    const { openCount, openTotal, overdue7, overdue30 } = summariseDebts(openDebts);
+    return fmtMonthlyReport(txns, ownerName, category, businessName, referralLink, referralBalance, monthlyReferrals, openCount, openTotal, overdue7, overdue30);
   }
 
   if (intent === "weekly_report") {
     // All tiers get weekly — free users see the basic weekly (per spec: "Weekly SMS-style report")
-    const txns = await getWeekTransactions(businessId);
-    return fmtWeeklyReport(txns, ownerName, category, businessName, referralLink, referralBalance, monthlyReferrals);
+    const [txns, openDebts] = await Promise.all([
+      getWeekTransactions(businessId),
+      getOpenDebts(businessId),
+    ]);
+    const { openCount, openTotal, overdue7, overdue30 } = summariseDebts(openDebts);
+    return fmtWeeklyReport(txns, ownerName, category, businessName, referralLink, referralBalance, monthlyReferrals, openCount, openTotal, overdue7, overdue30);
   }
 
   switch (intent) {
@@ -551,7 +680,14 @@ async function handleQuery(
     case "referral": {
       const referralCode   = (user?.referralCode as string | undefined) ?? "";
       const referralCount  = (user?.referralCount as number | undefined) ?? 0;
-      const pendingWithdrawal = false; // Could query withdrawals collection; skipping for now
+      const userId = (user?.id as string | undefined) ?? "";
+      const db2 = getAdminDb();
+      const wdSnap = await db2.collection(collections.withdrawals)
+        .where("userId", "==", userId)
+        .where("status", "in", ["pending", "processing"])
+        .limit(1)
+        .get();
+      const pendingWithdrawal = !wdSnap.empty;
       return fmtReferralStatus(
         ownerName,
         businessName,
@@ -564,6 +700,28 @@ async function handleQuery(
       );
     }
   }
+}
+
+// ─── Debt summary helper ──────────────────────────────────────────────────────
+
+function summariseDebts(debts: Debt[]) {
+  const DAY_MS = 86_400_000;
+  const now = Date.now();
+  const open = debts.filter((d) => d.outstandingAmount > 0);
+  let overdue7 = 0;
+  let overdue30 = 0;
+  for (const d of open) {
+    if (!d.createdAt) continue;
+    const ageDays = Math.floor((now - new Date(d.createdAt).getTime()) / DAY_MS);
+    if (ageDays >= 30) overdue30++;
+    else if (ageDays >= 7) overdue7++;
+  }
+  return {
+    openCount: open.length,
+    openTotal: open.reduce((s, d) => s + d.outstandingAmount, 0),
+    overdue7,
+    overdue30,
+  };
 }
 
 // Gating message when a lower tier tries an advanced report

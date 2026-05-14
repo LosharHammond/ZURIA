@@ -76,36 +76,85 @@ export function generateDailySummary(transactions: Transaction[], ownerName = "f
 
 // ─── Health Score ─────────────────────────────────────────────────────────────
 
+export interface HealthScoreBreakdown {
+  /** Final 0-100 composite score */
+  score: number;
+  /** 0-30: how many of last 7 days had at least one sale */
+  consistency: number;
+  consistencyMax: 30;
+  /** 0-30: net profit margin on last 7 days of sales */
+  margin: number;
+  marginMax: 30;
+  /** 0-20 penalty: customer debt vs weekly revenue */
+  debtPenalty: number;
+  debtPenaltyMax: 20;
+  /** 0-12 penalty: loans taken vs weekly revenue */
+  loanPenalty: number;
+  loanPenaltyMax: 12;
+  /** Raw inputs for AI-style narrative */
+  weeklyRevenue: number;
+  weeklyExpenses: number;
+  salesDays: number;
+  totalDebt: number;
+  totalLoansTaken: number;
+}
+
+export function computeHealthScoreBreakdown(
+  transactions: Transaction[],
+  debts: Debt[],
+  loans: Loan[] = []
+): HealthScoreBreakdown {
+  const sevenDaysAgo = subDays(new Date(), 7);
+  const recent = transactions.filter((t) => new Date(t.createdAt) >= sevenDaysAgo);
+
+  const weeklyRevenue  = sum(recent.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const weeklyExpenses = sum(recent.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const totalDebt      = debts.reduce((acc, d) => acc + d.outstandingAmount, 0);
+  const totalLoansTaken = loans
+    .filter((l) => l.direction === "taken" && l.status === "open")
+    .reduce((acc, l) => acc + l.outstandingAmount, 0);
+
+  const salesDays = new Set(
+    recent.filter((t) => t.type === "sale").map((t) => t.createdAt.slice(0, 10))
+  ).size;
+
+  const consistency  = Math.min(30, salesDays * (30 / 7));
+  const margin       = weeklyRevenue > 0
+    ? Math.max(0, Math.min(30, ((weeklyRevenue - weeklyExpenses) / weeklyRevenue) * 30))
+    : 8;
+  const debtPenalty  = weeklyRevenue > 0
+    ? Math.min(20, (totalDebt / Math.max(weeklyRevenue, 1)) * 20)
+    : totalDebt > 0 ? 15 : 0;
+  const loanPenalty  = weeklyRevenue > 0
+    ? Math.min(12, (totalLoansTaken / Math.max(weeklyRevenue, 1)) * 12)
+    : totalLoansTaken > 0 ? 8 : 0;
+
+  const score = Math.round(Math.max(10, Math.min(98, 8 + consistency + margin - debtPenalty - loanPenalty)));
+
+  return {
+    score,
+    consistency:    Math.round(consistency),
+    consistencyMax: 30,
+    margin:         Math.round(margin),
+    marginMax:      30,
+    debtPenalty:    Math.round(debtPenalty),
+    debtPenaltyMax: 20,
+    loanPenalty:    Math.round(loanPenalty),
+    loanPenaltyMax: 12,
+    weeklyRevenue,
+    weeklyExpenses,
+    salesDays,
+    totalDebt,
+    totalLoansTaken,
+  };
+}
+
 export function computeHealthScore(
   transactions: Transaction[],
   debts: Debt[],
   loans: Loan[] = []
 ): number {
-  const sevenDaysAgo = subDays(new Date(), 7);
-  const recent = transactions.filter((t) => new Date(t.createdAt) >= sevenDaysAgo);
-
-  const sales = sum(recent.filter((t) => REVENUE_TYPES.includes(t.type)));
-  const operatingCosts = sum(recent.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
-  const debtTotal = debts.reduce((acc, d) => acc + d.outstandingAmount, 0);
-  const loansTaken = loans.filter((l) => l.direction === "taken" && l.status === "open").reduce((acc, l) => acc + l.outstandingAmount, 0);
-
-  const salesDays = new Set(recent.filter((t) => t.type === "sale").map((t) => t.createdAt.slice(0, 10))).size;
-
-  // Consistency (0-30): how many of last 7 days had sales
-  const consistency = Math.min(30, salesDays * (30 / 7));
-
-  // Margin (0-30): net profit margin on sales
-  const margin = sales > 0 ? Math.max(0, Math.min(30, ((sales - operatingCosts) / sales) * 30)) : 8;
-
-  // Debt burden (0-20): customer debts vs weekly sales
-  const debtPenalty = sales > 0 ? Math.min(20, (debtTotal / Math.max(sales, 1)) * 20) : debtTotal > 0 ? 15 : 0;
-
-  // Loan burden (0-12): taken loans vs weekly sales
-  const loanPenalty = sales > 0 ? Math.min(12, (loansTaken / Math.max(sales, 1)) * 12) : loansTaken > 0 ? 8 : 0;
-
-  // Baseline (8)
-  const score = 8 + consistency + margin - debtPenalty - loanPenalty;
-  return Math.round(Math.max(10, Math.min(98, score)));
+  return computeHealthScoreBreakdown(transactions, debts, loans).score;
 }
 
 // ─── Chart Data ───────────────────────────────────────────────────────────────

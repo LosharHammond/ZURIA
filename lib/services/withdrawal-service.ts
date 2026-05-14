@@ -2,19 +2,25 @@
 
 import {
   collection,
-  doc,
   getDocs,
   orderBy,
   query,
-  setDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
-import { createId } from "@/lib/utils";
 import type { WithdrawalMethod, WithdrawalNetwork, WithdrawalRequest } from "@/types/domain";
 
-export async function submitWithdrawal(input: {
+/**
+ * @deprecated DO NOT USE — bypasses critical server logic:
+ *   - referral balance is NOT deducted
+ *   - Paystack transfer is NOT initiated
+ *   - Admin notification is NOT sent
+ *
+ * Use POST /api/referral/withdraw with a Firebase ID token instead.
+ * The referrals page already calls the API endpoint directly.
+ */
+export async function submitWithdrawal(_input: {
   userId: string;
   ownerName: string;
   phoneNumber: string;
@@ -24,25 +30,10 @@ export async function submitWithdrawal(input: {
   accountName: string;
   network?: WithdrawalNetwork;
 }): Promise<WithdrawalRequest> {
-  if (!db) throw new Error("Firebase not configured.");
-
-  const id = createId("wd");
-  const now = new Date().toISOString();
-  const request: WithdrawalRequest = {
-    id,
-    userId: input.userId,
-    ownerName: input.ownerName,
-    phoneNumber: input.phoneNumber,
-    amount: input.amount,
-    method: input.method,
-    accountNumber: input.accountNumber,
-    accountName: input.accountName,
-    network: input.network,
-    status: "pending",
-    createdAt: now,
-  };
-  await setDoc(doc(db, collections.withdrawals, id), request);
-  return request;
+  throw new Error(
+    "[submitWithdrawal] This function is deprecated and must not be used. " +
+    "Call POST /api/referral/withdraw with Authorization header instead."
+  );
 }
 
 export async function getUserWithdrawals(userId: string): Promise<WithdrawalRequest[]> {

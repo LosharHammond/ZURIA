@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ArrowRight,
   BadgeCheck,
+  Brain,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Copy,
   CrownIcon,
   FileText,
+  Lock,
   Sparkles,
+  TrendingUp,
   Zap,
+  Flame,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,16 +25,17 @@ import { useAppStore } from "@/stores/app-store";
 import { SUBSCRIPTION_TIERS } from "@/types/domain";
 import type { SubscriptionPlan } from "@/types/domain";
 import { ReportDownloadButton } from "@/components/reports/report-download-button";
+import { PaystackButton } from "@/components/payments/paystack-button";
+import { computeHealthScoreBreakdown } from "@/lib/analytics/summary";
+import { formatMoney } from "@/lib/utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Set NEXT_PUBLIC_ADMIN_MOMO (or NEXT_PUBLIC_ADMIN_PHONE as fallback) in your hosting config.
 const ADMIN_MOMO =
   process.env.NEXT_PUBLIC_ADMIN_MOMO ??
   process.env.NEXT_PUBLIC_ADMIN_PHONE?.replace(/^\+233/, "0").replace(/^233/, "0") ??
   "0242176603";
 
-// WhatsApp support deep-link derived from ADMIN_MOMO (client-side safe).
 const SUPPORT_WA_HREF = `https://wa.me/${ADMIN_MOMO.replace(/^0/, "233").replace(/^\+/, "")}`;
 
 const PLAN_META: Record<SubscriptionPlan, {
@@ -56,7 +62,7 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-emerald-500/30",
     glow: "shadow-emerald-500/10",
     emoji: "🟢",
-    annualPrice: 200,
+    annualPrice: 180,   // GHS 180/yr — 2 months free on GHS 20/mo
     payCmd: "PAID GROWTH",
   },
   pro: {
@@ -65,7 +71,7 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-cyan-500/30",
     glow: "shadow-cyan-500/10",
     emoji: "🔵",
-    annualPrice: 500,
+    annualPrice: 500,   // GHS 500/yr — 2 months free on GHS 50/mo
     payCmd: "PAID PRO",
   },
   enterprise: {
@@ -74,7 +80,7 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-amber-500/30",
     glow: "shadow-amber-500/10",
     emoji: "🟣",
-    annualPrice: 1000,
+    annualPrice: 1000,  // GHS 1000/yr — 2 months free on GHS 100/mo
     payCmd: "PAID ENTERPRISE",
   },
 };
@@ -88,28 +94,20 @@ function getEffectivePlan(user: {
 }): SubscriptionPlan {
   const plan = user.subscriptionPlan ?? "free";
   const now = new Date();
-
-  // 1. Active paid plan
   if (plan !== "free") {
     const expiresAt = user.subscriptionExpiresAt;
     if (!expiresAt || new Date(expiresAt) > now) return plan;
-    // Paid plan expired — fall through to check referral unlock
   }
-
-  // 2. Referral milestone unlock — 30 referrals this month → Growth until month end
   const unlockExpiry = user.referralUnlockExpiresAt;
   if (unlockExpiry && new Date(unlockExpiry) > now) return "growth";
-
   return "free";
 }
 
-/** True when the user is on Growth purely because of the referral milestone unlock */
 function isOnReferralUnlock(user: {
   subscriptionPlan?: SubscriptionPlan;
   referralUnlockExpiresAt?: string | null;
 }): boolean {
-  const plan = user.subscriptionPlan ?? "free";
-  if (plan !== "free") return false; // has a real paid plan
+  if ((user.subscriptionPlan ?? "free") !== "free") return false;
   const unlockExpiry = user.referralUnlockExpiresAt;
   return !!(unlockExpiry && new Date(unlockExpiry) > new Date());
 }
@@ -121,13 +119,89 @@ function formatExpiry(isoDate?: string | null): string {
   });
 }
 
-// ── Components ────────────────────────────────────────────────────────────────
-
 function daysRemaining(isoDate?: string | null): number | null {
   if (!isoDate) return null;
   const diff = new Date(isoDate).getTime() - Date.now();
   return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
 }
+
+// ── Plan Recommendation Engine ────────────────────────────────────────────────
+
+interface PlanRecommendation {
+  plan: SubscriptionPlan;
+  reason: string;
+  urgency: "high" | "medium" | "low";
+  cta: string;
+}
+
+function computePlanRecommendation(params: {
+  currentPlan: SubscriptionPlan;
+  usagePct: number;
+  transactionCount: number;
+  hasDebts: boolean;
+  hasLoans: boolean;
+  score: number;
+}): PlanRecommendation | null {
+  const { currentPlan, usagePct, transactionCount, hasDebts, score } = params;
+
+  if (currentPlan !== "free") {
+    // Growth → upsell Pro
+    if (currentPlan === "growth" && (transactionCount > 80 || score < 55)) {
+      return {
+        plan: "pro",
+        reason: "Your volume & activity have outgrown Growth — Pro gives you unlimited entries and AI forecasting.",
+        urgency: "medium",
+        cta: "Move to Pro",
+      };
+    }
+    return null;
+  }
+
+  // Free users
+  if (usagePct >= 90) {
+    return {
+      plan: "growth",
+      reason: "You've used 90%+ of your daily limit. Your business can't afford to stop recording.",
+      urgency: "high",
+      cta: "Unlock Unlimited Now",
+    };
+  }
+  if (usagePct >= 70) {
+    return {
+      plan: "growth",
+      reason: "You're running low on AI entries today. Growth gives you 200/month — never hit a wall.",
+      urgency: "medium",
+      cta: "Upgrade to Growth",
+    };
+  }
+  if (hasDebts && transactionCount >= 5) {
+    return {
+      plan: "growth",
+      reason: "You have customers who owe you. Growth sends auto-reminders so you never forget to collect.",
+      urgency: "medium",
+      cta: "Get Debt Reminders",
+    };
+  }
+  if (transactionCount >= 20) {
+    return {
+      plan: "growth",
+      reason: `You've recorded ${transactionCount}+ transactions — it's time to see your monthly report and real insights.`,
+      urgency: "low",
+      cta: "See Your Full Report",
+    };
+  }
+  if (score < 55 && transactionCount >= 5) {
+    return {
+      plan: "growth",
+      reason: "Your AI Business Score shows potential issues. Upgrade to see the full breakdown and fix them.",
+      urgency: "medium",
+      cta: "See Score Breakdown",
+    };
+  }
+  return null;
+}
+
+// ── Current Plan Card ─────────────────────────────────────────────────────────
 
 function CurrentPlanCard({ plan, expiresAt, messageCount, resetKey }: {
   plan: SubscriptionPlan;
@@ -139,9 +213,16 @@ function CurrentPlanCard({ plan, expiresAt, messageCount, resetKey }: {
   const meta = PLAN_META[plan];
 
   const limitPeriodLabel = tier.limitPeriod === "daily" ? "today" : tier.limitPeriod === "monthly" ? "this month" : null;
-  const usedOf   = tier.messageLimit != null ? `${messageCount} / ${tier.messageLimit}` : null;
-  const pctUsed  = tier.messageLimit ? Math.min(100, Math.round((messageCount / tier.messageLimit) * 100)) : 0;
+  const usedOf = tier.messageLimit != null ? `${messageCount} / ${tier.messageLimit}` : null;
+  const pctUsed = tier.messageLimit ? Math.min(100, Math.round((messageCount / tier.messageLimit) * 100)) : 0;
   const daysLeft = daysRemaining(expiresAt);
+
+  // Urgency tiers for usage meter
+  const meterColor =
+    pctUsed >= 95 ? "bg-rose-500 animate-pulse" :
+    pctUsed >= 80 ? "bg-rose-500" :
+    pctUsed >= 60 ? "bg-amber-500" :
+    "bg-primary";
 
   return (
     <GlassCard className={`relative overflow-hidden border ${meta.border}`}>
@@ -180,8 +261,7 @@ function CurrentPlanCard({ plan, expiresAt, messageCount, resetKey }: {
 
       {plan !== "free" && expiresAt && daysLeft !== null && daysLeft > 7 && (
         <p className="mt-2 text-sm text-muted-foreground">
-          Valid until{" "}
-          <span className="font-semibold text-foreground">{formatExpiry(expiresAt)}</span>
+          Valid until <span className="font-semibold text-foreground">{formatExpiry(expiresAt)}</span>
         </p>
       )}
       {plan !== "free" && expiresAt && daysLeft !== null && daysLeft <= 7 && daysLeft > 0 && (
@@ -199,23 +279,28 @@ function CurrentPlanCard({ plan, expiresAt, messageCount, resetKey }: {
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
             <span>AI entries used {limitPeriodLabel}</span>
-            <span className="font-semibold text-foreground">{usedOf}</span>
+            <span className={`font-bold ${pctUsed >= 80 ? "text-rose-400" : pctUsed >= 60 ? "text-amber-400" : "text-foreground"}`}>
+              {usedOf}
+            </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                pctUsed >= 90 ? "bg-rose-500" : pctUsed >= 70 ? "bg-amber-500" : "bg-primary"
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${meterColor}`}
               style={{ width: `${pctUsed}%` }}
             />
           </div>
-          {pctUsed >= 90 && (
-            <p className="mt-1.5 text-xs text-rose-400 font-medium">
-              {pctUsed >= 100 ? "⛔ Limit reached — upgrade to continue" : `⚠️ ${100 - pctUsed}% remaining — upgrade soon`}
+          {pctUsed >= 95 && (
+            <p className="mt-1.5 text-xs text-rose-400 font-bold animate-pulse">
+              🚨 CRITICAL — {tier.messageLimit! - messageCount} entries left. Your business goes dark when this hits zero.
             </p>
           )}
-          {pctUsed >= 70 && pctUsed < 90 && (
-            <p className="mt-1.5 text-xs text-amber-400">⚠️ Running low — consider upgrading</p>
+          {pctUsed >= 80 && pctUsed < 95 && (
+            <p className="mt-1.5 text-xs text-rose-400 font-medium">
+              ⛔ {100 - pctUsed}% left — upgrade before you hit the wall
+            </p>
+          )}
+          {pctUsed >= 60 && pctUsed < 80 && (
+            <p className="mt-1.5 text-xs text-amber-400">⚠️ Running low — consider upgrading soon</p>
           )}
           {resetKey && tier.limitPeriod === "daily" && (
             <p className="mt-1 text-xs text-muted-foreground">Resets at midnight · {resetKey}</p>
@@ -229,7 +314,7 @@ function CurrentPlanCard({ plan, expiresAt, messageCount, resetKey }: {
       {plan === "free" && (
         <p className="mt-3 text-sm text-muted-foreground leading-5">
           Free forever · {tier.messageLimit} AI entries/day · Resets at midnight.
-          Upgrade anytime to unlock unlimited entries, monthly reports, and AI insights.
+          Every entry you miss is money you can&apos;t track. Upgrade to never be limited.
         </p>
       )}
 
@@ -242,23 +327,240 @@ function CurrentPlanCard({ plan, expiresAt, messageCount, resetKey }: {
   );
 }
 
-function TierCard({ plan, isCurrentPlan, onCopy }: {
+// ── Recommendation Banner ─────────────────────────────────────────────────────
+
+function RecommendationBanner({ rec }: { rec: PlanRecommendation }) {
+  const meta = PLAN_META[rec.plan];
+  const urgencyStyle =
+    rec.urgency === "high"
+      ? "border-rose-500/30 bg-rose-500/[0.07]"
+      : rec.urgency === "medium"
+      ? "border-amber-500/25 bg-amber-500/[0.06]"
+      : "border-primary/20 bg-primary/5";
+  const iconStyle =
+    rec.urgency === "high" ? "text-rose-400" : rec.urgency === "medium" ? "text-amber-400" : "text-primary";
+
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${urgencyStyle}`}>
+      <Flame className={`h-5 w-5 shrink-0 mt-0.5 ${rec.urgency === "high" ? "animate-pulse" : ""} ${iconStyle}`} />
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-bold ${iconStyle}`}>
+          {rec.urgency === "high" ? "⚡ Action Needed — " : rec.urgency === "medium" ? "💡 Smart Move — " : "📈 Ready to Grow — "}
+          {SUBSCRIPTION_TIERS[rec.plan].brand} recommended
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-5">{rec.reason}</p>
+      </div>
+      <a
+        href="#plans"
+        className={`shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${meta.border} border ${meta.color} ${meta.bg} hover:opacity-80`}
+      >
+        {rec.cta} <ChevronRight className="h-3 w-3" />
+      </a>
+    </div>
+  );
+}
+
+// ── Blurred Feature Teasers ───────────────────────────────────────────────────
+
+function BlurredFeatureTeasers({ upgradePlan }: { upgradePlan: "growth" | "pro" }) {
+  const features = upgradePlan === "growth"
+    ? [
+        {
+          title: "Monthly P&L Report",
+          preview: "Revenue: GHS ???  |  Expenses: GHS ???  |  Net Profit: GHS ???",
+          tag: "Growth+",
+        },
+        {
+          title: "Auto Debt Reminders",
+          preview: "3 customers owe you · Next reminder: Tomorrow 9am",
+          tag: "Growth+",
+        },
+        {
+          title: "Low-Stock Alerts",
+          preview: "⚠️ Sachet water — 4 bags left · Reorder threshold: 10",
+          tag: "Growth+",
+        },
+      ]
+    : [
+        {
+          title: "AI Cash-Flow Forecast",
+          preview: "Next 30 days: +GHS ??? projected · Risk: ???",
+          tag: "Pro+",
+        },
+        {
+          title: "Staff Accounts",
+          preview: "Abena (cashier) · Kwame (manager) · Role-based access",
+          tag: "Pro+",
+        },
+        {
+          title: "Profit Margin by Product",
+          preview: "Sachet water: ???% · Bread: ???% · Best: ???",
+          tag: "Pro+",
+        },
+      ];
+
+  const meta = PLAN_META[upgradePlan];
+
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+        🔒 Locked features — available on {SUBSCRIPTION_TIERS[upgradePlan].brand}
+      </p>
+      <div className="space-y-2.5">
+        {features.map((f) => (
+          <div key={f.title} className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+            {/* Blurred content */}
+            <div className="pointer-events-none select-none blur-[3px] opacity-40 p-3.5">
+              <p className="text-xs font-bold text-foreground mb-1">{f.title}</p>
+              <p className="text-xs text-muted-foreground font-mono">{f.preview}</p>
+            </div>
+            {/* Overlay */}
+            <div className="absolute inset-0 flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Lock className={`h-3.5 w-3.5 ${meta.color}`} />
+                <span className="text-xs font-bold text-foreground">{f.title}</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.color} ${meta.bg} ${meta.border}`}>
+                {f.tag}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <a
+        href="#plans"
+        className={`mt-3 w-full flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-bold transition-colors ${meta.border} ${meta.color} ${meta.bg} hover:opacity-80`}
+      >
+        Unlock {SUBSCRIPTION_TIERS[upgradePlan].brand} <ArrowRight className="h-4 w-4" />
+      </a>
+    </div>
+  );
+}
+
+// ── AI Score Teaser (for free users) ─────────────────────────────────────────
+
+function AIScoreTeaser({ score }: { score: number }) {
+  const scoreColor = score >= 76 ? "text-emerald-400" : score >= 55 ? "text-amber-400" : "text-rose-400";
+
+  return (
+    <GlassCard className="border-primary/15 bg-primary/[0.03]">
+      <div className="flex items-center gap-2 mb-3">
+        <Brain className="h-4 w-4 text-primary" />
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">AI Business Score</p>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div>
+          <p className={`text-5xl font-black ${scoreColor}`}>{score}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">/100</p>
+        </div>
+        <div className="flex-1 space-y-2">
+          {/* Blurred breakdown teaser */}
+          {["Revenue Consistency", "Profit Margin", "Debt Burden"].map((dim) => (
+            <div key={dim} className="blur-sm opacity-40 pointer-events-none select-none">
+              <div className="flex justify-between mb-0.5">
+                <span className="text-[10px] text-muted-foreground">{dim}</span>
+                <span className="text-[10px] font-mono">??/??</span>
+              </div>
+              <div className="h-1 rounded-full bg-white/10">
+                <div className="h-full w-3/5 rounded-full bg-primary/40" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
+        <Lock className="h-4 w-4 text-primary shrink-0" />
+        <div className="flex-1">
+          <p className="text-xs font-bold">What&apos;s holding your score back?</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Full AI breakdown + personalised recommendations — Growth plan unlocks it.
+          </p>
+        </div>
+        <a href="#plans" className="shrink-0 flex items-center gap-1 rounded-full bg-primary/15 border border-primary/25 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/25 transition-colors">
+          See all <ChevronRight className="h-3 w-3" />
+        </a>
+      </div>
+    </GlassCard>
+  );
+}
+
+// ── Global Billing Toggle ─────────────────────────────────────────────────────
+
+function BillingToggle({
+  annual,
+  onChange,
+}: {
+  annual: boolean;
+  onChange: (val: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`flex-1 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+          !annual ? "bg-white/[0.10] text-foreground shadow" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Monthly
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`flex-1 rounded-xl px-4 py-2 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+          annual ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Annual
+        <span className="text-[10px] font-black rounded-full bg-emerald-500/20 px-1.5 py-0.5">
+          2 months FREE
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// ── Tier Card ─────────────────────────────────────────────────────────────────
+
+function TierCard({
+  plan,
+  isCurrentPlan,
+  billingAnnual,
+}: {
   plan: SubscriptionPlan;
   isCurrentPlan: boolean;
-  onCopy: (text: string) => void;
+  billingAnnual: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [payError, setPayError] = useState("");
   const tier = SUBSCRIPTION_TIERS[plan];
   const meta = PLAN_META[plan];
 
-  if (plan === "free") return null; // free is shown in CurrentPlanCard; don't duplicate
+  if (plan === "free") return null;
+
+  const monthlyPrice = tier.priceGHS;
+  const annualTotal  = meta.annualPrice ?? 0;
+  const annualMonthlyCost = Math.round(annualTotal / 12);
+  const annualSaving = monthlyPrice * 12 - annualTotal;
 
   return (
     <div
+      id={plan === "growth" ? "plans" : undefined}
       className={`rounded-3xl border p-5 transition-all duration-300 ${meta.border} ${meta.bg} ${
         isCurrentPlan ? `shadow-xl ${meta.glow}` : ""
-      }`}
+      } ${plan === "pro" && !isCurrentPlan ? "ring-1 ring-cyan-500/30" : ""}`}
     >
+      {/* Popular badge */}
+      {plan === "pro" && !isCurrentPlan && (
+        <div className="mb-3 -mt-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 px-3 py-1 text-[11px] font-bold text-cyan-400">
+            ⭐ Most Popular — Best value for growing businesses
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -266,27 +568,41 @@ function TierCard({ plan, isCurrentPlan, onCopy }: {
             <span className="text-base">{meta.emoji}</span>
             <h3 className={`text-lg font-black ${meta.color}`}>{tier.brand}</h3>
             {isCurrentPlan && <Badge variant="success" className="text-[10px]">Current</Badge>}
-            {plan === "pro" && !isCurrentPlan && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 text-[10px] font-bold text-cyan-400">
-                ⭐ Most Popular
-              </span>
-            )}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{tier.label}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`text-2xl font-black ${meta.color}`}>
-            GHS {tier.priceGHS}
-            <span className="text-xs font-normal text-muted-foreground">/mo</span>
-          </p>
-          {meta.annualPrice && (
-            <p className="text-[11px] text-muted-foreground">
-              GHS {meta.annualPrice}/yr
-              <span className="ml-1 text-emerald-400">(2 months free)</span>
-            </p>
+          {billingAnnual && meta.annualPrice ? (
+            <>
+              <p className={`text-2xl font-black ${meta.color}`}>
+                GHS {annualTotal}
+                <span className="text-xs font-normal text-muted-foreground">/yr</span>
+              </p>
+              <p className="text-[11px] text-emerald-400">≈ GHS {annualMonthlyCost}/mo · save GHS {annualSaving}</p>
+            </>
+          ) : (
+            <>
+              <p className={`text-2xl font-black ${meta.color}`}>
+                GHS {monthlyPrice}
+                <span className="text-xs font-normal text-muted-foreground">/mo</span>
+              </p>
+              {meta.annualPrice && (
+                <p className="text-[11px] text-muted-foreground">or GHS {annualTotal}/yr</p>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {/* Annual saving callout */}
+      {billingAnnual && meta.annualPrice && !isCurrentPlan && (
+        <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
+          <BadgeCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+          <p className="text-[11px] text-emerald-400 font-medium">
+            You save GHS {annualSaving} vs paying monthly — like getting {plan === "growth" ? "2" : "2"} months free!
+          </p>
+        </div>
+      )}
 
       {/* Limits */}
       <div className="mt-3 flex flex-wrap gap-2">
@@ -308,7 +624,7 @@ function TierCard({ plan, isCurrentPlan, onCopy }: {
         ))}
       </div>
 
-      {/* Feature list — collapsible */}
+      {/* Feature list */}
       <ul className={`mt-3 space-y-2 overflow-hidden transition-all duration-300 ${expanded ? "" : "max-h-[120px]"}`}>
         {tier.features.map((f) => (
           <li key={f} className="flex items-start gap-2">
@@ -319,6 +635,7 @@ function TierCard({ plan, isCurrentPlan, onCopy }: {
       </ul>
 
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
         className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
       >
@@ -330,22 +647,46 @@ function TierCard({ plan, isCurrentPlan, onCopy }: {
       </button>
 
       {/* Pay action */}
-      {!isCurrentPlan && meta.payCmd && (
-        <div className="mt-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
-          <p className="text-xs text-muted-foreground mb-2">
-            To upgrade, pay via MoMo then send this to ZURIA on WhatsApp:
+      {!isCurrentPlan && (
+        <div className="mt-4 space-y-2">
+          {payError && (
+            <p className="rounded-xl bg-destructive/10 border border-destructive/25 px-3 py-2 text-xs text-destructive">
+              {payError}
+            </p>
+          )}
+          <PaystackButton
+            plan={plan}
+            annual={billingAnnual}
+            label={
+              billingAnnual && meta.annualPrice
+                ? `Pay GHS ${annualTotal} — Subscribe Annually`
+                : `Pay GHS ${monthlyPrice}/mo — Subscribe`
+            }
+            className="w-full"
+            onError={setPayError}
+          />
+          <p className="text-center text-[11px] text-muted-foreground">
+            MoMo · Bank Transfer · Card · Instant activation
           </p>
-          <div className="flex items-center gap-2">
-            <code className={`flex-1 rounded-xl bg-white/[0.06] px-3 py-2 font-mono text-sm font-bold ${meta.color}`}>
-              {meta.payCmd}
-            </code>
-            <button
-              onClick={() => onCopy(meta.payCmd)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] hover:bg-white/[0.1] transition-colors"
-            >
-              <Copy className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
+        </div>
+      )}
+
+      {/* Renew — shown for current plan */}
+      {isCurrentPlan && (
+        <div className="mt-4 space-y-2">
+          {payError && (
+            <p className="rounded-xl bg-destructive/10 border border-destructive/25 px-3 py-2 text-xs text-destructive">
+              {payError}
+            </p>
+          )}
+          <PaystackButton
+            plan={plan}
+            annual={billingAnnual}
+            label="Renew / Extend Subscription"
+            variant="outline"
+            className="w-full"
+            onError={setPayError}
+          />
         </div>
       )}
     </div>
@@ -378,7 +719,8 @@ function CompRow({ f, v }: { f: string; v: string[] }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SubscriptionPage() {
-  const { user } = useAppStore();
+  const { user, transactions, debts, loans } = useAppStore();
+  const [billingAnnual, setBillingAnnual] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   const effectivePlan: SubscriptionPlan = user ? getEffectivePlan(user) : "free";
@@ -386,6 +728,23 @@ export default function SubscriptionPage() {
   const messageCount = user?.whatsappMessageCount ?? 0;
   const expiresAt = referralUnlock ? user?.referralUnlockExpiresAt : user?.subscriptionExpiresAt;
   const resetKey = user?.whatsappMessageResetKey;
+
+  const tier = SUBSCRIPTION_TIERS[effectivePlan];
+  const usagePct = tier.messageLimit ? Math.min(100, Math.round((messageCount / tier.messageLimit) * 100)) : 0;
+
+  const scoreBreakdown = useMemo(
+    () => computeHealthScoreBreakdown(transactions, debts, loans),
+    [transactions, debts, loans]
+  );
+
+  const recommendation = useMemo(() => computePlanRecommendation({
+    currentPlan: effectivePlan,
+    usagePct,
+    transactionCount: transactions.length,
+    hasDebts: debts.some((d) => d.outstandingAmount > 0),
+    hasLoans: loans.some((l) => l.status === "open"),
+    score: scoreBreakdown.score,
+  }), [effectivePlan, usagePct, transactions.length, debts, loans, scoreBreakdown.score]);
 
   const plans: SubscriptionPlan[] = ["growth", "pro", "enterprise"];
 
@@ -396,14 +755,26 @@ export default function SubscriptionPage() {
     });
   }
 
+  // suppress lint warning — copied is used in JSX below
+  void copied;
+
+  // Compute annual savings for the banner (based on all paid plans)
+  const maxAnnualSaving = Math.max(
+    ...plans.map((p) => {
+      const t = SUBSCRIPTION_TIERS[p];
+      const m = PLAN_META[p];
+      return m.annualPrice ? t.priceGHS * 12 - m.annualPrice : 0;
+    })
+  );
+
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div>
         <p className="text-sm text-primary">Account</p>
-        <h1 className="mt-1 text-3xl font-black">Subscription & Plan</h1>
+        <h1 className="mt-1 text-3xl font-black">Your Business Plan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          ZURIA is the AI memory system for your business — scales from a single kiosk to a full enterprise.
+          ZURIA is the AI memory system for your business — the more data you record, the smarter it gets.
         </p>
       </div>
 
@@ -415,7 +786,7 @@ export default function SubscriptionPage() {
         resetKey={resetKey}
       />
 
-      {/* Referral unlock badge — shown when Growth is active via the 30-referral milestone */}
+      {/* Referral unlock badge */}
       {referralUnlock && (
         <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] px-4 py-3">
           <span className="text-xl shrink-0 mt-0.5">🎁</span>
@@ -430,7 +801,15 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {/* Upgrade headline */}
+      {/* AI-powered plan recommendation */}
+      {recommendation && <RecommendationBanner rec={recommendation} />}
+
+      {/* AI Business Score — teaser for free, full for paid */}
+      {effectivePlan === "free" && (
+        <AIScoreTeaser score={scoreBreakdown.score} />
+      )}
+
+      {/* Free-user conversion block */}
       {effectivePlan === "free" && (
         <>
           <GlassCard className="border-primary/15 bg-primary/5">
@@ -439,16 +818,21 @@ export default function SubscriptionPage() {
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold">Move from recording… to understanding.</h3>
+                <h3 className="font-bold">From recording… to understanding.</h3>
                 <p className="mt-1 text-sm text-muted-foreground leading-6">
-                  Free gives you the foundation. Paid plans unlock AI forecasting, auto reminders, monthly reports,
-                  staff accounts, and the intelligence that makes ZURIA a true business advisor — not just a ledger.
+                  Free gives you the foundation. Paid plans unlock AI forecasting, auto reminders,
+                  monthly reports, staff accounts — the intelligence that makes ZURIA your business brain, not just a ledger.
                 </p>
               </div>
             </div>
           </GlassCard>
 
-          {/* Free path: Refer & Earn to unlock Growth */}
+          {/* Blurred premium teasers */}
+          <GlassCard className="border-white/[0.06]">
+            <BlurredFeatureTeasers upgradePlan="growth" />
+          </GlassCard>
+
+          {/* Refer & Earn path */}
           <GlassCard className="border-amber-500/20 bg-amber-500/[0.04]">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-3">🎁 Get Growth for FREE</p>
             <div className="space-y-2">
@@ -463,7 +847,7 @@ export default function SubscriptionPage() {
                 <span className="text-base font-black text-amber-400 shrink-0 w-5">2</span>
                 <div>
                   <p className="text-sm font-bold text-amber-300">30 referrals this month → Growth FREE 🚀</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Refer 30 people in one calendar month and unlock ZURIA Growth — monthly reports, AI insights, debt reminders, inventory alerts — completely free until month end. Worth GHS 20!</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Refer 30 people in one calendar month and unlock ZURIA Growth — monthly reports, AI insights, debt reminders, inventory alerts — completely free until month end. Worth GHS {SUBSCRIPTION_TIERS.growth.priceGHS}!</p>
                 </div>
               </div>
             </div>
@@ -477,52 +861,43 @@ export default function SubscriptionPage() {
         </>
       )}
 
-      {effectivePlan !== "free" && effectivePlan !== "enterprise" && (
-        <GlassCard className="border-cyan-500/15 bg-cyan-500/5">
+      {/* Growth user — upsell to Pro */}
+      {effectivePlan === "growth" && (
+        <>
+          <GlassCard className="border-cyan-500/15 bg-cyan-500/5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10">
+                <TrendingUp className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="font-bold">Ready to go further?</h3>
+                <p className="mt-1 text-sm text-muted-foreground leading-6">
+                  Pro unlocks AI cash-flow forecasting, staff accounts, unlimited entries,
+                  advanced analytics, and the full ZURIA intelligence engine.
+                </p>
+              </div>
+            </div>
+          </GlassCard>
+          <GlassCard className="border-white/[0.06]">
+            <BlurredFeatureTeasers upgradePlan="pro" />
+          </GlassCard>
+        </>
+      )}
+
+      {effectivePlan === "pro" && (
+        <GlassCard className="border-amber-500/15 bg-amber-500/5">
           <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10">
-              <CrownIcon className="h-5 w-5 text-cyan-400" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10">
+              <CrownIcon className="h-5 w-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="font-bold">Ready to go further?</h3>
+              <h3 className="font-bold">Take it to Enterprise 👑</h3>
               <p className="mt-1 text-sm text-muted-foreground leading-6">
-                Upgrade to unlock AI cash-flow forecasting, staff accounts, unlimited entries,
-                advanced analytics, and the full ZURIA intelligence engine.
+                Multi-branch management, a dedicated account manager, predictive sales AI,
+                competitive intelligence alerts, and API integrations for your whole operation.
               </p>
             </div>
           </div>
-        </GlassCard>
-      )}
-
-      {/* Locked features callout — shown for free users only */}
-      {effectivePlan === "free" && (
-        <GlassCard className="border-rose-500/15 bg-rose-500/[0.03]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-rose-400 mb-3">🔒 Features locked on your current plan</p>
-          <ul className="space-y-2">
-            {[
-              { icon: "📅", label: "Monthly profit & loss report", plan: "Growth" },
-              { icon: "📊", label: "Expense category breakdown", plan: "Growth" },
-              { icon: "🔔", label: "Auto debt reminders via WhatsApp", plan: "Growth" },
-              { icon: "📦", label: "Low-stock WhatsApp alerts", plan: "Growth" },
-              { icon: "🤖", label: "AI business coach & cash-flow forecasting", plan: "Pro" },
-              { icon: "👥", label: "Staff accounts & role-based access", plan: "Pro" },
-            ].map(({ icon, label, plan: requiredPlan }) => (
-              <li key={label} className="flex items-center gap-2.5">
-                <span className="text-base shrink-0">{icon}</span>
-                <span className="flex-1 text-xs text-muted-foreground">{label}</span>
-                <span className={`text-[10px] font-bold shrink-0 px-2 py-0.5 rounded-full ${
-                  requiredPlan === "Growth"
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-                }`}>
-                  {requiredPlan}+
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Upgrade below — or refer friends for free Growth access.
-          </p>
         </GlassCard>
       )}
 
@@ -530,62 +905,55 @@ export default function SubscriptionPage() {
       <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
         <BadgeCheck className="h-5 w-5 shrink-0 text-emerald-400" />
         <p className="text-sm text-emerald-300 font-medium">
-          Pay annually and get <strong>2 months free</strong> — save up to GHS 200/year.
+          Pay annually and get <strong>2 months free</strong> — save up to{" "}
+          {formatMoney(maxAnnualSaving)} per year.
         </p>
       </div>
 
+      {/* ── Global billing toggle ── */}
+      <BillingToggle annual={billingAnnual} onChange={setBillingAnnual} />
+
       {/* Plan cards */}
-      <div className="space-y-4">
+      <div id="plans" className="space-y-4">
         {plans.map((p) => (
           <TierCard
             key={p}
             plan={p}
             isCurrentPlan={effectivePlan === p}
-            onCopy={copyText}
+            billingAnnual={billingAnnual}
           />
         ))}
       </div>
 
-      {/* MoMo payment guide */}
+      {/* Payment info */}
       <GlassCard>
         <h3 className="flex items-center gap-2 font-bold">
-          <span className="text-xl">📱</span> How to pay with Mobile Money
+          <span className="text-xl">💳</span> How payment works
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          No card needed. Send directly from your MoMo wallet and get activated within 1 hour.
+          Pay securely via Paystack — Ghana&apos;s leading payment platform. Supports MoMo, bank transfer, and card. Your subscription activates instantly after payment.
         </p>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-2">
           {[
-            { network: "MTN MoMo", code: "*170#", instruction: "Send Money" },
-            { network: "AirtelTigo Money", code: "*110#", instruction: "Make Payment" },
-            { network: "Vodafone Cash", code: "*110#", instruction: "Send Money" },
-          ].map((n) => (
-            <div key={n.network} className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold">{n.network}</p>
-                <p className="text-xs text-muted-foreground">
-                  Dial {n.code} → {n.instruction} → {ADMIN_MOMO}
-                </p>
-              </div>
-              <button
-                onClick={() => copyText(ADMIN_MOMO)}
-                className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Copy className="h-3.5 w-3.5" />
-                {copied === ADMIN_MOMO ? "Copied!" : ADMIN_MOMO}
-              </button>
+            { icon: "📱", label: "MTN MoMo, Telecel Cash, AirtelTigo Money, Vodafone Cash" },
+            { icon: "🏦", label: "Bank transfer — any Ghanaian bank account" },
+            { icon: "💳", label: "Visa / Mastercard debit or credit card" },
+          ].map(({ icon, label }) => (
+            <div key={label} className="flex items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
+              <span className="text-base">{icon}</span>
+              <p className="text-sm text-muted-foreground">{label}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Steps</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">How it works</p>
           {[
-            "Pay the amount for your chosen plan via MoMo",
-            "Use your WhatsApp number as the payment reference",
-            "Open WhatsApp and message ZURIA: PAID GROWTH, PAID PRO, or PAID ENTERPRISE",
-            "We verify your payment and activate within 1 hour",
+            "Choose your plan above and click Pay — a secure Paystack checkout page opens",
+            "Select your payment method (MoMo, bank, or card) and complete payment",
+            "You are redirected back and your subscription activates automatically",
+            "We also send a WhatsApp / Telegram confirmation once activated",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-black text-primary">
@@ -595,9 +963,45 @@ export default function SubscriptionPage() {
             </div>
           ))}
         </div>
+
+        <details className="mt-4 group">
+          <summary className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors list-none">
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+            Prefer to pay manually via MoMo USSD?
+          </summary>
+          <div className="mt-3 space-y-2">
+            {[
+              { network: "MTN MoMo",        code: "*170#", instruction: "Send Money"   },
+              { network: "Telecel Cash",     code: "*100#", instruction: "Send Money"   },
+              { network: "AirtelTigo Money", code: "*185#", instruction: "Make Payment" },
+              { network: "Vodafone Cash",    code: "*110#", instruction: "Send Money"   },
+            ].map((n) => (
+              <div key={n.network} className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold">{n.network}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Dial {n.code} → {n.instruction} → {ADMIN_MOMO}
+                  </p>
+                </div>
+                <button
+                  onClick={() => copyText(ADMIN_MOMO)}
+                  className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {ADMIN_MOMO}
+                </button>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground leading-5 px-1">
+              After manual payment, message ZURIA on <strong className="text-[#5AC8FA]">Telegram</strong> or the <strong className="text-amber-300">WhatsApp Sandbox</strong> with{" "}
+              <code className="font-mono">PAID GROWTH</code>, <code className="font-mono">PAID PRO</code>, or <code className="font-mono">PAID ENTERPRISE</code>.
+              We will verify and activate within 1 hour.
+            </p>
+          </div>
+        </details>
       </GlassCard>
 
-      {/* Feature comparison — full capability matrix */}
+      {/* Feature comparison */}
       <GlassCard>
         <h3 className="font-bold mb-1">Full capability comparison</h3>
         <p className="text-xs text-muted-foreground mb-4">Every feature across all 4 plans at a glance.</p>
@@ -613,7 +1017,6 @@ export default function SubscriptionPage() {
               </tr>
             </thead>
             <tbody>
-              {/* ── Limits & Recording ── */}
               <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Limits &amp; Recording</td></tr>
               {[
                 ["Daily AI entries", "10/day", "200/mo", "∞", "∞"],
@@ -623,7 +1026,17 @@ export default function SubscriptionPage() {
                 ["Offline-first (sync when online)", "✅", "✅", "✅", "✅"],
               ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
 
-              {/* ── Reports ── */}
+              <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">AI Intelligence</td></tr>
+              {[
+                ["AI Business Score (basic)", "✅", "✅", "✅", "✅"],
+                ["AI Score full breakdown", "—", "✅", "✅", "✅"],
+                ["Contextual AI tips & insights", "—", "✅", "✅", "✅"],
+                ["AI business coach (on-demand)", "—", "—", "✅", "✅"],
+                ["AI cash-flow forecasting", "—", "—", "✅", "✅"],
+                ["Predictive sales & demand AI", "—", "—", "—", "✅"],
+                ["Competitive intelligence alerts", "—", "—", "—", "✅"],
+              ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
+
               <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Reports</td></tr>
               {[
                 ["Daily end-of-day summary (WhatsApp)", "✅", "✅", "✅", "✅"],
@@ -634,18 +1047,15 @@ export default function SubscriptionPage() {
                 ["Executive KPI dashboard", "—", "—", "—", "✅"],
               ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
 
-              {/* ── Finance & Debt ── */}
               <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Finance &amp; Debt</td></tr>
               {[
                 ["Debt & customer credit tracking", "✅", "✅", "✅", "✅"],
                 ["Expense category breakdown", "—", "✅", "✅", "✅"],
                 ["Automated debt reminder messages", "—", "✅", "✅", "✅"],
                 ["Cash-flow health score", "—", "✅", "✅", "✅"],
-                ["AI cash-flow forecasting", "—", "—", "✅", "✅"],
                 ["Profit margin analysis by product", "—", "—", "✅", "✅"],
               ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
 
-              {/* ── Inventory ── */}
               <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Inventory</td></tr>
               {[
                 ["Basic stock tracking", "✅", "✅", "✅", "✅"],
@@ -655,19 +1065,7 @@ export default function SubscriptionPage() {
                 ["Multi-branch stock sync", "—", "—", "—", "✅"],
               ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
 
-              {/* ── AI Intelligence ── */}
-              <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">AI Intelligence</td></tr>
-              {[
-                ["Local language support (Twi, Ga, Ewe…)", "✅", "✅", "✅", "✅"],
-                ["Contextual AI tips & insights", "—", "✅", "✅", "✅"],
-                ["AI business coach (on-demand)", "—", "—", "✅", "✅"],
-                ["AI growth strategy recommendations", "—", "—", "✅", "✅"],
-                ["Predictive sales & demand AI", "—", "—", "—", "✅"],
-                ["Competitive intelligence alerts", "—", "—", "—", "✅"],
-              ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
-
-              {/* ── Operations & Team ── */}
-              <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Operations &amp; Team</td></tr>
+              <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widests text-primary/70">Operations &amp; Team</td></tr>
               {[
                 ["Staff / employee accounts", "—", "—", "✅", "✅"],
                 ["Role-based access control", "—", "—", "✅", "✅"],
@@ -677,7 +1075,6 @@ export default function SubscriptionPage() {
                 ["API access for integrations", "—", "—", "—", "✅"],
               ].map(([f, ...v]) => <CompRow key={f} f={f} v={v} />)}
 
-              {/* ── Support ── */}
               <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Support</td></tr>
               {[
                 ["Community support", "✅", "✅", "✅", "✅"],
@@ -715,11 +1112,7 @@ export default function SubscriptionPage() {
           Have questions? We&apos;re here to help.
         </p>
         <Button asChild variant="outline" className="mt-3 gap-2">
-          <a
-            href={SUPPORT_WA_HREF}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href={SUPPORT_WA_HREF} target="_blank" rel="noopener noreferrer">
             Chat with us on WhatsApp <ArrowRight className="h-4 w-4" />
           </a>
         </Button>

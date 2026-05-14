@@ -39,6 +39,15 @@ const nextConfig: NextConfig = {
 
   // Compress output
   compress: true,
+
+  // Tree-shake icon libraries and Firebase so only imported symbols are bundled
+  experimental: {
+    optimizePackageImports: ["lucide-react", "firebase/app", "firebase/auth", "firebase/firestore"],
+  },
+
+  // Shorter Vercel serverless function timeout for webhook routes
+  // (the default 10 s is fine for most routes; WhatsApp webhook needs a fast 200 OK)
+  serverExternalPackages: ["firebase-admin"],
 };
 
 export default nextConfig;

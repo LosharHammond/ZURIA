@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
@@ -6,13 +7,26 @@ import { fmtWelcome } from "@/lib/whatsapp/formatter";
 import { collections } from "@/lib/firebase/collections";
 import { createId } from "@/lib/utils";
 import { APP_URL } from "@/lib/config";
-import type { BusinessCategory, Transaction } from "@/types/domain";
+import type { Transaction } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
 const REFERRAL_REWARD = 0.5;         // GHS per successful referral
 const WITHDRAWAL_THRESHOLD = 5.0;    // GHS needed before user can withdraw
 const MONTHLY_UNLOCK_THRESHOLD = 30; // referrals this month needed for Growth unlock
+
+const BUSINESS_CATEGORIES = [
+  "provision", "food", "restaurant", "barber", "salon",
+  "momo", "pharmacy", "cosmetics", "hardware", "spare-parts", "other",
+] as const;
+
+const WelcomeSchema = z.object({
+  phone:        z.string().min(8).max(20).regex(/^\+?\d+$/, "Invalid phone number"),
+  ownerName:    z.string().min(1).max(80).trim(),
+  businessName: z.string().min(1).max(120).trim(),
+  category:     z.enum(BUSINESS_CATEGORIES).default("provision"),
+  referralCode: z.string().max(40).trim().optional(),
+});
 
 // POST /api/welcome
 // Called after a user completes onboarding.
@@ -25,23 +39,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: {
-    phone: string;
-    ownerName: string;
-    businessName: string;
-    category: BusinessCategory;
-    referralCode?: string;
-  };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { phone, ownerName, businessName, category, referralCode } = body;
-  if (!phone || !ownerName || !businessName) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  const parsed = WelcomeSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { status: 422 }
+    );
   }
+
+  const { phone, ownerName, businessName, category, referralCode } = parsed.data;
 
   // ── 1. Send welcome WhatsApp to new user ─────────────────────────────────
   try {
@@ -84,73 +97,88 @@ async function creditReferrer(referralCode: string, refereeId: string, refereePh
   // Prevent self-referral
   if (referrerId === refereeId || referrerData.phoneNumber === refereePhone) return;
 
-  // Prevent double-crediting the same referee (check both UID and phone for safety)
-  const dupCheckUid = await db
-    .collection(collections.referrals)
-    .where("referrerId", "==", referrerId)
-    .where("refereeId", "==", refereeId)
-    .limit(1)
-    .get();
-  if (!dupCheckUid.empty) return;
+  // Deterministic doc ID = referrerId_refereeId prevents duplicate credits even
+  // under concurrent requests (TOCTOU-safe: Firestore transaction below guards it).
+  const refDocId = `${referrerId}_${refereeId}`;
 
-  const dupCheckPhone = await db
-    .collection(collections.referrals)
-    .where("referrerId", "==", referrerId)
-    .where("refereePhone", "==", refereePhone)
-    .limit(1)
-    .get();
-  if (!dupCheckPhone.empty) return;
-
-  const oldBalance = (referrerData.referralBalance as number) ?? 0;
-  const newBalance = parseFloat((oldBalance + REFERRAL_REWARD).toFixed(2));
-  const oldCount = (referrerData.referralCount as number) ?? 0;
   const now = new Date();
   const nowIso = now.toISOString();
   const thisMonth = nowIso.slice(0, 7); // "YYYY-MM"
   const referrerBusinessId = (referrerData.businessId as string | undefined) ?? null;
-
-  // ── Compute monthly referral count (reset if new month) ──────────────────
-  const storedMonthlyKey = (referrerData.referralMonthlyResetKey as string) ?? "";
-  const oldMonthlyCount = storedMonthlyKey === thisMonth
-    ? ((referrerData.referralMonthlyCount as number) ?? 0)
-    : 0; // new month → reset
-  const newMonthlyCount = oldMonthlyCount + 1;
-
-  // ── Check if milestone just hit (exactly 30 this month) ──────────────────
-  const justHitMilestone = newMonthlyCount === MONTHLY_UNLOCK_THRESHOLD;
-  // End of the current calendar month at 23:59:59
+  // End of the current calendar month at 23:59:59 local
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-  // ── Record the referral event ─────────────────────────────────────────────
-  const refId = createId("ref");
-  await db.collection(collections.referrals).doc(refId).set({
-    id: refId,
-    referrerId,
-    refereeId,           // Firebase UID of the new user
-    refereePhone,        // Phone number of the new user
-    amount: REFERRAL_REWARD,
-    createdAt: nowIso,
-  });
+  // ── TOCTOU-safe Firestore transaction ──────────────────────────────────────
+  // Uses a deterministic doc ID (referrerId_refereeId) so concurrent calls
+  // for the same pair hit the same document and the transaction serialises them.
+  const refDocRef = db.collection(collections.referrals).doc(refDocId);
+  const referrerRef = db.collection(collections.users).doc(referrerId);
 
-  // ── Credit the referrer's balance + update monthly counter ───────────────
-  const userUpdate: Record<string, unknown> = {
-    referralBalance: FieldValue.increment(REFERRAL_REWARD),
-    referralCount: FieldValue.increment(1),
-    referralMonthlyCount: newMonthlyCount,
-    referralMonthlyResetKey: thisMonth,
-    updatedAt: nowIso,
-  };
-  // Grant Growth unlock for the rest of the month when milestone is hit
-  if (justHitMilestone) {
-    userUpdate.referralUnlockExpiresAt = endOfMonth;
+  let justHitMilestone = false;
+  let newMonthlyCount = 0;
+  let oldCount = 0;
+  let oldBalance = 0;
+  let newBalance = 0;
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const refSnap = await tx.get(refDocRef);
+      if (refSnap.exists) return; // Already credited — idempotent exit
+
+      const freshReferrer = await tx.get(referrerRef);
+      const d = freshReferrer.data() ?? {};
+
+      oldBalance = (d.referralBalance as number) ?? 0;
+      oldCount = (d.referralCount as number) ?? 0;
+      newBalance = parseFloat((oldBalance + REFERRAL_REWARD).toFixed(2));
+
+      // Monthly count — reset if month rolled over
+      const storedKey = (d.referralMonthlyResetKey as string) ?? "";
+      const oldMonthlyCount = storedKey === thisMonth
+        ? ((d.referralMonthlyCount as number) ?? 0)
+        : 0;
+      newMonthlyCount = oldMonthlyCount + 1;
+
+      // Milestone fires when this referral CROSSES the threshold from below
+      justHitMilestone =
+        newMonthlyCount >= MONTHLY_UNLOCK_THRESHOLD &&
+        oldMonthlyCount < MONTHLY_UNLOCK_THRESHOLD;
+
+      // Write referral record
+      tx.set(refDocRef, {
+        id: refDocId,
+        referrerId,
+        refereeId,
+        refereePhone,
+        amount: REFERRAL_REWARD,
+        createdAt: nowIso,
+      });
+
+      // Update referrer atomically
+      const userUpdate: Record<string, unknown> = {
+        referralBalance: FieldValue.increment(REFERRAL_REWARD),
+        referralCount: FieldValue.increment(1),
+        referralMonthlyCount: newMonthlyCount,
+        referralMonthlyResetKey: thisMonth,
+        updatedAt: nowIso,
+      };
+      if (justHitMilestone) {
+        userUpdate.referralUnlockExpiresAt = endOfMonth;
+      }
+      tx.update(referrerRef, userUpdate);
+    });
+  } catch (txErr) {
+    console.error("[welcome/creditReferrer] transaction failed:", txErr);
+    return; // Abort — don't send notification for a failed credit
   }
-  await db.collection(collections.users).doc(referrerId).update(userUpdate);
 
-  // ── Record referral earning as a transaction ──────────────────────────────
-  // This makes referral income visible in the admin panel and all-time stats.
+  // ── Record referral earning as a transaction (best-effort) ──────────────
+  // Makes referral income visible in admin panel and all-time stats.
+  // Uses the deterministic refDocId as part of the transaction ID for idempotency.
   if (referrerBusinessId) {
+    const txnId = createId("txn");
     const txn: Transaction = {
-      id: createId("txn"),
+      id: txnId,
       businessId: referrerBusinessId,
       userId: referrerId,
       type: "investment",
@@ -169,7 +197,7 @@ async function creditReferrer(referralCode: string, refereeId: string, refereePh
       syncStatus: "synced",
       source: "system",
     };
-    await db.collection(collections.transactions).doc(txn.id).set({ ...txn, synced: nowIso });
+    await db.collection(collections.transactions).doc(txnId).set({ ...txn, synced: nowIso }).catch(() => {});
   }
 
   // ── Send WhatsApp notification to referrer ───────────────────────────────
@@ -177,7 +205,7 @@ async function creditReferrer(referralCode: string, refereeId: string, refereePh
   const firstName = ((referrerData.ownerName as string) ?? "").split(" ")[0] || "Friend";
   const hitsWithdrawalThreshold = oldBalance < WITHDRAWAL_THRESHOLD && newBalance >= WITHDRAWAL_THRESHOLD;
   const referrerCode = (referrerData.referralCode as string) ?? "";
-  const referralLink = referrerCode ? `${APP_URL}/login?ref=${referrerCode}` : APP_URL;
+  const referralLink = referrerCode ? `${APP_URL}/?ref=${referrerCode}` : APP_URL;
 
   // ── Normal referral notification ──────────────────────────────────────────
   const MILESTONE_BALANCE = parseFloat((MONTHLY_UNLOCK_THRESHOLD * REFERRAL_REWARD).toFixed(2)); // GHS 15

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb, verifyAdminToken } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
@@ -6,13 +7,18 @@ import { collections } from "@/lib/firebase/collections";
 import type { Transaction, WithdrawalRequest } from "@/types/domain";
 import { createId } from "@/lib/utils";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Paystack automated transfer is disabled — withdrawals are processed manually.
-// The Paystack service code is preserved in lib/services/paystack-service.ts
-// and can be re-enabled by importing it and restoring the transfer block below.
-// ─────────────────────────────────────────────────────────────────────────────
+import {
+  createTransferRecipient,
+  initiateTransfer,
+  paystackConfigured,
+} from "@/lib/services/paystack-service";
 
 export const dynamic = "force-dynamic";
+
+const WithdrawalActionSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  note:   z.string().max(500).trim().optional(),
+});
 
 export async function PATCH(
   req: NextRequest,
@@ -23,27 +29,66 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const { action, note } = await req.json() as { action: "approve" | "reject"; note?: string };
-  if (action !== "approve" && action !== "reject") {
-    return NextResponse.json({ error: "action must be 'approve' or 'reject'" }, { status: 400 });
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+
+  const parsed = WithdrawalActionSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { status: 422 }
+    );
+  }
+
+  const { action, note } = parsed.data;
 
   const { id } = await params;
   const db = getAdminDb();
   const wdRef = db.collection(collections.withdrawals).doc(id);
-  const wdSnap = await wdRef.get();
-
-  if (!wdSnap.exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const wd = wdSnap.data() as WithdrawalRequest;
-  if (wd.status !== "pending") return NextResponse.json({ error: "Already processed" }, { status: 409 });
-
   const now = new Date().toISOString();
+
+  // ── TOCTOU-safe status gate ───────────────────────────────────────────────
+  // Both approve and reject run inside a Firestore transaction so that two
+  // concurrent admin requests cannot both pass the "status === pending" check
+  // and then both write — which would double-restore the balance on reject, or
+  // trigger two Paystack transfers on approve.
+  let wd!: WithdrawalRequest;
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(wdRef);
+      if (!snap.exists) throw Object.assign(new Error("not_found"), { code: 404 });
+      const data = snap.data() as WithdrawalRequest;
+      if (data.status !== "pending") throw Object.assign(new Error("already_processed"), { code: 409 });
+      wd = data;
+
+      if (action === "reject") {
+        // Flip status + restore balance atomically
+        tx.update(wdRef, { status: "rejected", processedAt: now, note: note ?? "" });
+        tx.update(db.collection(collections.users).doc(data.userId), {
+          referralBalance: FieldValue.increment(data.amount),
+          updatedAt: now,
+        });
+      } else {
+        // Flip status to "processing" immediately to prevent double-approval
+        tx.update(wdRef, { status: "processing", processedAt: now, note: note ?? "Pending transfer" });
+      }
+    });
+  } catch (err: unknown) {
+    const e = err as { code?: number };
+    if (e.code === 404) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (e.code === 409) return NextResponse.json({ error: "Already processed" }, { status: 409 });
+    console.error("[admin/withdrawals] status transaction failed:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+
   const firstName = wd.ownerName.split(" ")[0];
 
   // ── Reject ────────────────────────────────────────────────────────────────
   if (action === "reject") {
-    await wdRef.update({ status: "rejected", processedAt: now, note: note ?? "" });
-
     if (wd.phoneNumber) {
       sendText(`whatsapp:${wd.phoneNumber}`, [
         `😔 *Withdrawal update, ${firstName}*`,
@@ -51,28 +96,18 @@ export async function PATCH(
         `Your withdrawal request of *GHS ${wd.amount.toFixed(2)}* could not be processed at this time.`,
         note ? `Reason: ${note}` : `Please contact us for more information.`,
         ``,
-        `Your balance has not been changed — you can try again later.`,
+        `Your balance of *GHS ${wd.amount.toFixed(2)}* has been fully restored — you can try again later.`,
         `_— ZURIA_`,
       ].join("\n")).catch(() => {});
     }
-
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  // ── Approve: deduct balance + update status + record transaction ──────────
-  // Load user data to get businessId for the transaction record
+  // ── Approve: status is now "processing" (locked in tx above) ─────────────
+  // Record the accounting transaction (best-effort)
   const userSnap = await db.collection(collections.users).doc(wd.userId).get();
   const businessId = (userSnap.data()?.businessId as string | undefined) ?? null;
 
-  const writes: Promise<unknown>[] = [
-    wdRef.update({ status: "approved", processedAt: now, note: note ?? "Manual transfer completed" }),
-    db.collection(collections.users).doc(wd.userId).update({
-      referralBalance: FieldValue.increment(-wd.amount),
-      updatedAt: now,
-    }),
-  ];
-
-  // Record the withdrawal as a transaction so it appears in all-time stats
   if (businessId) {
     const txn: Transaction = {
       id: createId("txn"),
@@ -94,12 +129,69 @@ export async function PATCH(
       syncStatus: "synced",
       source: "system",
     };
-    writes.push(
-      db.collection(collections.transactions).doc(txn.id).set({ ...txn, synced: now })
-    );
+    await db.collection(collections.transactions).doc(txn.id)
+      .set({ ...txn, synced: now })
+      .catch((err) => console.error("[admin/withdrawals] accounting txn write failed:", err));
   }
 
-  await Promise.all(writes);
+  // ── Attempt Paystack auto-transfer ────────────────────────────────────────
+  if (paystackConfigured() && !wd.paystackTransferCode) {
+    try {
+      const { recipientCode, error: recErr } = await createTransferRecipient(wd);
+      if (!recErr && recipientCode) {
+        const transferRef = `WD-${id}`;
+        const { transferCode, status: tStatus, error: txErr } = await initiateTransfer({
+          amountGHS:     wd.amount,
+          recipientCode,
+          reference:     transferRef,
+          reason:        `ZURIA referral withdrawal — ${wd.ownerName}`,
+        });
+
+        if (!txErr) {
+          await wdRef.update({
+            status:                tStatus === "success" ? "approved" : "processing",
+            processedAt:           tStatus === "success" ? now : null,
+            note:                  note ?? "Paystack auto-transfer initiated",
+            paystackRecipientCode: recipientCode,
+            paystackTransferCode:  transferCode,
+            paystackReference:     transferRef,
+          });
+
+          if (wd.phoneNumber) {
+            const msg =
+              tStatus === "success"
+                ? [
+                    `✅ *Payment sent, ${firstName}!* 🎉`,
+                    ``,
+                    `*GHS ${wd.amount.toFixed(2)}* has been sent to your MoMo:`,
+                    `${wd.network ?? "MoMo"} · ${wd.accountNumber}`,
+                    ``,
+                    `Please check your account. Thank you for sharing ZURIA! 💪`,
+                    `_— ZURIA_`,
+                  ].join("\n")
+                : [
+                    `✅ *Withdrawal processing, ${firstName}!*`,
+                    ``,
+                    `*GHS ${wd.amount.toFixed(2)}* is on its way to:`,
+                    `${wd.network ?? "MoMo"} · ${wd.accountNumber}`,
+                    ``,
+                    `You'll get a confirmation when it lands. Usually within minutes. 😊`,
+                    `_— ZURIA_`,
+                  ].join("\n");
+            sendText(`whatsapp:${wd.phoneNumber}`, msg).catch(() => {});
+          }
+
+          return NextResponse.json({ ok: true, status: tStatus === "success" ? "approved" : "processing" });
+        }
+      }
+    } catch (err) {
+      console.error("[admin/withdrawals] Paystack auto-transfer error:", err);
+      // Fall through to manual approval below
+    }
+  }
+
+  // ── Manual approval fallback ──────────────────────────────────────────────
+  await wdRef.update({ status: "approved", processedAt: now, note: note ?? "Manual transfer completed" });
 
   if (wd.phoneNumber) {
     sendText(`whatsapp:${wd.phoneNumber}`, [

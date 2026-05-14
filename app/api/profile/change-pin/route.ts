@@ -1,6 +1,16 @@
+import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+
+const PinSchema = z.object({
+  currentPin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+  newPin:     z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+}).refine((d) => d.currentPin !== d.newPin, {
+  message: "New PIN must be different from current PIN",
+  path: ["newPin"],
+});
 
 export async function POST(req: Request) {
   const decoded = await verifyIdToken(req.headers.get("Authorization"));
@@ -8,17 +18,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { currentPin?: string; newPin?: string };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { currentPin, newPin } = body;
-  if (!currentPin || !/^\d{4}$/.test(currentPin) || !newPin || !/^\d{4}$/.test(newPin)) {
-    return NextResponse.json({ error: "Both PINs must be exactly 4 digits" }, { status: 400 });
+  const parsed = PinSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { status: 422 }
+    );
   }
+
+  const { currentPin, newPin } = parsed.data;
 
   const db = getAdminDb();
   const snap = await db.collection(collections.users).doc(decoded.uid).get();
@@ -27,7 +42,11 @@ export async function POST(req: Request) {
   }
 
   const stored = snap.data()?.whatsappPin as string | undefined;
-  if (!stored || stored !== currentPin) {
+  // Use timing-safe comparison to prevent timing-oracle attacks
+  const pinMatch = !!stored &&
+    stored.length === currentPin.length &&
+    timingSafeEqual(Buffer.from(stored, "utf8"), Buffer.from(currentPin, "utf8"));
+  if (!pinMatch) {
     return NextResponse.json({ error: "Current PIN is incorrect" }, { status: 403 });
   }
 
