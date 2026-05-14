@@ -16,7 +16,7 @@ const PROTECTED_PREFIXES = [
 ];
 
 // Routes that should redirect to dashboard if already authenticated
-const AUTH_PREFIXES = ["/login", "/verify"];
+const AUTH_PREFIXES = ["/login", "/verify", "/signup"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

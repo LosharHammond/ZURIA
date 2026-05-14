@@ -37,8 +37,15 @@ export default function PaymentCallbackPage() {
       return;
     }
 
-    // Wait for Firebase user before verifying
-    if (!firebaseUser) return;
+    // Wait for Firebase user before verifying (with a 10-second timeout in
+    // case the auth session has expired so the page doesn't hang forever).
+    if (!firebaseUser) {
+      const timer = setTimeout(() => {
+        setState("error");
+        setErrMsg("Your session has expired. Please sign in and check your subscription status.");
+      }, 10_000);
+      return () => clearTimeout(timer);
+    }
 
     (async () => {
       try {
@@ -49,8 +56,8 @@ export default function PaymentCallbackPage() {
         const data = await res.json();
 
         if (data.ok && data.status === "success") {
-          setPlan(data.plan   as SubscriptionPlan);
-          setAnnual(data.annual as boolean);
+          setPlan((data.plan ?? null) as SubscriptionPlan | null);
+          setAnnual(Boolean(data.annual));
           setState("success");
           // Redirect to subscription page after 4s
           setTimeout(() => router.push("/subscription"), 4000);
@@ -82,8 +89,8 @@ export default function PaymentCallbackPage() {
   }
 
   // ── Success ────────────────────────────────────────────────────────────────
-  if (state === "success" && plan) {
-    const tier = SUBSCRIPTION_TIERS[plan];
+  if (state === "success") {
+    const tier = plan ? SUBSCRIPTION_TIERS[plan] : null;
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <GlassCard className="mx-auto max-w-sm text-center">
@@ -94,9 +101,13 @@ export default function PaymentCallbackPage() {
           </div>
           <h1 className="text-2xl font-black text-emerald-400">Payment successful!</h1>
           <p className="mt-2 text-sm text-muted-foreground leading-6">
-            <strong className="text-foreground">{tier.brand}</strong> is now active on your account
-            {annual ? " for one year" : " for 30 days"}.
-            You can record unlimited transactions via WhatsApp, Telegram, or the web.
+            {tier ? (
+              <><strong className="text-foreground">{tier.brand}</strong> is now active on your account
+              {annual ? " for one year" : " for 30 days"}.
+              You can record unlimited transactions via WhatsApp, Telegram, or the web.</>
+            ) : (
+              <>Your subscription is now active. You can record unlimited transactions via WhatsApp, Telegram, or the web.</>
+            )}
           </p>
           <p className="mt-4 text-xs text-muted-foreground">
             Redirecting you to your subscription page…

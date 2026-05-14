@@ -21,7 +21,7 @@ const APP_ROUTES = [
   "/notifications", "/profile", "/admin", "/welcome",
   "/subscription", "/referrals",
 ];
-const AUTH_ROUTES = ["/login", "/verify"];
+const AUTH_ROUTES = ["/login", "/verify", "/signup"];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | undefined>();

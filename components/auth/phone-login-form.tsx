@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithCustomToken } from "firebase/auth";
+import { signInAnonymously, signInWithCustomToken } from "firebase/auth";
 import { KeyRound, MessageCircle, Phone, ShieldCheck, UserPlus } from "lucide-react";
 import { auth, firebaseReady } from "@/lib/firebase/config";
 import { Button } from "@/components/ui/button";
@@ -66,9 +66,12 @@ export function PhoneLoginForm() {
       }
 
       if (data.isNewUser) {
-        // No account yet — send them to onboarding
+        // No account yet — sign in anonymously so the auth-provider can set
+        // the session cookie, then its routing effect redirects to /onboarding
+        // automatically (because onboardingComplete will be undefined).
         sessionStorage.setItem("zuria_phone", norm);
-        router.push("/onboarding");
+        await signInAnonymously(auth!);
+        // auth-provider's onAuthStateChanged handles redirect to /onboarding
         return;
       }
 
@@ -141,6 +144,7 @@ export function PhoneLoginForm() {
               onChange={(e) => setPhone(e.target.value)}
               inputMode="tel"
               placeholder="+233241234567 or 0241234567"
+              autoComplete="tel"
               autoFocus
             />
           </div>
@@ -160,7 +164,7 @@ export function PhoneLoginForm() {
             type="button"
             variant="outline"
             className="w-full border-primary/30 text-primary hover:bg-primary/10"
-            onClick={() => router.push("/onboarding")}
+            onClick={() => router.push("/signup")}
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Create Account
@@ -184,6 +188,7 @@ export function PhoneLoginForm() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="••••"
+              autoComplete="one-time-code"
               autoFocus
               className="tracking-[0.5em] text-center text-xl"
             />

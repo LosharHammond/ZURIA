@@ -9,13 +9,10 @@ import {
   limit,
   query,
   runTransaction,
-  setDoc,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
-import { createId } from "@/lib/utils";
 import type { Referral } from "@/types/domain";
 
 export const REFERRAL_REWARD = 0.5;           // GHS per successful invite

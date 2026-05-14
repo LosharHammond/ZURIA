@@ -146,7 +146,7 @@ export function OnboardingForm() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
-                autoComplete="new-password"
+                autoComplete="one-time-code"
                 className="text-center text-xl tracking-[0.4em]"
                 {...form.register("whatsappPin")}
               />
@@ -157,7 +157,7 @@ export function OnboardingForm() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
-                autoComplete="new-password"
+                autoComplete="one-time-code"
                 className="text-center text-xl tracking-[0.4em]"
                 {...form.register("whatsappPinConfirm")}
               />

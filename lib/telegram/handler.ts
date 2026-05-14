@@ -266,7 +266,7 @@ export async function handleTelegram(update: Record<string, unknown>): Promise<v
   const reply = (text: string) => sendTelegram(chatId, text);
 
   // ── Step 1: resolve Telegram → ZURIA identity ─────────────────────────────
-  let link = await getTgLink(chatId);
+  const link = await getTgLink(chatId);
 
   // Brand-new Telegram user
   if (!link) {

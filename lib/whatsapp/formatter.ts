@@ -289,18 +289,21 @@ export function fmtHelp(
     `📞 Message us directly: ${SUPPORT_WA}`,
     "We reply Monday – Saturday, 8am – 8pm 🇬🇭",
     "",
-    "━━━━━━━━━━━━━━━━━━━",
-    "📱 *WhatsApp Sandbox reminder*",
-    "━━━━━━━━━━━━━━━━━━━",
-    "",
-    "⚠️ WhatsApp Business API is temporarily down.",
-    "You are using the *sandbox* (testing mode).",
-    "Sandbox sessions expire every *72 hours*.",
-    "To rejoin, send exactly: *join contrast-pull*",
-    "",
-    "For a better experience with *no expiry*, use Telegram:",
-    "👉 https://t.me/ZuriaBot",
-    "",
+    // Sandbox notice — shown ONLY in sandbox/dev mode, never in production.
+    // Set WHATSAPP_SANDBOX=true in .env.local to enable during testing.
+    ...(process.env.WHATSAPP_SANDBOX === "true" ? [
+      "━━━━━━━━━━━━━━━━━━━",
+      "📱 *WhatsApp Sandbox reminder*",
+      "━━━━━━━━━━━━━━━━━━━",
+      "",
+      "You are using the *Twilio sandbox* (testing mode).",
+      "Sandbox sessions expire every *72 hours*.",
+      "To rejoin, send exactly: *join contrast-pull*",
+      "",
+      "For a better experience with *no expiry*, use Telegram:",
+      "👉 https://t.me/ZuriaBot",
+      "",
+    ] : []),
     "_Just type naturally — I will understand! 🙂_",
     "",
     sig(businessName),
@@ -857,7 +860,10 @@ export function fmtWeeklyReport(
       header,
       `_For: ${businessName}_`,
       "",
-      "No transactions this week yet.",
+      `No transactions recorded this week yet, ${firstName}.`,
+      "",
+      "Record your first entry today and ZURIA will track the whole week for you.",
+      "_Just send something like \"Sold rice 120\" and I'll do the rest! 💪_",
       "",
       sig(businessName),
     ].join("\n");
@@ -997,10 +1003,10 @@ export function fmtWeeklyReport(
     `📝 Total entries this week: *${txCount}*`,
     "",
     tradingProfit > 0
-      ? `_Great week, ${firstName}! You are profitable. Keep it up! 💪_`
+      ? `_Great week, ${firstName}! You are making profit — keep that energy going! 💪_`
       : tradingProfit < 0
-      ? `_Costs are higher than revenue this week, ${firstName}. Let's make next week better! 💙_`
-      : `_You broke even this week, ${firstName}. Push for more ${voice.revenueSection.toLowerCase()} next week!_`,
+      ? `_This week's costs were higher than your sales, ${firstName}. Don't be discouraged — review your spending and come back stronger next week! 💙_`
+      : `_You broke even this week, ${firstName}. That means your money is working — now let's push a little harder and get into profit next week! 🚀_`,
     "",
     referralTip,
     "",
@@ -1040,7 +1046,10 @@ export function fmtMonthlyReport(
       header,
       `_For: ${businessName}_`,
       "",
-      "No transactions recorded this month yet.",
+      `No transactions recorded for ${monthLabel} yet, ${firstName}.`,
+      "",
+      "Start recording today and ZURIA will build your full monthly report automatically.",
+      '_Just send something like "Sold rice 120" or "Paid ECG 80" — I\'ll handle the rest! 😊_',
       "",
       sig(businessName),
     ].join("\n");
@@ -1052,6 +1061,16 @@ export function fmtMonthlyReport(
   const operatingCosts = sum(monthly.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
   const tradingProfit  = salesRevenue - operatingCosts;
   const netCash        = moneyIn - moneyOut;
+
+  // Previous month data for comparison
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonth = prevMonthDate.toISOString().slice(0, 7);
+  const prevMonthly = allTransactions.filter((t) => t.createdAt.startsWith(prevMonth));
+  const prevRevenue = sum(prevMonthly.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const prevCosts   = sum(prevMonthly.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
+  const prevProfit  = prevRevenue - prevCosts;
+  const prevMargin  = prevRevenue > 0 ? Math.round((prevProfit / prevRevenue) * 100) : null;
+  const thisMargin  = salesRevenue > 0 ? Math.round((tradingProfit / salesRevenue) * 100) : null;
 
   // Active trading days & average daily revenue
   const activeDaysSet = new Set(monthly.map((t) => t.createdAt.slice(0, 10)));
@@ -1098,11 +1117,21 @@ export function fmtMonthlyReport(
     "💼 *Income Statement*",
     "━━━━━━━━━━━━━━━━━━━",
     `${voice.revenueIcon} *${voice.revenueSection}:*     ${GHS(salesRevenue)}`,
+    prevRevenue > 0 && salesRevenue > 0
+      ? (salesRevenue >= prevRevenue
+          ? `   📈 _Up ${Math.round(((salesRevenue - prevRevenue) / prevRevenue) * 100)}% vs last month (${GHS(prevRevenue)})_`
+          : `   📉 _Down ${Math.round(((prevRevenue - salesRevenue) / prevRevenue) * 100)}% vs last month (${GHS(prevRevenue)})_`)
+      : null,
     operatingCosts > 0 ? `🔴 *Operating costs:*         ${GHS(operatingCosts)}` : null,
     `─────────────────`,
     tradingProfit > 0 ? `✅ *${voice.profitLabel}: +${GHS(tradingProfit)}*`
       : tradingProfit < 0 ? `📉 *Loss: -${GHS(Math.abs(tradingProfit))}*`
       : `🔄 *Break even*`,
+    thisMargin !== null
+      ? (prevMargin !== null
+          ? `📊 _Profit margin: ${thisMargin}% ${thisMargin >= prevMargin ? `▲` : `▼`} (was ${prevMargin}% last month)_`
+          : `📊 _Profit margin: ${thisMargin}%_`)
+      : null,
   ].filter(Boolean) as string[];
 
   if (moneyIn !== salesRevenue || moneyOut !== operatingCosts) {
@@ -1160,20 +1189,42 @@ export function fmtMonthlyReport(
     "━━━━━━━━━━━━━━━━━━━"
   );
 
-  // AI tip — context-aware based on profitability
+  // AI advisor tip — context-aware based on profitability
   if (tradingProfit < 0) {
     const worstCostEntry = Object.entries(costBreakdown).sort(([,a],[,b]) => b - a)[0];
     lines.push(
+      "",
+      "━━━━━━━━━━━━━━━━━━━",
+      "🧠 *Your Business Advisor Says*",
+      "━━━━━━━━━━━━━━━━━━━",
       worstCostEntry
-        ? `💡 _AI Tip: Your biggest cost is "${worstCostEntry[0]}" (${GHS(worstCostEntry[1])}). Look for ways to reduce it — it could flip your profitability._`
-        : `💡 _AI Tip: Costs are higher than revenue this month. Review each expense line and cut what isn't essential._`
+        ? `💡 _${firstName}, your biggest cost this month is "${worstCostEntry[0]}" at ${GHS(worstCostEntry[1])}. That's eating into your earnings. Try to reduce it next month — even a small cut there will make a big difference to your pocket._`
+        : `💡 _${firstName}, your costs have overtaken your sales this month. Sit down and go through every expense — cut anything that isn't making you money. Every cedi counts!_`
     );
   } else if (salesRevenue > 0 && tradingProfit / salesRevenue < 0.10) {
-    lines.push(`💡 _AI Tip: Your profit margin is under 10% — that's tight. Try raising prices by 5–10% or negotiating better supplier rates._`);
+    lines.push(
+      "",
+      "━━━━━━━━━━━━━━━━━━━",
+      "🧠 *Your Business Advisor Says*",
+      "━━━━━━━━━━━━━━━━━━━",
+      `💡 _${firstName}, a ${Math.round((tradingProfit/salesRevenue)*100)}% margin means you are working hard but keeping little. Consider raising your prices by 5–10% or renegotiating with your suppliers. Small price changes add up fast._`
+    );
   } else if (salesRevenue > 0 && tradingProfit / salesRevenue < 0.25) {
-    lines.push(`💡 _AI Tip: ${Math.round((tradingProfit/salesRevenue)*100)}% profit margin. Healthy, but room to grow — push your top product and chase unpaid debts._`);
+    lines.push(
+      "",
+      "━━━━━━━━━━━━━━━━━━━",
+      "🧠 *Your Business Advisor Says*",
+      "━━━━━━━━━━━━━━━━━━━",
+      `💡 _Good going, ${firstName}! A ${Math.round((tradingProfit/salesRevenue)*100)}% margin is decent — but there's room to grow. Push your best-selling product harder and follow up on any unpaid debts. Those two actions alone can move your margin up._`
+    );
   } else if (tradingProfit > 0) {
-    lines.push(`💡 _AI Tip: Strong ${Math.round((tradingProfit/salesRevenue)*100)}% margin! Consider reinvesting ${GHS(tradingProfit * 0.2)} back into stock this month to keep momentum._`);
+    lines.push(
+      "",
+      "━━━━━━━━━━━━━━━━━━━",
+      "🧠 *Your Business Advisor Says*",
+      "━━━━━━━━━━━━━━━━━━━",
+      `💡 _Excellent work, ${firstName}! A ${Math.round((tradingProfit/salesRevenue)*100)}% profit margin is strong. Consider putting ${GHS(tradingProfit * 0.2)} back into restocking your top items — businesses that reinvest consistently are the ones that grow. You're doing this right! 🇬🇭_`
+    );
   }
 
   // ── Overdue debt summary ─────────────────────────────────────────────────
@@ -1329,8 +1380,8 @@ export function fmtFullDashboard(
     `📝 Total transactions: ${allTransactions.length}`,
     "",
     "━━━━━━━━━━━━━━━━━━━",
-    `_You are a valued ${plan === "enterprise" ? "Enterprise" : "Pro"} member, ${firstName}! 💙_`,
-    `_Need a consultation? ${SUPPORT_WA}_`,
+    `_${firstName}, every number in this report represents hard work you put into your business. ZURIA is here to make sure that work pays off. Keep building! 💙_`,
+    `_Questions or need advice? ${SUPPORT_WA}_`,
     "",
     sig(businessName),
   ];

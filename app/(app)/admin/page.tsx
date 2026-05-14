@@ -57,6 +57,8 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Track which withdrawal is currently being processed to prevent double-clicks
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const adminPhone = process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
   const myPhone = firebaseUser?.phoneNumber ?? user?.phoneNumber ?? "";
@@ -67,13 +69,26 @@ export default function AdminPage() {
   }
 
   async function processWithdrawal(id: string, action: "approve" | "reject") {
-    const token = await getToken();
-    await fetch(`/api/admin/withdrawals/${id}`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    await load();
+    if (processingId) return; // Already processing another
+    setProcessingId(id);
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/admin/withdrawals/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to ${action} withdrawal`);
+        return;
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to ${action} withdrawal`);
+    } finally {
+      setProcessingId(null);
+    }
   }
 
   async function load() {
@@ -188,10 +203,24 @@ export default function AdminPage() {
                     </p>
                   </div>
                   <div className="flex gap-2 ml-3">
-                    <Button size="sm" onClick={() => processWithdrawal(w.id, "approve")} className="gap-1 bg-green-500/20 text-green-400 hover:bg-green-500/30">
-                      <Check className="h-3 w-3" /> Pay
+                    <Button
+                      size="sm"
+                      onClick={() => processWithdrawal(w.id, "approve")}
+                      disabled={!!processingId}
+                      className="gap-1 bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                    >
+                      {processingId === w.id
+                        ? <RefreshCw className="h-3 w-3 animate-spin" />
+                        : <Check className="h-3 w-3" />}
+                      Pay
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => processWithdrawal(w.id, "reject")} className="gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => processWithdrawal(w.id, "reject")}
+                      disabled={!!processingId}
+                      className="gap-1"
+                    >
                       <X className="h-3 w-3" /> Reject
                     </Button>
                   </div>

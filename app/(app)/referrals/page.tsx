@@ -527,7 +527,7 @@ export default function ReferralsPage() {
           <>
             <div className="flex gap-2">
               <Input value={referralLink} readOnly className="text-xs" />
-              <Button variant="outline" size="sm" onClick={copyLink} className="shrink-0">
+              <Button variant="outline" size="sm" onClick={copyLink} className="shrink-0" aria-label="Copy referral link">
                 {copied ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>

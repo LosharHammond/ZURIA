@@ -227,7 +227,7 @@ export function generateNotifications(params: {
   const lowStock = params.inventory.filter((item) => item.quantity != null && item.quantity <= item.lowStockThreshold);
 
   if (todaySalesCount === 0) {
-    notifications.push(makeNote(params.businessId, "sales_nudge", "Nothing recorded yet today", "Write what happened in your shop today — it only takes a few seconds.", "info", now));
+    notifications.push(makeNote(params.businessId, "sales_nudge", "Nothing recorded yet today", "Write what happened in your shop today — even one entry helps ZURIA track your business better. It only takes a few seconds! 😊", "info", now));
   }
 
   if (openDebts.length) {
@@ -253,6 +253,10 @@ export function generateNotifications(params: {
     const names = lowStock.slice(0, 2).map((i) => i.productName).filter(Boolean).join(", ");
     notifications.push(makeNote(params.businessId, "low_stock", "Some goods are running low", `${names}${lowStock.length > 2 ? ` and ${lowStock.length - 2} more` : ""} — time to restock before you run out.`, "warning", now));
   }
+
+  // Sort: warnings first, then info — so the most urgent items surface at the top
+  const severityOrder: Record<SmartNotification["severity"], number> = { warning: 0, info: 1, success: 2 };
+  notifications.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
 
   return notifications;
 }

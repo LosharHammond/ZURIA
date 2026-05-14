@@ -20,6 +20,7 @@ import type { WithdrawalMethod, WithdrawalNetwork, WithdrawalRequest } from "@/t
  * Use POST /api/referral/withdraw with a Firebase ID token instead.
  * The referrals page already calls the API endpoint directly.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function submitWithdrawal(_input: {
   userId: string;
   ownerName: string;

@@ -169,6 +169,7 @@ export default function ProfilePage() {
               inputMode="numeric"
               maxLength={4}
               placeholder="••••"
+              autoComplete="current-password"
               className="text-center text-xl tracking-[0.4em]"
               {...pinForm.register("currentPin")}
             />
@@ -180,6 +181,7 @@ export default function ProfilePage() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
+                autoComplete="one-time-code"
                 className="text-center text-xl tracking-[0.4em]"
                 {...pinForm.register("newPin")}
               />
@@ -190,6 +192,7 @@ export default function ProfilePage() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
+                autoComplete="one-time-code"
                 className="text-center text-xl tracking-[0.4em]"
                 {...pinForm.register("confirmPin")}
               />
