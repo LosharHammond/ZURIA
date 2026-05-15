@@ -55,6 +55,15 @@ async function hasValidSession(cookieVal: string): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // ── Telegram webhook bypass ────────────────────────────────────────────────
+  // Telegram's servers have no session cookie and must not be redirected or
+  // blocked by any auth gate. The route itself performs its own secret-token
+  // verification (X-Telegram-Bot-Api-Secret-Token header), so middleware-level
+  // auth is redundant AND harmful here.
+  if (pathname.startsWith("/api/telegram/")) {
+    return NextResponse.next();
+  }
+
   const cookieVal = req.cookies.get("zuria_auth")?.value ?? "";
   const isAuthenticated = await hasValidSession(cookieVal);
 

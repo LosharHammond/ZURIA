@@ -3,6 +3,9 @@
   "regions": ["iad1"],
 
   "functions": {
+    "app/api/telegram/webhook/route.ts": {
+      "maxDuration": 30
+    },
     "app/api/whatsapp/webhook/route.ts": {
       "maxDuration": 30
     },

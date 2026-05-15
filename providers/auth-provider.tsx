@@ -23,6 +23,29 @@ const APP_ROUTES = [
 ];
 const AUTH_ROUTES = ["/login", "/verify", "/signup"];
 
+// ── Retry helper ──────────────────────────────────────────────────────────────
+// Re-attempts a failing async operation with linear back-off.
+// Used for profile fetch (Firestore cold-start latency) and session cookie.
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  attempts = 3,
+  baseDelayMs = 600,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        // Linear back-off: 600 ms, 1 200 ms, …
+        await new Promise<void>((r) => setTimeout(r, baseDelayMs * (i + 1)));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | undefined>();
   const [initializing, setInitializing] = useState(true);
@@ -50,9 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUserResult) => {
       // Reset initializing on every auth-state change so the routing effect
       // waits for the profile fetch before making redirect decisions.
-      // Without this reset, the effect fires immediately after setFirebaseUser
-      // with onboardingCompleteRef.current still undefined — causing returning
-      // users with a valid profile to be incorrectly sent to /onboarding.
       setInitializing(true);
       setFirebaseUser(firebaseUserResult ?? undefined);
 
@@ -66,47 +86,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Ask the server to mint a signed HttpOnly session cookie for middleware.
-      // Data access still relies on Firebase tokens/rules; this only protects
-      // page-level redirects from client-side cookie spoofing.
-      firebaseUserResult
-        .getIdToken()
-        .then((token) =>
-          fetch("/api/auth/session", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        )
-        .catch(() => {});
+      // ── CRITICAL: run session cookie creation and profile fetch in PARALLEL ──
+      //
+      // Previously the session cookie was fire-and-forget, meaning
+      // setInitializing(false) could fire BEFORE the cookie was written.
+      // The routing effect would then navigate to a protected route while
+      // middleware still saw no cookie and redirected the user to /login.
+      //
+      // Now both operations are awaited together via Promise.allSettled so
+      // the session cookie is GUARANTEED to be present before the routing
+      // effect makes any navigation decision.
+      const [sessionResult, profileResult] = await Promise.allSettled([
+        // ── Session cookie ────────────────────────────────────────────
+        withRetry(() =>
+          firebaseUserResult
+            .getIdToken()
+            .then((token) =>
+              fetch("/api/auth/session", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              })
+            )
+        ),
+        // ── User profile ──────────────────────────────────────────────
+        withRetry(() => getAppUser(firebaseUserResult.uid)),
+      ]);
 
-      // User is authenticated — load profile before enabling routing decisions.
-      // Only the user profile is needed to make routing decisions (onboardingComplete).
-      // Business data is fetched in the background so routing is unblocked sooner.
-      let profile;
-      try {
-        profile = await getAppUser(firebaseUserResult.uid);
-        setUser(profile);
-        onboardingCompleteRef.current = profile?.onboardingComplete;
-
-        // Fire business fetch in background — routing doesn't depend on it.
-        // UI will show business name/data once this promise settles (~200 ms later).
-        if (profile?.businessId) {
-          getBusiness(profile.businessId)
-            .then((biz) => { if (biz) setBusiness(biz); })
-            .catch(() => {}); // getBusiness already logs internally
-        }
-      } catch (err) {
-        // Profile fetch failed (network / Firestore rules). Keep
-        // onboardingCompleteRef.current as undefined so we don't accidentally
-        // redirect a returning user to onboarding — treat as "unknown" and
-        // let them stay where they are.
-        console.error("[auth] failed to load profile:", err);
-      } finally {
-        // Release the initialization gate as soon as the user profile resolves.
-        // Business data settling in the background won't block the app shell.
-        setInitializing(false);
-        setLoading(false);
+      if (sessionResult.status === "rejected") {
+        console.error("[auth] session cookie creation failed:", sessionResult.reason);
+        // Non-fatal — user may still be functional; next navigation will retry.
       }
+
+      if (profileResult.status === "fulfilled") {
+        const profile = profileResult.value;
+        if (profile) {
+          setUser(profile);
+          onboardingCompleteRef.current = profile.onboardingComplete;
+
+          // Fire business fetch in background — routing doesn't depend on it.
+          if (profile.businessId) {
+            getBusiness(profile.businessId)
+              .then((biz) => { if (biz) setBusiness(biz); })
+              .catch(() => {});
+          }
+        } else {
+          // Firestore document exists but returned null/undefined — treat as
+          // incomplete onboarding so we route the user to finish setup.
+          onboardingCompleteRef.current = false;
+        }
+      } else {
+        console.error("[auth] failed to load profile:", profileResult.reason);
+        // Fallback: if the onboarding form already pre-populated the Zustand
+        // store (which it does synchronously from the API response), use that
+        // cached value so we don't incorrectly redirect the user to /onboarding.
+        const cachedUser = useAppStore.getState().user;
+        if (cachedUser) {
+          onboardingCompleteRef.current = cachedUser.onboardingComplete;
+        }
+        // If there is no cached user either, leave onboardingCompleteRef as
+        // undefined — the routing effect treats undefined as "unknown" and
+        // does NOT redirect, avoiding an infinite onboarding loop.
+      }
+
+      // Release the initialization gate AFTER both operations have settled.
+      setInitializing(false);
+      setLoading(false);
     });
 
     return unsubscribe;

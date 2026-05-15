@@ -255,17 +255,64 @@ function summariseDebts(debts: Debt[]) {
 // ── Main entry point ─────────────────────────────────────────────────────────
 
 export async function handleTelegram(update: Record<string, unknown>): Promise<void> {
-  const message = update.message as Record<string, unknown> | undefined;
-  if (!message) return; // ignore non-message updates (edits, reactions, etc.)
+  // Support both `message` and `edited_message` update types so users who
+  // edit their first phone-number message still get the flow to continue.
+  const message = (
+    (update.message ?? update.edited_message) as Record<string, unknown> | undefined
+  );
+
+  if (!message) {
+    // Non-message update (callback query, inline, channel post, etc.) — log and ignore.
+    const updateType = Object.keys(update).filter((k) => k !== "update_id")[0] ?? "unknown";
+    console.info("[telegram/handler] ignoring non-message update type:", updateType);
+    return;
+  }
 
   const chatId    = String((message.chat as Record<string, unknown>)?.id ?? "");
   const rawText   = (message.text as string | undefined)?.trim() ?? "";
   const firstName = ((message.from as Record<string, unknown>)?.first_name as string | undefined) ?? "there";
 
-  if (!chatId || !rawText) return;
+  if (!chatId) return; // no chat to reply to — nothing we can do
 
   const reply = (text: string) => sendTelegram(chatId, text);
 
+  // ── Non-text content (sticker, photo, voice note, contact, etc.) ──────────
+  // Give users friendly feedback instead of silently ignoring them.
+  if (!rawText) {
+    try {
+      await reply(
+        "📝 *Please send a text message.*\n\n" +
+        "I can only read text right now — just type your message and I'll handle it! 😊"
+      );
+    } catch {
+      // best-effort — don't crash on send failure
+    }
+    return;
+  }
+
+  // ── Top-level error boundary ───────────────────────────────────────────────
+  // Any unexpected Firestore error, env-var issue, or unhandled throw is
+  // caught here. The user gets a system-error reply rather than silence.
+  try {
+    await _handleTelegramInner(chatId, rawText, firstName, reply);
+  } catch (err) {
+    console.error("[telegram/handler] unhandled error:", err);
+    try {
+      await reply(fmtSystemError());
+    } catch {
+      // best-effort
+    }
+  }
+}
+
+// ── Inner handler (wrapped by the error boundary above) ───────────────────────
+
+async function _handleTelegramInner(
+  chatId: string,
+  rawText: string,
+  firstName: string,
+  reply: (text: string) => Promise<void>
+): Promise<void> {
   // ── Step 1: resolve Telegram → ZURIA identity ─────────────────────────────
   const link = await getTgLink(chatId);
 

@@ -421,8 +421,8 @@ function HeroSection() {
             </div>
 
             <h1
-              className="mt-6 text-5xl font-black leading-[0.92] tracking-tight text-balance md:text-7xl animate-in fade-in slide-in-from-bottom-5 duration-[600ms] fill-mode-both"
-              style={{ animationDelay: "80ms" }}
+              className="mt-6 text-5xl font-black leading-[0.92] tracking-tight text-balance md:text-7xl animate-in fade-in slide-in-from-bottom-5 fill-mode-both"
+              style={{ animationDelay: "80ms", animationDuration: "600ms" }}
             >
               Your shop.<br />
               <span className="text-primary">Your money.</span><br />
@@ -430,8 +430,8 @@ function HeroSection() {
             </h1>
 
             <p
-              className="mt-6 max-w-lg text-lg leading-7 text-muted-foreground animate-in fade-in slide-in-from-bottom-5 duration-[600ms] fill-mode-both"
-              style={{ animationDelay: "160ms" }}
+              className="mt-6 max-w-lg text-lg leading-7 text-muted-foreground animate-in fade-in slide-in-from-bottom-5 fill-mode-both"
+              style={{ animationDelay: "160ms", animationDuration: "600ms" }}
             >
               Old merchants kept wisdom in notebooks and memory.
               ZURIA transforms that ancient rhythm into{" "}
@@ -440,8 +440,8 @@ function HeroSection() {
             </p>
 
             <div
-              className="mt-8 flex flex-wrap gap-3 animate-in fade-in slide-in-from-bottom-5 duration-[600ms] fill-mode-both"
-              style={{ animationDelay: "240ms" }}
+              className="mt-8 flex flex-wrap gap-3 animate-in fade-in slide-in-from-bottom-5 fill-mode-both"
+              style={{ animationDelay: "240ms", animationDuration: "600ms" }}
             >
               <Button asChild size="default" className="gap-2 shadow-lg shadow-primary/20">
                 <Link href="/login">
@@ -459,8 +459,8 @@ function HeroSection() {
             </div>
 
             <div
-              className="mt-8 flex flex-wrap gap-4 text-sm text-muted-foreground animate-in fade-in duration-[600ms] fill-mode-both"
-              style={{ animationDelay: "400ms" }}
+              className="mt-8 flex flex-wrap gap-4 text-sm text-muted-foreground animate-in fade-in fill-mode-both"
+              style={{ animationDelay: "400ms", animationDuration: "600ms" }}
             >
               {["No credit card needed", "Works offline", "6 local languages"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5">
@@ -491,8 +491,8 @@ function HeroSection() {
                 {whatsappConversation.map((msg, i) => (
                   <div
                     key={i}
-                    className={`flex animate-in fade-in slide-in-from-bottom-2 duration-[400ms] fill-mode-both ${msg.side === "user" ? "justify-end" : "justify-start"}`}
-                    style={{ animationDelay: `${500 + i * 180}ms` }}
+                    className={`flex animate-in fade-in slide-in-from-bottom-2 fill-mode-both ${msg.side === "user" ? "justify-end" : "justify-start"}`}
+                    style={{ animationDelay: `${500 + i * 180}ms`, animationDuration: "400ms" }}
                   >
                     <div
                       className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-5 whitespace-pre-line ${

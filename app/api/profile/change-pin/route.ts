@@ -4,6 +4,8 @@ import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { hashPin, verifyPin } from "@/lib/security/pin";
 
+export const dynamic = "force-dynamic";
+
 const PinSchema = z.object({
   currentPin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
   newPin:     z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),

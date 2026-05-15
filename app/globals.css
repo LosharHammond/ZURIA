@@ -54,6 +54,25 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(18px);
+  /* Promote to its own compositing layer upfront so the blur layer is
+     already established before the first pointer event arrives. */
+  will-change: transform;
+}
+
+/* Interactive children must sit above the backdrop-filter stacking context
+   so pointer events reach them on the very first click. */
+.glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Eliminate the 300 ms tap delay and prevent the focus-then-activate
+   two-step on all interactive elements site-wide. */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
 .surface {

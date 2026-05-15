@@ -283,7 +283,7 @@ async function creditReferrerAsync(
       referrerId,
       refereeId,
       refereePhone,
-      amountGHS:    REFERRAL_REWARD,
+      amount:       REFERRAL_REWARD,
       createdAt:    now,
     });
 

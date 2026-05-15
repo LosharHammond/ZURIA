@@ -131,12 +131,24 @@ export function OnboardingForm() {
       }
       await signInWithCustomToken(auth, data.token);
 
+      // ── CRITICAL: write the session cookie BEFORE navigating ───────────────
+      // signInWithCustomToken resolves but onAuthStateChanged fires asynchronously.
+      // If we call router.replace("/welcome") here the middleware checks for
+      // the session cookie, finds nothing, and bounces the user back to /login.
+      // Explicitly creating the cookie synchronously closes that race window.
+      const idToken = await auth.currentUser?.getIdToken();
+      if (idToken) {
+        await fetch("/api/auth/session", {
+          method:  "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+        }).catch(() => {}); // Non-fatal — auth provider will retry via withRetry
+      }
+
       // Clean up sessionStorage artifacts
       sessionStorage.removeItem("zuria_phone");
       sessionStorage.removeItem("zuria_ref");
 
       // Send WhatsApp welcome + referral credit (best-effort, non-blocking)
-      const idToken = await auth.currentUser?.getIdToken();
       if (idToken) {
         fetch("/api/welcome", {
           method:  "POST",
