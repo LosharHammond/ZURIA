@@ -82,6 +82,11 @@ export async function GET(req: Request) {
     }
 
     // ── Activate subscription ─────────────────────────────────────────────────
+    if (result.currency !== "GHS" || Math.round(result.amountGHS * 100) !== Math.round(payment.amountGHS * 100)) {
+      await paymentSnap.ref.update({ status: "failed", paystackStatus: "amount_mismatch" });
+      return NextResponse.json({ error: "Payment amount could not be verified" }, { status: 400 });
+    }
+
     const plan: SubscriptionPlan = payment.plan;
     const annual                 = payment.annual;
     const now                    = new Date();

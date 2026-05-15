@@ -14,6 +14,7 @@ import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
+import { useAppStore } from "@/stores/app-store";
 import { SUBSCRIPTION_TIERS } from "@/types/domain";
 import type { SubscriptionPlan } from "@/types/domain";
 
@@ -23,6 +24,9 @@ export default function PaymentCallbackPage() {
   const searchParams  = useSearchParams();
   const router        = useRouter();
   const { firebaseUser } = useAuth();
+  // Pull the surgical subscription updater — avoids a full auth re-cycle
+  // just to surface the newly-activated plan in the UI.
+  const updateUserSubscription = useAppStore((s) => s.updateUserSubscription);
   const ref = searchParams.get("ref");
 
   const [state, setState]   = useState<State>("verifying");
@@ -56,6 +60,16 @@ export default function PaymentCallbackPage() {
         const data = await res.json();
 
         if (data.ok && data.status === "success") {
+          // ── CRITICAL: refresh the Zustand store immediately ─────────────────
+          // Without this, the subscription page still shows the old plan after
+          // redirect because auth-provider only re-fetches on onAuthStateChanged.
+          // This surgical update reflects the new plan without a page refresh.
+          if (data.plan) {
+            updateUserSubscription(
+              data.plan as SubscriptionPlan,
+              data.expiresAt ?? null
+            );
+          }
           setPlan((data.plan ?? null) as SubscriptionPlan | null);
           setAnnual(Boolean(data.annual));
           setState("success");
@@ -71,7 +85,7 @@ export default function PaymentCallbackPage() {
         setErrMsg("Network error. Please check your subscription page.");
       }
     })();
-  }, [ref, firebaseUser, router]);
+  }, [ref, firebaseUser, router, updateUserSubscription]);
 
   // ── Verifying ──────────────────────────────────────────────────────────────
   if (state === "verifying") {

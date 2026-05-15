@@ -1,16 +1,16 @@
 import type { BusinessCategory, Debt, InventoryItem, Loan, ParsedTransaction, SubscriptionPlan, Transaction } from "@/types/domain";
-import { MONEY_IN_TYPES, MONEY_OUT_TYPES, REVENUE_TYPES, OPERATING_COST_TYPES, TRANSACTION_TYPE_LABELS } from "@/types/domain";
+import { MONEY_IN_TYPES, MONEY_OUT_TYPES, REVENUE_TYPES, OPERATING_COST_TYPES, TRANSACTION_TYPE_LABELS, SUBSCRIPTION_TIERS } from "@/types/domain";
 import { formatMoney } from "@/lib/utils";
 import { ADMIN_MOMO_NUMBER, SUPPORT_WA_LINK } from "@/lib/config";
 
-// ─── Subscription config (self-contained so formatter has no Firestore deps) ──
+// ─── Subscription config (derived from SUBSCRIPTION_TIERS — single source of truth) ─
 const ADMIN_MOMO = ADMIN_MOMO_NUMBER;
 const SUPPORT_WA = SUPPORT_WA_LINK;
 const SUB_PLANS = {
-  growth:     { label: "ZURIA Growth",     price: 20,  monthlyPrice: 200 },
-  pro:        { label: "ZURIA Pro",        price: 50,  monthlyPrice: 500 },
-  enterprise: { label: "ZURIA Enterprise", price: 100, monthlyPrice: 1000 },
-} as const;
+  growth:     { label: SUBSCRIPTION_TIERS.growth.brand,      price: SUBSCRIPTION_TIERS.growth.priceGHS,      monthlyPrice: SUBSCRIPTION_TIERS.growth.annualPriceGHS      ?? 180  },
+  pro:        { label: SUBSCRIPTION_TIERS.pro.brand,         price: SUBSCRIPTION_TIERS.pro.priceGHS,         monthlyPrice: SUBSCRIPTION_TIERS.pro.annualPriceGHS         ?? 500  },
+  enterprise: { label: SUBSCRIPTION_TIERS.enterprise.brand,  price: SUBSCRIPTION_TIERS.enterprise.priceGHS,  monthlyPrice: SUBSCRIPTION_TIERS.enterprise.annualPriceGHS  ?? 1000 },
+};
 
 const GHS = (n: number) => formatMoney(Math.abs(n));
 

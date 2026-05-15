@@ -8,3 +8,8 @@ dist
 firebase-debug.log
 firestore-debug.log
 *.tsbuildinfo
+
+# Binaries / local dev tools — never commit executables
+ngrok.exe
+ngrok
+*.exe

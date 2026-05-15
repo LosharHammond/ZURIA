@@ -186,6 +186,7 @@ export function ForgotPinForm() {
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="••••"
+              autoComplete="new-password"
               className="tracking-[0.5em] text-center text-xl"
             />
           </div>
@@ -200,6 +201,7 @@ export function ForgotPinForm() {
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="••••"
+              autoComplete="new-password"
               className="tracking-[0.5em] text-center text-xl"
             />
           </div>

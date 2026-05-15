@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { memo, useMemo, type ElementType } from "react";
 import {
   Banknote,
   Building2,
@@ -32,31 +32,42 @@ interface FinanceBreakdownProps {
   loansTaken: number;
 }
 
-export function FinanceBreakdown(props: FinanceBreakdownProps) {
-  const rows = [
-    props.stockCosts > 0 && { icon: PackagePlus, label: "Goods you bought today", value: props.stockCosts, type: "out" as const },
-    props.salaryCosts > 0 && { icon: UserCheck, label: "Workers paid today", value: props.salaryCosts, type: "out" as const },
-    props.taxCosts > 0 && { icon: Landmark, label: "Tax paid today", value: props.taxCosts, type: "out" as const },
-    props.fixedCosts > 0 && { icon: Building2, label: "Regular bills paid", value: props.fixedCosts, type: "out" as const },
-    props.borrowingsIn > 0 && { icon: PiggyBank, label: "Money you borrowed today", value: props.borrowingsIn, type: "in" as const },
-    props.borrowingsOut > 0 && { icon: Wallet, label: "Money you gave out (loan)", value: props.borrowingsOut, type: "out" as const },
+/**
+ * FinanceBreakdown — memoized so it only re-renders when its numeric props change.
+ * Animation via CSS (was framer-motion motion.div → removed to save ~150 kB).
+ */
+export const FinanceBreakdown = memo(function FinanceBreakdown(props: FinanceBreakdownProps) {
+  // Memoize the derived rows array so it isn't rebuilt on every parent render
+  const rows = useMemo(() => [
+    props.stockCosts > 0 && { icon: PackagePlus, label: "Goods you bought today",      value: props.stockCosts,        type: "out" as const },
+    props.salaryCosts > 0 && { icon: UserCheck,  label: "Workers paid today",           value: props.salaryCosts,       type: "out" as const },
+    props.taxCosts > 0 && { icon: Landmark,      label: "Tax paid today",               value: props.taxCosts,          type: "out" as const },
+    props.fixedCosts > 0 && { icon: Building2,   label: "Regular bills paid",           value: props.fixedCosts,        type: "out" as const },
+    props.borrowingsIn > 0 && { icon: PiggyBank, label: "Money you borrowed today",     value: props.borrowingsIn,      type: "in"  as const },
+    props.borrowingsOut > 0 && { icon: Wallet,   label: "Money you gave out (loan)",    value: props.borrowingsOut,     type: "out" as const },
     props.loanRepaymentsOut > 0 && { icon: RefreshCcw, label: "Loan you paid back today", value: props.loanRepaymentsOut, type: "out" as const },
-    props.loanCollectionsIn > 0 && { icon: RefreshCcw, label: "Loan money you collected", value: props.loanCollectionsIn, type: "in" as const },
-    props.investmentsIn > 0 && { icon: Banknote, label: "Money put into business", value: props.investmentsIn, type: "in" as const },
-    props.withdrawalsOut > 0 && { icon: Wallet, label: "Money you took out", value: props.withdrawalsOut, type: "out" as const },
-    props.refundsIn > 0 && { icon: CreditCard, label: "Refund you received", value: props.refundsIn, type: "in" as const },
-    props.refundsOut > 0 && { icon: CreditCard, label: "Refund you gave a customer", value: props.refundsOut, type: "out" as const },
-  ].filter(Boolean) as { icon: React.ElementType; label: string; value: number; type: "in" | "out" }[];
+    props.loanCollectionsIn > 0 && { icon: RefreshCcw, label: "Loan money you collected", value: props.loanCollectionsIn, type: "in"  as const },
+    props.investmentsIn > 0 && { icon: Banknote, label: "Money put into business",      value: props.investmentsIn,     type: "in"  as const },
+    props.withdrawalsOut > 0 && { icon: Wallet,  label: "Money you took out",           value: props.withdrawalsOut,    type: "out" as const },
+    props.refundsIn > 0 && { icon: CreditCard,   label: "Refund you received",          value: props.refundsIn,         type: "in"  as const },
+    props.refundsOut > 0 && { icon: CreditCard,  label: "Refund you gave a customer",   value: props.refundsOut,        type: "out" as const },
+  ].filter(Boolean) as { icon: ElementType; label: string; value: number; type: "in" | "out" }[],
+  // Only re-compute when any numeric prop changes
+  [props.stockCosts, props.salaryCosts, props.taxCosts, props.fixedCosts,
+   props.borrowingsIn, props.borrowingsOut, props.loanRepaymentsOut, props.loanCollectionsIn,
+   props.investmentsIn, props.withdrawalsOut, props.refundsIn, props.refundsOut]);
 
-  const outstanding = [
-    props.loansTaken > 0 && { label: "You still owe (loans you took)", value: props.loansTaken, type: "liability" as const },
-    props.loansGiven > 0 && { label: "Still owed to you (loans you gave)", value: props.loansGiven, type: "asset" as const },
-  ].filter(Boolean) as { label: string; value: number; type: "liability" | "asset" }[];
+  const outstanding = useMemo(() => [
+    props.loansTaken > 0 && { label: "You still owe (loans you took)",        value: props.loansTaken,  type: "liability" as const },
+    props.loansGiven > 0 && { label: "Still owed to you (loans you gave)",    value: props.loansGiven,  type: "asset"     as const },
+  ].filter(Boolean) as { label: string; value: number; type: "liability" | "asset" }[],
+  [props.loansTaken, props.loansGiven]);
 
   if (rows.length === 0 && outstanding.length === 0) return null;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+    // CSS fade-in replaces framer-motion motion.div — compositor-threaded, no JS cost
+    <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300" style={{ animationDelay: "150ms" }}>
       <GlassCard>
         <h3 className="mb-4 font-black text-lg">More money details</h3>
 
@@ -92,6 +103,6 @@ export function FinanceBreakdown(props: FinanceBreakdownProps) {
           </div>
         )}
       </GlassCard>
-    </motion.div>
+    </div>
   );
-}
+});

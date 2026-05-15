@@ -1,22 +1,31 @@
 /**
- * ZURIA Enterprise Transaction Parser — 1000+ Pattern Edition
+ * ZURIA Enterprise Transaction Parser — 5000+ Pattern Edition
  *
- * Understands natural speech, local Ghanaian English, Pidgin, Twi phrases,
- * typos, abbreviations, and gibberish — across all 17 transaction types.
+ * Understands natural speech, local Ghanaian English, Pidgin, and all 5 major
+ * language groups: Akan/Twi/Fante, Ga, Ewe, Hausa/Dagomba, Dagbani/Dagaare.
+ * Covers all 17 transaction types across every Ghana business sector.
  *
  * Pattern count breakdown:
- *  TYPO_MAP            : 120 entries
- *  GH_PRODUCTS         : 280 items
- *  GH_NAMES            : 340 names
- *  GH_MOMO_KEYWORDS    : 18 items
- *  GH_BANK_KEYWORDS    : 22 items
- *  GH_UTILITIES        : 20 items
- *  GH_AUTHORITY        : 28 items
- *  GH_TWI_PIDGIN       : 65 items
- *  CATEGORY_MAP        : 55 entries
- *  Vote detector add() : 490 signal checks (17 types × ~29 each)
- *  ─────────────────────────────────
- *  TOTAL               : ~1,438 patterns
+ *  TYPO_MAP            : ~430 entries  (phone keyboard errors, Ghanaian shorthand,
+ *                                       location codes, abbreviations)
+ *  GH_PRODUCTS         : ~900 items    (food, beverages, agro, building materials,
+ *                                       textiles, pharma, auto parts, electronics,
+ *                                       events/hospitality, cleaning, packaging,
+ *                                       raw materials, tools, spare parts)
+ *  GH_NAMES_LIST       : ~900 names    (Akan/Ashanti, Fante, Ga, Ewe, Dagomba,
+ *                                       Hausa, Northern Ghana, Western Christian)
+ *  GH_MOMO_KEYWORDS    : ~55 items     (MoMo platforms, USSD, QR, float)
+ *  GH_BANK_KEYWORDS    : ~80 items     (all major banks, card types, GHIPSS)
+ *  GH_UTILITIES        : ~90 items     (ECG, GWCL, data, streaming, gas, sewage)
+ *  GH_AUTHORITY        : ~130 items    (GRA taxes, DVLA, FDA, NHIS, lands,
+ *                                       courts, religious, port charges)
+ *  GH_TWI_PIDGIN       : ~600 items    (Twi, Fante, Ga, Ewe, Hausa, Dagbani,
+ *                                       Dagaare, Pidgin — full conjugations)
+ *  CATEGORY_MAP        : ~415 entries  (50+ business categories)
+ *  Vote detector add() : ~600 signals  (17 vote functions, 30-50 signals each,
+ *                                       language-specific boosts per type)
+ *  ─────────────────────────────────────────────────────────────────────
+ *  TOTAL               : ~5,200 patterns
  */
 
 import type { ParsedTransaction, PaymentMethod, TransactionType } from "@/types/domain";
@@ -104,9 +113,123 @@ const TYPO_MAP: Record<string, string> = {
   supllier: "supplier", suplier: "supplier",
   invioce: "invoice", inovice: "invoice", invoce: "invoice",
   proffit: "profit", prfit: "profit", prft: "profit",
+  // extended typos & abbreviations (+200)
+  sal: "sale", sls: "sales", incom: "income", incme: "income",
+  recie: "receive", recei: "received", rcv: "received",
+  delv: "deliver", delvrd: "delivered", dlvrd: "delivered",
+  rnt: "rent", rnted: "rented", intrst: "interest",
+  commsn: "commission", comission: "commission", commsion: "commission",
+  disct: "discount", dscnt: "discount", discnt: "discount",
+  proft: "profit", profitt: "profit",
+  expnse: "expense", opex: "expenses",
+  stckd: "stocked",
+  restr: "restock", rstck: "restock", rstock: "restock",
+  whsl: "wholesale", whlsl: "wholesale", hlsl: "wholesale",
+  slri: "salary",
+  wkr: "worker", wrkr: "worker", wrkrs: "workers",
+  apprntc: "apprentice", aprentice: "apprentice", apprntic: "apprentice",
+  brnch: "branch", brnches: "branches",
+  suppl: "supply", suppls: "supplies", supplr: "supplier",
+  invstmnt: "investment",
+  wthdrwl: "withdrawal", wthdraw: "withdraw", wdrawl: "withdrawal",
+  rfnd: "refund", refunded: "refunded",
+  trnsfer: "transfer",
+  depst: "deposit", dposit: "deposit",
+  wthdrw: "withdraw",
+  prchse: "purchase", prchsd: "purchased", purchse: "purchase",
+  pymts: "payments",
+  blnce: "balance", balnc: "balance",
+  accnt: "account", acct: "account", accts: "accounts",
+  trnsctn: "transaction", txctn: "transaction",
+  mrchnts: "merchants", mrchnt: "merchant",
+  slsmn: "salesman", slswmn: "saleswoman",
+  mgr: "manager", mngr: "manager",
+  srvce: "service", srvc: "service", srvcs: "services",
+  prduct: "product", prducts: "products", prdct: "product",
+  itm: "item", itms: "items",
+  gds: "goods", mrchandise: "merchandise",
+  clnt: "client", clnts: "clients",
+  custmr: "customer", cstmr: "customer",
+  vndor: "vendor", vndr: "vendor",
+  dstrbtr: "distributor", distrbtr: "distributor",
+  mfctr: "manufacturer", mnfctr: "manufacturer",
+  rtlr: "retailer", rtlrs: "retailers",
+  whlslr: "wholesaler", whlsaler: "wholesaler",
+  shpmnt: "shipment", shipmnt: "shipment",
+  dspatch: "dispatch", dspch: "dispatch",
+  dlvry: "delivery", dlveries: "deliveries",
+  ordr: "order", ordrs: "orders", ordrd: "ordered",
+  invntry: "inventory", invntori: "inventory",
+  cssh: "cash",
+  mny: "money", mone: "money",
+  prc: "price", prce: "price",
+  qty: "quantity", qnty: "quantity", quty: "quantity",
+  wght: "weight", wgt: "weight",
+  msure: "measure", measre: "measure",
+  pckge: "package", pckg: "package", pkge: "package",
+  cartn: "carton", crtn: "carton",
+  bttl: "bottle",
+  sachet: "sachet", sachets: "sachets",
+  pkts: "packets", pkt: "packet",
+  bx: "box", bxs: "boxes",
+  bgs: "bags", bg: "bag",
+  crte: "crate", crts: "crates",
+  duzn: "dozen", dzn: "dozen",
+  hlf: "half", qrtr: "quarter",
+  amnt: "amount", amout: "amount", ammount: "amount",
+  totl: "total", ttl: "total",
+  rcrd: "record", rcrds: "records",
+  entrd: "entered", recded: "recorded",
+  nmbr: "number", nmber: "number",
+  dtails: "details", detls: "details",
+  dscription: "description", descrptn: "description",
+  nte: "note", nts: "notes",
+  memo: "memo", mmo: "memo",
+  cmnt: "comment", cmmnts: "comments",
+  nofication: "notification", notifctn: "notification",
+  alrt: "alert", alrts: "alerts",
+  rport: "report", rprt: "report",
+  smry: "summary", smmry: "summary",
+  anlysis: "analysis", anlyss: "analysis",
+  prfts: "profits",
+  lss: "loss", lsses: "losses",
+  rvnu: "revenue", rvn: "revenue",
+  cst: "cost", csts: "costs",
+  fxd: "fixed",
+  vrbl: "variable", varbl: "variable",
+  ovrhd: "overhead", ovrhds: "overheads",
+  mrgn: "margin", mrgns: "margins",
+  brkevn: "breakeven", brkeven: "breakeven",
+  vt: "vat", nhil: "nhil", gra: "gra",
+  ecg: "ecg", gwcl: "gwcl", nedco: "nedco",
+  mtn: "mtn", tcl: "telecel", atl: "airteltigo",
+  gcb: "gcb", absa: "absa", stbic: "stanbic",
+  fido: "fidelity", ecobnk: "ecobank",
+  ssnit: "ssnit", pnsn: "pension",
+  dmsor: "dumsor", tken: "token", prtd: "prepaid",
+  susu: "susu", pgy: "pigmy", nananom: "nananom",
+  wknd: "weekend", mnthly: "monthly", wkly: "weekly", dly: "daily",
+  ytdy: "yesterday", tdy: "today", tmrw: "tomorrow",
+  mrnng: "morning", aftnoon: "afternoon", evng: "evening",
+  knm: "kantamanto", mkola: "makola", ksi: "kumasi",
+  acc: "accra", tma: "tema", tdi: "takoradi",
+  csb: "cape coast", spng: "sunyani",
+  // additional abbreviations
+  adb: "adb", nib: "nib", grp: "group", org: "organization",
+  assoc: "association", coop: "cooperative", corp: "corporation",
+  entprs: "enterprise", mkt: "market", mktng: "marketing",
+  agnt: "agent", propr: "proprietor", prtner: "partner",
+  dlvr: "deliver", dsptch: "dispatch",
+  pckng: "packing", ldng: "loading", offld: "offload",
+  clrng: "clearing", frght: "freight", cnsgnmnt: "consignment",
+  exprt: "export", imprt: "import", dmstc: "domestic",
+  intntl: "international", lcl: "local", frgn: "foreign",
+  wrkshp: "workshop", fctry: "factory", frrm: "farm",
+  acntnt: "accountant", mngmnt: "management",
+  orgnz: "organize", strge: "storage", wrhse: "warehouse",
 };
 
-// ─── 2. GHANAIAN PRODUCTS (280 items) ────────────────────────────────────────
+// ─── 2. GHANAIAN PRODUCTS (900+ items) ────────────────────────────────────────
 const GH_PRODUCTS: string[] = [
   // Beverages — alcoholic & non-alcoholic
   "malta","malt","fanta","coke","coca cola","pepsi","mirinda","sprite","7up","seven up",
@@ -202,11 +325,276 @@ const GH_PRODUCTS: string[] = [
   "calcium","piriton","cetirizine","loratadine","antacid","omeprazole",
   "condom","bandage","plaster","cotton wool","methylated spirit","antiseptic",
   "hydrogen peroxide","tiger balm","deep heat","rub","balm",
+  // Traditional & herbal medicine
+  "sobolo leaf","moringa","neem leaf","prekese","dawadawa","odum bark",
+  "African star apple","hwentia","aloe vera gel","shea butter cream",
+  "herbal mixture","herbal bitters","herbal tea","roots and herbs",
+  "local herbs","ghana herb","kasapreko bitters","adonko bitters",
+  "hausa koko herb","akuaba herb","traditional medicine",
+  // Agriculture & farming inputs
+  "fertilizer","urea","npk","compost","manure","pesticide","herbicide",
+  "fungicide","insecticide spray","weedicide","seeds","maize seed",
+  "rice seed","tomato seedling","pepper seedling","vegetable seed",
+  "cocoa seedling","rubber seedling","cashew seedling","mango seedling",
+  "pawpaw seedling","garden egg seedling","kontomire seedling",
+  "watering can","hoe","cutlass","spade","rake","shovel","wheelbarrow",
+  "tractor service","plough service","harvesting service",
+  "spraying machine","knapsack sprayer","irrigation pipe",
+  "polybag","nursery bag","planting bag","greenhouse net",
+  // Agro produce & raw materials
+  "cocoa","cocoa beans","dried cocoa","coffee beans","shea nuts",
+  "palm kernel","palm fruit","rubber","cassava chips","dried cassava",
+  "groundnut paste","groundnut oil raw","shea butter raw",
+  "dawadawa balls","fermented locust","dried pepper","dried tomatoes",
+  "dried okro","dried fish","smoked herring","smoked tuna","salted fish",
+  "koobi","momone","wele","cow skin","pig skin","goat skin",
+  // Building materials & construction
+  "cement","sand","gravel","granite","laterite","block","brick",
+  "roofing sheet","zinc roofing","aluminium roofing","iron rod","rebar",
+  "binding wire","nails","screws","bolts","nuts","hinges","padlock",
+  "door handle","door lock","window handle","burglar proof","iron gate",
+  "plank","mahogany","odum wood","teak","pine","plywood sheet",
+  "hardboard","chipboard","plyboard","ceiling board","gypsum board",
+  "tiles","floor tiles","wall tiles","bathroom tiles","ceramic tiles",
+  "granite tiles","marble","terrazzo","PVC pipe","galvanized pipe",
+  "copper pipe","pvc fitting","elbow fitting","tee fitting","reducer",
+  "angle iron","channel iron","flat iron","square iron","hollow section",
+  "paint","emulsion paint","gloss paint","primer","undercoat","varnish",
+  "turpentine","brush","roller","paint tray","masking tape","sandpaper",
+  "putty","filler","sealant","silicone sealant","waterproofing",
+  "electrical cable","single core wire","twin earth","3 phase cable",
+  "conduit pipe","junction box","switch","socket","light switch",
+  "distribution board","fuse","circuit breaker","MCB","earthing rod",
+  "PVC tape","insulation tape","connector","terminal block",
+  // Auto parts & garage
+  "engine oil","gear oil","brake fluid","power steering fluid","coolant",
+  "engine oil filter","air filter","fuel filter","cabin filter",
+  "spark plug","glow plug","timing belt","fan belt","serpentine belt",
+  "brake pad","brake disc","brake drum","clutch plate","pressure plate",
+  "clutch kit","shock absorber","coil spring","ball joint","tie rod",
+  "wheel bearing","hub bearing","CV joint","axle shaft",
+  "radiator","thermostat","water pump","alternator","starter motor",
+  "battery terminal","fuse box","relay","sensor","oxygen sensor",
+  "car battery","truck battery","motorcycle battery",
+  "tyre","tube","rim","alloy wheel","tyre sealant",
+  "windscreen","side mirror","headlamp","tail lamp","indicator",
+  "wiper blade","wiper arm","car seat cover","floor mat",
+  // Electronics & appliances
+  "television","smart tv","led tv","lcd tv","plasma tv",
+  "refrigerator","fridge","deep freezer","chest freezer","showcase fridge",
+  "washing machine","microwave","blender","juicer","toaster",
+  "electric cooker","gas cooker","gas cylinder","LPG cylinder",
+  "air conditioner","split unit","window unit","standing fan","ceiling fan",
+  "laptop","notebook computer","desktop","monitor","keyboard","mouse",
+  "printer","scanner","photocopier","projector","CCTV camera",
+  "phone case","screen protector","USB cable","OTG cable","HDMI cable",
+  "WiFi router","network switch","ethernet cable","modem",
+  "generator","inverter","solar panel","solar battery","charge controller",
+  "UPS","voltage stabilizer","extension board","multiplug",
+  // Textiles & fashion
+  "ntoma","batakari","fugu","smock","kaba","kaba and slit","slit","cloth",
+  "guinea brocade","java print","African print","hollandaise",
+  "george wrapper","lace fabric","sequin fabric","chiffon fabric",
+  "organza","taffeta","crepe","velvet fabric","denim fabric",
+  "poplin","cambric","shirting fabric","suiting fabric","wool fabric",
+  "ready-made dress","sewing","tailoring","alteration","embroidery",
+  "shoe","heels","flat shoe","sneakers","canvas","boots","sandals",
+  "handbag","clutch bag","backpack","school bag","laptop bag",
+  "wallet","men wallet","ladies purse","phone pouch","waist bag",
+  "hat","cap","head tie","wig cap","headwrap",
+  "ankara skirt","ankara blouse","ankara dress","ankara suit","kente cloth",
+  "bead necklace","bead bracelet","waist beads","earrings","ring",
+  "watch","sunglasses","belt","suspenders","tie","cufflinks",
+  // Office & school supplies
+  "ream of paper","foolscap paper","A4 paper","A3 paper","cardboard",
+  "file folder","document wallet","lever arch file","ring binder",
+  "envelope","padded envelope","courier bag","stamps",
+  "whiteboard","whiteboard marker","chalk","duster","notice board",
+  "projector screen","flip chart","flip chart pad",
+  "calculator","scientific calculator","printer ink","toner cartridge",
+  "desk organizer","in-tray","staple remover","hole punch","binding machine",
+  "laminating pouch","laminator","shredder","paper trimmer",
+  // Food service & catering
+  "disposable plate","polystyrene box","takeaway box","foil tray",
+  "nylon bag","freezer bag","zip lock bag","cling film","aluminum foil",
+  "toothpick","serviette","tissue","kitchen towel","gloves",
+  "apron","chef uniform","hair net","serving tray","chafing dish",
+  "gas burner","kerosene stove","charcoal pot","firewood",
+  "charcoal","briquette","coal","kerosene",
+  // Cleaning & janitorial
+  "mop head","mop stick","broom","dustpan","bucket","mop bucket",
+  "toilet brush","toilet cleaner","drain cleaner","mould remover",
+  "floor wax","furniture polish","glass cleaner","multi-purpose cleaner",
+  "sanitizer","hand sanitizer","disinfectant","antiseptic solution",
+  "rubber gloves","cleaning cloth","microfibre cloth","sponge pad",
+  // Hospitality & events
+  "plastic chair","banquet chair","table","trestle table","tablecloth",
+  "tent","canopy","marquee","generator hire","sound system",
+  "PA system","speaker","microphone","mixer","amplifier",
+  "backdrop","banner stand","roll-up banner","bunting","balloon",
+  "decoration","flower vase","centerpiece","cake","wedding cake",
+  "birthday cake","cupcake","pastry","meat pie","spring roll","samosa",
+  // Pharmacy & health
+  "paracetamol","ibuprofen","amoxicillin","cotrimoxazole","chloroquine","artemether",
+  "coartem","ciprofloxacin","metronidazole","doxycycline","omeprazole","flagyl",
+  "multivitamin","vitamin c","zinc tablet","oral rehydration salt","ors",
+  "wound dressing","bandage","plaster","syringe","gloves medical","face mask",
+  "sanitizer hand","thermometer","blood pressure monitor","glucometer","test strip",
+  "malaria test kit","rapid test","pregnancy test","hiv test kit",
+  // Pet & animal supplies
+  "dog food","cat food","fish feed","poultry feed","pig feed","cattle feed",
+  "animal vaccine","deworm tablet","vet drug","vet medicine","animal dip",
+  "dog chain","bird cage","rabbit cage","poultry coop","fish pond net",
+  // Hardware & tools
+  "hammer","screwdriver","pliers","wrench","spanner","tape measure",
+  "spirit level","drill","drill bit","saw","hacksaw blade","chisel",
+  "nails","screws","bolts","nuts","washers","wall plug","rawl plug",
+  "ladder","step ladder","extension cord","power strip","socket",
+  "switch","light bulb","led bulb","fluorescent tube","ceiling fan","standing fan",
+  "water pump","submersible pump","gate valve","ball valve","float valve",
+  // Packaging & packaging supplies
+  "polythene","polythen bag","pure water sachet","plastic bottle","glass bottle",
+  "jerry can","drum","barrel","sack","jute bag","hessian bag",
+  "crate","wooden crate","foam box","styrofoam","bubble wrap",
+  "tape","masking tape","brown tape","sellotape","packing tape","rope",
+  "twine","rubber band","seal","cap seal","bottle cap","label",
+  "sticker","barcode label","price tag","hang tag","swing tag",
+  // Spare parts & auto accessories
+  "spark plug","fan belt","timing belt","air filter","fuel filter",
+  "water pump car","head gasket","piston ring","valve","cam shaft",
+  "differential oil","gear oil","power steering fluid","coolant","antifreeze",
+  "wiper blade","mirror","side mirror","car seat","car mat","car cover",
+  "number plate","sticker car","car alarm","car stereo","car charger",
+  // Agro processing equipment
+  "grinder","milling machine","palm oil press","gari processing","cassava grater",
+  "corn mill","rice huller","thresher","dryer","food dryer","solar dryer",
+  "storage silo","grain store","cold storage","packing machine","sealing machine",
+  // Raw materials for production
+  "flour","plain flour","self raising flour","cornflour","baking powder","yeast",
+  "salt industrial","sugar industrial","vegetable shortening","margarine block",
+  "cocoa powder","chocolate","food coloring","food flavour","vanilla","cinnamon",
+  "preservative","emulsifier","citric acid","sodium benzoate","potassium sorbate",
 ];
 
-// ─── 3. GHANAIAN NAMES PATTERN (340+ names) ──────────────────────────────────
-const GH_NAMES_PATTERN =
-  /\b(ama|kojo|kwesi|akua|kofi|abena|kwame|adwoa|yaw|akosua|afua|afia|efua|araba|mansa|maame|serwaa|asantewaa|pomaa|pokua|fosuaa|boakyewaa|amoakowaa|awurama|aseye|elikplim|selali|yayra|dela|kafui|elorm|elom|mawutor|dodzi|worfa|efo|dzifa|seli|kwawu|enyonam|setor|ablam|abla|ablorh|senam|enam|kekeli|mawuli|sena|seve|mensah|boateng|asante|adjei|osei|amoah|owusu|frimpong|darko|antwi|tetteh|quaye|nartey|laryea|ankrah|odartey|nkrumah|appiah|acheampong|asomaning|fordjour|opoku|bonsu|oduro|sarpong|twum|kyei|ntim|manu|addai|agyei|gyamfi|amponsah|takyi|asamoah|bediako|ntiamoah|bekoe|abban|aidoo|ofori|baffour|donkor|boadu|okyere|asare|wiredu|kumi|obeng|aning|minta|barimah|baah|fofie|yeboah|agyemang|baidoo|nkansah|adomako|adusei|boampong|afram|biney|prempeh|asumadu|dadson|koomson|arhin|amissah|mensa|ampah|ankumah|quartey|armah|amarteifio|acquah|blankson|quaynor|nortey|odai|okai|tettey|tagoe|lamptey|dankwa|amedahe|amewu|nyarko|tsikata|fiagbenu|agbemava|amegashie|sedegah|agbeko|atsu|dzodzomenyo|tsatsu|amenyo|ameya|deku|fiatsi|gbadago|gblenu|koku|kudzo|kwami|norvor|tsigbey|xorse|yao|yawa|adjeiboateng|adjetey|ankuma|numo|atswei|akley|akweley|akuorkor|torkornoo|lomotey|kwei|ankah|martey|otoo|larbi|tackie|ashorkor|alhassan|ali|amadu|braimah|ibrahim|issifu|mohammed|mumuni|sulemana|yakubu|fusheini|bawumia|abdulai|abubakari|adam|ahmed|awal|bukari|dauda|fuseini|haruna|huseini|iddrisu|issah|karim|latif|malik|moro|musah|nasiru|rafiq|rashid|salifu|shaibu|tahiru|umar|wahab|yusif|zakaria|zuleiha|ramatu|fati|mariama|hawa|asana|fatima|samira|daniel|emmanuel|grace|michael|elizabeth|joseph|mary|benjamin|rebecca|samuel|christiana|abraham|patience|isaac|faith|moses|comfort|philip|blessing|peter|joyce|paul|gladys|john|charity|david|priscilla|george|agnes|andrew|esther|mark|alice|stephen|diana|thomas|vivian|james|mavis|charles|gifty|francis|eunice|eric|portia|edward|sheila|felix|mabel|henry|celestine|solomon|naomi|elijah|lydia|joshua|constance|jeremiah|dorcas|linda|cynthia|sandra|rose|felicia|juliana|cecilia|victoria|margaret|louisa|josephine|wilhelmina|beatrice|ernestina|susana|helena|georgina|matilda|irene|abigail|kweku|kwabena|kobina|kwadwo|kwasi|paa|nana|papa|nii|naa|boah|adwoa|akofa|fafa|kwawu|setor|kafui|yaw|kojo|kofi|kwame|ama|akua|abena)\b/i;
+// ─── 3. GHANAIAN NAMES (900+ names — built as RegExp to avoid single-line limit) ─
+const GH_NAMES_LIST: string[] = [
+  // Akan / Ashanti / Fante day-names & given names
+  "ama","kojo","kwesi","akua","kofi","abena","kwame","adwoa","yaw","akosua",
+  "afua","afia","efua","araba","mansa","maame","serwaa","asantewaa","pomaa","pokua",
+  "fosuaa","boakyewaa","amoakowaa","awurama","kweku","kwabena","kobina","kwadwo","kwasi","paa",
+  "nana","papa","abenaa","abeena","akuaba","akumaa","adjoa","adjoah","adwubi","afariwaa",
+  "afrakoma","akofa","fafa","pomaa","akosua","efuah",
+  // Akan surnames
+  "mensah","boateng","asante","adjei","osei","amoah","owusu","frimpong","darko","antwi",
+  "tetteh","quaye","nartey","laryea","ankrah","odartey","nkrumah","appiah","acheampong","asomaning",
+  "fordjour","opoku","bonsu","oduro","sarpong","twum","kyei","ntim","manu","addai",
+  "agyei","gyamfi","amponsah","takyi","asamoah","bediako","ntiamoah","bekoe","abban","aidoo",
+  "ofori","baffour","donkor","boadu","okyere","asare","wiredu","kumi","obeng","aning",
+  "minta","barimah","baah","fofie","yeboah","agyemang","baidoo","nkansah","adomako","adusei",
+  "boampong","afram","biney","prempeh","asumadu","dadson","koomson","arhin","amissah","mensa",
+  "ampah","ankumah","quartey","armah","amarteifio","acquah","blankson","quaynor","nortey","odai",
+  "okai","tettey","tagoe","lamptey","dankwa","amedahe","amewu","nyarko","tsikata","fiagbenu",
+  "agbemava","amegashie","sedegah","agbeko","atsu","dzodzomenyo","tsatsu","amenyo","ameya","deku",
+  "fiatsi","gbadago","gblenu","koku","kudzo","kwami","norvor","tsigbey","xorse","yao",
+  "yawa","adjeiboateng","adjetey","ankuma","numo","atswei","akley","akweley","akuorkor","torkornoo",
+  "lomotey","kwei","ankah","martey","otoo","larbi","tackie","ashorkor",
+  // Ewe / Volta Region names
+  "aseye","elikplim","selali","yayra","dela","kafui","elorm","elom","mawutor","dodzi",
+  "worfa","efo","dzifa","seli","enyonam","setor","ablam","abla","ablorh","senam",
+  "enam","kekeli","mawuli","sena","seve","atsu","norvor","tsigbey","yao","yawa",
+  "xorse","dzadzra","tsidi","tsikpe","tsitor","tsitornu","tsui","tsukudu","aveh","avornyo",
+  "awaga","awah","awere","awinador","awinkuro","awisi","awotwe","awuku","awumee","awusi",
+  "awusu","ayariga","ayeh","ayensu","ayim","ayimpah","ayine","ayisi","azu","azuma",
+  "azumah","ameya","amenyo","agbeko","agbemava","sedegah","dzifa","dodzi","kafui","dela",
+  "vovor","vovoli","gbedema","gbeku","gbene","gbewonyo","gbewura","gbedemah","gblah","gborbu",
+  "gbormittah","gborse","hlovor","hormenu","hornor","hounyonou","hukpati","nutor","nuworsu",
+  "etornam","etse","etsui","etuah","esinam","enam","elorm","elom","elikem",
+  "fiawoo","foli","folitse","foriwaa","atobrah","atorgah","atsyam","atu","atubiga",
+  "deku","fiatsi","gbadago","gblenu","koku","kudzo","kwawu","norvor",
+  // Ga / Dangme names
+  "nii","naa","tetteh","quaye","nartey","laryea","ankrah","odartey","lamptey","dankwa",
+  "amedahe","amewu","adjeiboateng","adjetey","ankuma","numo","atswei","akley","akweley",
+  "akuorkor","torkornoo","lomotey","kwei","ankah","martey","otoo","larbi","tackie","ashorkor",
+  "dodoo","dogbe","dogbey","donkor","donkoh","dordah","dotse","dotson","dottey","dua",
+  "duah","duho","duku","edudzi","edziyie","eghan","eguah","eyiah","eyison","eyo",
+  "garbah","gapah","ghanney","ghartey","ghunney","gobah","goka","goshie","hackman","hanson",
+  "hayfron","hayford","hinneh","hooper","insaidoo","insah","keelson","kobia","kotei","kotey",
+  "koti","kotoh","kpakpo","kpodo","kpotoe","kramoah","krampa","krobea","krong","krubi",
+  "laing","lampoh","laryeah","martey","odai","okai","okine","okoe","okoh","okpattah",
+  "okyere","okyerekrom","olympio","omane","otabil","otchere","otcherebea","owiredu","owuah",
+  "vanderpuye","vanderpye","vangerp","vankyei","vankyia","welbeck","wereko","wiafe",
+  // Northern Ghana / Hausa / Dagomba names
+  "alhassan","ali","amadu","braimah","ibrahim","issifu","mohammed","mumuni","sulemana","yakubu",
+  "fusheini","bawumia","abdulai","abubakari","adam","ahmed","awal","bukari","dauda","fuseini",
+  "haruna","huseini","iddrisu","issah","karim","latif","malik","moro","musah","nasiru",
+  "rafiq","rashid","salifu","shaibu","tahiru","umar","wahab","yusif","zakaria","zuleiha",
+  "ramatu","fati","mariama","hawa","asana","fatima","samira","zakari","ziem","zinga",
+  "zinkpe","zinabu","ziribilla","ziwu","zogli","zuori","zurek","zuure","zuuroh",
+  "naah","naba","nabo","nabieh","nabu","nacanabo","naale","narh","narteh","nasia",
+  "ndede","neequaye","nimo","nimpong","nipah","niwan","nketia","nketsiah","nkomo",
+  "nkum","nkumbun","noamesi","norgbey","nortor","novisi","nungua","nyan","nyamaah",
+  "nyame","nyaneba","nyanful","nyankumah","nyatefe","nyendu","nyima","nyonu",
+  "kaba","kablah","kabu","kabutey","kadama","kadjo","kadzo","kalitsi","kamaara","kamara",
+  "kambu","kamil","kankam","kanor","karikari","kassim","katanga","kesse","kessie","keteku",
+  "klomega","klomegah","klutse","klutsey","kodua","kodzo","koffi","kokroko","kokui","kokulo",
+  "kolawole","komla","kompo","konadu","konney","kontor","korankye","korankyi","korsah","korsor",
+  "kosah","kuagbenu","kuami","kudjoe","kufuor","kumah","kundor","kuntoh","kwakye","kwakyewaa",
+  "laari","laar","labi","laka","lali","lamini","lasisi","lawani","lovi",
+  "mahama","mahame","mahamadu","maiga","malm","malmah","mamle","manful","mante","martinson",
+  "masawudu","mensimah","miclah","mintah","mireku","miza","monney","mornah","mortey","mosweu",
+  "moyorbi","hamidu","hamile",
+  // Christian / Western names widely used in Ghana
+  "daniel","emmanuel","grace","michael","elizabeth","joseph","mary","benjamin","rebecca","samuel",
+  "christiana","abraham","patience","isaac","faith","moses","comfort","philip","blessing","peter",
+  "joyce","paul","gladys","john","charity","david","priscilla","george","agnes","andrew","esther",
+  "mark","alice","stephen","diana","thomas","vivian","james","mavis","charles","gifty",
+  "francis","eunice","eric","portia","edward","sheila","felix","mabel","henry","celestine",
+  "solomon","naomi","elijah","lydia","joshua","constance","jeremiah","dorcas","linda","cynthia",
+  "sandra","rose","felicia","juliana","cecilia","victoria","margaret","louisa","josephine",
+  "wilhelmina","beatrice","ernestina","susana","helena","georgina","matilda","irene","abigail",
+  // Additional Akan first names
+  "abantie","abrempong","abrokwah","abrefa","abrefi","adukwei","aduamoah","adutwum","agyaaku",
+  "agyako","agyapong","agyeman","ahenkan","ahenkorah","ahiagble","ahiati","ahorlu","ahwireng",
+  "akyeampong","akyena","akyere","akrokere","akuamoah","akuffo","akuoko","akusika","akwaah",
+  "akwei","akwetey","akwire","alabi","alatsinabu","allotey","allottery","alordzi","amable",
+  "amankwa","amankwaa","amankwah","amantey","amartey","amartifio","amengah","amenuvor","amenyedzi",
+  "amewugah","amoa","amoantwi","amoateng","amofa","ampem","ampimah","ampofo","amponsem","ampreh",
+  "amui","amuzu","anane","anani","anamoah","anang","anankwaa","anatobi","andoh","anko",
+  "ankobea","ankomah","ankomsah","annobil","annor","annorkor","annum","anocye","anokyewaa","anokye",
+  "antobam","antobea","antobil","apam","apenteng","apiah","aponkye","appenteng","apraku","aprakuwa",
+  "apreku","aryee","asabre","asafo","asagbor","asah","asampong","asapreko","aseda","asempa",
+  "aseno","aseweh","asiamah","asiedu","asimenu","asirifi","asmah","asokwa","assah","assifuah",
+  "asumah","asuming","asumpa","asuogyebi","ataa","atakora","atakpah","atampugre","atia","atiemo",
+  "atikpui","ativor","atobra","audu","baah","baba","babah","badasu","baddoo","bagbin",
+  "baidoe","baidoo","baidu","bainson","baka","banahene","bannerman","bansah","bansfo","bansa",
+  "bantama","bawa","bawah","bedwei","bempah","bempa","bempong","bentil","berchie","berko",
+  "berkoh","bervell","biritwum","blay","blebo","boahen","boahene","boamah","boaten","boatey",
+  "bobibi","bobie","bobiw","bobo","bobu","boi","boku","bola","bonsam","boohene",
+  "bosompem","bosomtwe","bosu","botah","botchway","boye","brobbey","broni","buabeng","buah",
+  "buakye","buerning","bugri","bunteu","buobuo","busumuru","butah","buyeh","chacho","commey",
+  "commie","compson","cobbah","cobbinah","cofie","daah","daako","daanyah","dabanka","dafia",
+  "dago","dakor","danquah","dankwah","danso","danyi","dapper","darkoa","darnor","dassah",
+  "datsa","dawson","debrah","dedei","dede","dedzoe","dei","denkyira","denkyiraah","denning",
+  "derban","dery","devor","dikro","dinan","djan","djangmah","djokoto","dogbleku","dormaa",
+  "dorwu","dumelo","duodo","duose","duprah","dusu","ebow","ebu","ebua","ebuah",
+  "ebo","efia","elsi","elvina","emefa","emelia","enyam","erba","essilfie","essipong",
+  "eta","fanna","fanyinbi","farkye","fianoo","fianu","fynn","gabby","gershon","gobah",
+  "gona","gunu","gyasi","gyimah","gyimaa","gyamfuah","impraim","inkoom","inkoomah","inkumsah",
+  "mabel","mahama","mante","mensimah","mintah","mireku","miza","monney","mornah",
+  "obeng","obinim","obiri","obiribea","obirimah","obofowaa","obour","obu","ocran","ofosu",
+  "ogbarmey","ohemeng","ohene","oheneba","ojukwu","okae","okrobi","okyne","opong","opuni",
+  "osafo","osam","osarfo","oseiboateng","oseitwum","otunga","owuah","paapa","pabi","padi",
+  "padmore","paintsil","panyin","parku","peprah","piesie","pinamang","pinkrah","pinkson","pobee",
+  "poh","pompey","ponka","prah","preprah","quarshie","quarshigah","quashie","quayson","quist",
+  "quistgaard","sackah","sackitey","sah","sakyibea","samlafo","sams","sarkodie","sarpomaa","savi",
+  "sefah","sekyi","selormey","semefa","senanu","senu","seyram","siaw","siiba","siisi",
+  "simpa","siripi","sisi","sitsofe","sitraka","sogah","somuah","sontah","sopie","sornu",
+  "sorvor","sowah","sowu","soyiri","sutherland","tawiah","tawia","tay","tei","tinyase",
+  "togbor","togbui","torgbor","torbi","torgah","tortoe","tuah","tuapim","tweneboah",
+  "vroom","wolanyo","wornyo","worlanyo","wudah","wudu","wulff","xoese","yanney","yannor",
+  "yendoh","yevunobi","yidana","yirenkyiboateng","yussif","yussuf","yuvinyoh",
+];
+const GH_NAMES_PATTERN = new RegExp(`\\b(${GH_NAMES_LIST.join("|")})\\b`, "i");
 
 // ─── 4. GHANAIAN PAYMENT & INSTITUTION KEYWORDS ──────────────────────────────
 const GH_MOMO_KEYWORDS: string[] = [
@@ -214,6 +602,18 @@ const GH_MOMO_KEYWORDS: string[] = [
   "vodafone cash","expresspay","hubtel","slydepay","zeepay","mpay",
   "send money","mtn momo","telecel money","airteltigo money","mobile transfer",
   "mtn mobile money","m-pesa","momo transfer","momo payment",
+  // extended (+32)
+  "momo number","momo account","momo wallet","momo agent","momo merchant",
+  "send momo","receive momo","momo received","momo sent","momo credit",
+  "momo debit","momo balance","momo cashout","momo cash out","cash out momo",
+  "mobile payment","mobile transfer","electronic payment","e-payment",
+  "pay via momo","paid via momo","momo pay","pay momo","momo top up",
+  "top up momo","load momo","momo loaded","momo float","buy float",
+  "float top up","merchant payment","pay merchant","merchant collect",
+  "qr payment","qr code pay","scan to pay","ussd payment","*170#","*171#",
+  "at cash","tigo cash","airtel money","vodafone money","mpesa ghana",
+  "wallet transfer","digital payment","fintech payment","online payment",
+  "g-money","yello star","mtn yello","telecel ghana money",
 ];
 
 const GH_BANK_KEYWORDS: string[] = [
@@ -222,6 +622,22 @@ const GH_BANK_KEYWORDS: string[] = [
   "prudential bank","nib","ghipss","interbank","national investment","bank of ghana",
   "agricultural development bank","adb","gh bank","bog","wire transfer",
   "bank transfer","bank payment","cheque","check","draft",
+  // extended (+38)
+  "republic bank","republic","first national bank","fnb","standard bank",
+  "societe generale","sg ghana","omni bank","omni","first atlantic bank",
+  "first atlantic","energy commercial bank","apex bank","rural bank",
+  "community bank","savings and loans","microfinance bank","development bank",
+  "cal bank transfer","ecobank transfer","gcb transfer","absa transfer",
+  "stanbic transfer","zenith transfer","uba transfer","access transfer",
+  "fidelity transfer","prudential transfer","nib transfer",
+  "bank debit","bank credit","direct debit","standing order","bank draft",
+  "cashier cheque","manager cheque","bankers draft","letter of credit",
+  "bank guarantee","overdraft","credit facility","term loan",
+  "mobile banking","internet banking","online banking","atm withdrawal",
+  "atm deposit","pos terminal","pos payment","card payment","visa","mastercard",
+  "debit card","credit card","chip and pin","contactless","tap to pay",
+  "bank statement","swift","iban","sort code","bank code","branch code",
+  "interbank transfer","cross-bank","inter-bank","ghipss instant pay",
 ];
 
 const GH_UTILITIES: string[] = [
@@ -230,6 +646,24 @@ const GH_UTILITIES: string[] = [
   "water bill","power bill","meter charge","meter reading","esc","units",
   "dumsor","prepaid meter","token","electricity token","water token",
   "internet bill","wifi bill","broadband","data bill","dstv","gotv","showmax",
+  // extended (+45)
+  "electricity company","power company","ghana electricity","national grid",
+  "power outage","load shedding","power cut","blackout","brownout",
+  "meter number","prepaid token","postpaid bill","electricity units",
+  "water service","pipe water","bore hole","well water","tanker water",
+  "garbage collection","refuse collection","waste management","sanitation fee",
+  "sanitation levy","environmental fee","cleaning levy","district levy",
+  "streetlight levy","community levy","development levy","infrastructure levy",
+  "mtn data","telecel data","airteltigo data","data bundle","data plan",
+  "night bundle","day bundle","student bundle","social media bundle",
+  "whatsapp bundle","facebook bundle","unlimited bundle","weekend bundle",
+  "phone bill","mobile bill","landline bill","fixed line bill",
+  "internet service","ISP bill","broadband bill","fibre bill","cable internet",
+  "netflix","youtube premium","spotify","apple music","amazon prime",
+  "gotv lite","dstv compact","dstv premium","starsat","azam tv",
+  "canal plus","openview","free-to-air","satellite tv","cable tv",
+  "gas bill","lpg bill","cooking gas","natural gas","biogas",
+  "sewage fee","drainage fee","septic tank","waste water","plumbing",
 ];
 
 const GH_AUTHORITY: string[] = [
@@ -241,40 +675,244 @@ const GH_AUTHORITY: string[] = [
   "food and drugs","fda","ministry","government","national service",
   "social security","ssnit","pension","pensions","tithe","church offering",
   "mosque offering","first fruit","building permit","business registration",
+  // extended (+52)
+  "gra payment","gra tax","tax clearance","tax certificate","tin number",
+  "tax identification","tax filing","quarterly tax","annual tax","corporate tax",
+  "personal income tax","pay as you earn","paye","withholding tax","wht",
+  "stamp duty","capital gains tax","gift tax","property rate","land tax",
+  "excise duty","import duty","export duty","customs duty","tariff",
+  "customs valuation","customs declaration","customs bond","customs fee",
+  "port charges","harbour charges","terminal handling","demurrage","storage",
+  "ghana ports","tema port","takoradi port","GCNET","unipass",
+  "vehicle inspection","DVLA","driver licence","licence renewal",
+  "roadworthy certificate","MVIT","vehicle tax","number plate",
+  "insurance certificate","insurance renewal","NIC","national insurance",
+  "ghana immigration","work permit","residence permit","visa fee","passport",
+  "birth certificate","marriage certificate","death certificate","NHIA","NHIS",
+  "health insurance","national health","NHIS renewal","NHIS card",
+  "lands commission","survey fee","title deed","land registration",
+  "city planning","building inspection","planning permission","zoning fee",
+  "environmental permit","EPA fee","impact assessment","business permit",
+  "company registration","forms A","forms B","CAC registration","RGD",
+  "national service levy","national service fee","youth employment","GYEEDA",
+  "MASLOC","NBSSI","GRATIS","CSIR","GES","GHS fee","Ghana Health Service",
+  "municipal fee","assembly rate","property assessment","valuation roll",
+  "stall fee","market fee","market toll","market levy","market permit",
+  "weighbridge fee","fumigation certificate","phytosanitary","veterinary fee",
+  "police clearance","court fee","legal fee","affidavit","notary",
+  "tithe monthly","first fruits offering","church dues","mosque dues",
+  "mosque zakat","zakah","sadaqah","waqf contribution","church building fund",
+  "convention fee","camp meeting","crusade offering","harvest offering",
 ];
 
-// ─── 5. LOCAL LANGUAGE (TWI / PIDGIN) KEYWORDS (65 items) ───────────────────
+// ─── 5. LOCAL LANGUAGE (TWI / PIDGIN / GA / EWE / HAUSA / FANTE / DAGBANI) ──
 const GH_TWI_PIDGIN: string[] = [
-  // Twi sell/buy
-  "ton","tɔn","tonton","mi ton","i ton","a ton",
-  "to","tɔ","mi to","i to","mi buy","i buy",
+  // ── Twi sell / buy ──────────────────────────────────────────────────────────
+  "ton","tɔn","tonton","mi ton","i ton","a ton","wo ton","ɔ ton",
+  "to","tɔ","mi to","i to","mi buy","i buy","wo to","ɔ to",
+  "tɔn biribi","ton biribi","i ton adeɛ","me ton adeɛ",
+  "mi tɔn","wo tɔn","ɔ tɔn","yɛ tɔn","wɔ tɔn","ɛ tɔn",
   // Twi want/pay — "mepɛ" = "I want/I paid for"
-  "mepɛ","me pɛ","mɛpɛ","mɛ pɛ",
+  "mepɛ","me pɛ","mɛpɛ","mɛ pɛ","wo pɛ","ɔ pɛ","wɔ pɛ","yɛ pɛ",
   // Twi money / pay
   "sika","pa sika","gye sika","ne sika","fa sika","bɔ","hyia",
-  "kudi","ego","owo","kɔb","kɔbo",
+  "kudi","ego","owo","kɔb","kɔbo","sika pa","sika gye","sika de",
+  "bɔ sika","hyia sika","sika bɛ ba","sika ba","sika no ba",
+  "mepa sika","wo pa sika","ɔ pa sika","mi pa sika","a pa sika",
+  "sika hyia","sika hwia","me hwia sika","sika to","sika don",
   // Twi receive / give
-  "gye","gya","de","kyɛ","kye","ma","fa","de bra",
-  // Pidgin sell / buy
+  "gye","gya","de","kyɛ","kye","ma","fa","de bra","de ba",
+  "me gye","wo gye","ɔ gye","yɛ gye","me fa","wo fa","ɔ fa",
+  "me ma","wo ma","ɔ ma","yɛ ma","me de","wo de","ɔ de",
+  "me kyɛ","wo kyɛ","ɔ kyɛ","yɛ kyɛ","me kye","wo kye",
+  // Twi borrow / lend
+  "bɔsa","bɔsa sika","de sika bɔsa","me de sika bɔsa","bɔsa me sika",
+  "me bɔsa","wo bɔsa","ɔ bɔsa","yɛ bɔsa","bɔsa bi",
+  // Twi debt
+  "ɔka me","wo ka me","ɔ ka me","ka sika","ka me sika","ka bi",
+  "wo ka","me ka","ɛ ka","wɔ ka me","n'adwuma ka",
+  // Twi expense
+  "tua ka","me tua","wo tua","ɔ tua","yɛ tua","tua sika",
+  "tua adeɛ so","tua bi","me tua sika","adeɛ no ka",
+  // Twi stock / goods
+  "adeɛ","adeɛ a ɛwɔ","adeɛ gu","adeɛ firi","hyɛ adeɛ",
+  "tɔ adeɛ","adeɛ tɔ","me tɔ adeɛ","me tɔ adeɛ wɔ market",
+  "adeɛ baa","adeɛ no baa","adeɛ du","adeɛ no du","adeɛ no firi",
+  // Twi salary
+  "akoa","obi akoa","akoa ka","worker ka","akoa sika","akyɛde",
+  // Twi Fante dialect
+  "mi tͻn","mi tͻn biribi","mi gye sika","mi pa sika",
+  "mi bͻsa","mi ka","mi tua","fante ton","fante gye",
+  // ── Ga language ─────────────────────────────────────────────────────────────
+  "ahe","ahe ni","mi he","wo he","ɔ he","yɛ he",      // Ga: sell
+  "blɛ","mi blɛ","wo blɛ","ɔ blɛ","yɛ blɛ",           // Ga: buy
+  "ji","mi ji","wo ji","ɔ ji","sika ji","sika yaafee", // Ga: receive money
+  "fee","mi fee","wo fee","ɔ fee","sika fee",           // Ga: give/pay
+  "ŋɔŋ","ŋɔŋ ni","sika ŋɔŋ","wo ŋɔŋ",                // Ga: owe
+  "yaafee","sika yaafee","sika mi ji","sika wo ji",    // Ga: money received
+  "obli","obli ni","sika obli","mi obli",              // Ga: borrow
+  "kpaa","kpaa sika","sika kpaa","mi kpaa sika",       // Ga: pay back
+  "ogbɔi","ogbɔi ni","mi ogbɔi",                      // Ga: debt
+  "okpe","okpe ni","sika okpe","mi okpe sika",         // Ga: lend
+  "shwane","shwane ni","mi shwane",                    // Ga: expense/spend
+  "heyɛ","heyɛ sika","sika heyɛ",                    // Ga: get money
+  // ── Ewe language ─────────────────────────────────────────────────────────────
+  "dze","mi dze","wo dze","ɖe dze","dze ɖokui",       // Ewe: sell
+  "xɔ","mi xɔ","wo xɔ","ɖe xɔ","xɔ ɖokui",           // Ewe: buy
+  "xɔ ga","mi xɔ ga","wo xɔ ga","ɖe xɔ ga",          // Ewe: receive money
+  "fa","mi fa","wo fa","ɖe fa","fa ga","mi fa ga",    // Ewe: give/pay
+  "le ŋkɔ","mi le ŋkɔ","wo le ŋkɔ","ɖe le ŋkɔ",     // Ewe: in debt
+  "dɔ ga","mi dɔ ga","wo dɔ ga","dɔ ɖokui",          // Ewe: borrow
+  "do ga","mi do ga","wo do ga","do ɖokui",
+  "le ŋku","mi le ŋku","wo le ŋku","ga le ŋku",      // Ewe: owe
+  "di ga","mi di ga","wo di ga","di ɖokui",           // Ewe: pay/spend
+  "de ga","mi de ga","wo de ga","de ɖokui",
+  "xo ga","mi xo ga","xo ɖokui",
+  "ga si","ga no","ga la","ga ŋu",                    // Ewe: money related
+  // ── Hausa language ──────────────────────────────────────────────────────────
+  "sayar","na sayar","ya sayar","ta sayar","mun sayar", // Hausa: sell
+  "saya","na saya","ya saya","ta saya","mun saya",      // Hausa: buy
+  "karba","na karba","ya karba","ta karba","karba kuɗi", // Hausa: receive
+  "biya","na biya","ya biya","ta biya","mun biya",      // Hausa: pay
+  "bashi","yana bashi","tana bashi","yake bashi",       // Hausa: debt/owe
+  "aro","yi aro","na yi aro","bashi aro",               // Hausa: borrow
+  "ranta","ya ranta","ta ranta","na ranta","mun ranta", // Hausa: lend
+  "kuɗi","kuɗi ya","kuɗi ta","kuɗin","neman kuɗi",    // Hausa: money
+  "fansa","na fansa","ya fansa","ta fansa","fansa bashi",// Hausa: repay
+  "kasuwanci","kasuwanci ya","kasuwanci ta","kasuwanci",  // Hausa: business/trade
+  "kayan","kayan daki","kayan shago","kayan gona",       // Hausa: goods
+  "shago","shagon","shago ya","shago ta",                // Hausa: shop/store
+  "gona","gonan","gona ya","gona ta",                    // Hausa: farm
+  "aiki","aikin","aiki ya","aiki ta","albashin",         // Hausa: work/salary
+  "albashi","albashin","albashi ya","albashi ta",
+  "gyara","gyara ya","gyara ta","gyaran",                // Hausa: repair
+  "riba","riba ya","ribanshin","riba ta",                // Hausa: profit
+  "hasara","hasara ya","hasara ta","hasaran",            // Hausa: loss
+  // ── Dagbani / Dagaare (Northern Ghana) ────────────────────────────────────
+  "daa","mi daa","wo daa","daa kpaɣa",                  // Dagbani: buy
+  "naŋ","mi naŋ","wo naŋ","naŋ kpaɣa",                 // Dagbani: sell
+  "li","mi li","wo li","kpaɣa li","li kpaɣa",           // Dagbani: money/pay
+  "kpaɣa","kpaɣa ni","mi kpaɣa","wo kpaɣa",            // Dagbani: money
+  "ŋani","mi ŋani","wo ŋani","ŋani kpaɣa",             // Dagbani: receive
+  "dali","mi dali","wo dali","dali ni","dali kpaɣa",    // Dagbani: give/pay
+  "bon","mi bon","wo bon","bon kpaɣa","bɔŋ",           // Dagbani: borrow
+  "tuma","mi tuma","wo tuma","tuma ni","tumsim",        // Dagbani: work
+  "salo","salo ni","salo kpaɣa",                        // Dagbani: trade/market
+  // ── Pidgin sell / buy ───────────────────────────────────────────────────────
   "e don sell","dem sell","make i sell","dem buy","i go buy",
+  "i don sell","we don sell","dem don sell","sell finish",
+  "e go sell","dem go sell","i wan sell","make dem buy",
+  "i sell am","dem sell am","e sell am","we sell am",
+  "dem go buy","i go buy am","make i buy","we go buy",
   // Pidgin pay / owe
   "e don pay","dem pay","e pay me","dem no pay","e no pay",
   "e owe","dem owe","owe me","e balance","balance dey",
+  "dem owe me","e owe me sika","e no pay me","dem no pay me",
+  "dem go pay","i go pay am","e go pay","we go pay",
+  "e don pay back","dem don pay back","e pay back","pay back finish",
+  "e still owe","dem still owe","e still balance","balance still dey",
   // Pidgin give / lend
   "i give am","dem give","give am credit","na credit","on credit",
   "i lend am","give loan","e take loan","borrow from me",
+  "i give am money","dem give me money","e give me money",
+  "lend am money","borrow am money","e borrow my money",
+  "i dash am money","dem dash me","e dash me","na dash",
   // Pidgin clear / settle
   "e don clear","dem don clear","e settle","clear the debt",
-  "finish pay","don pay","pay balance",
+  "finish pay","don pay","pay balance","e don settle",
+  "dem don settle","balance clear","dem clear","e come clear",
+  "settle everything","pay everything","clear everything",
+  "e come pay balance","dem come settle","e come clear balance",
   // Pidgin buy stock / restock
   "i go buy goods","dem bring goods","goods arrive","goods don come",
   "i buy for shop","stock don finish","low stock","restock shop",
+  "e don finish","dem don finish","goods finish","stock finish",
+  "need to restock","need buy more","buy more goods","get more stock",
+  "go market buy","market run","go buy goods","bring more goods",
+  "new goods arrive","fresh goods","goods don load","load goods",
   // Salary / staff pidgin
   "pay worker","worker money","staff money","pay apprentice",
-  "give worker pay","apprentice money",
+  "give worker pay","apprentice money","give am salary","pay am",
+  "worker dey wait","staff need money","pay my people","pay my team",
+  "month end pay","week end pay","end of week pay","clear salary",
   // Ghanaian phrases
   "give me on credit","take on credit","dash","i dash am","take am go",
   "bring money","send money","come pay","make e come pay",
+  "carry am go","carry go","take go","e take go","dem take go",
+  "collect for me","come collect","go collect","send collect",
+  "balance me","balance am","give me balance","give am balance",
+  "e short me","dem short me","short me sika","short me balance",
+  "e cheat me","dem cheat me","e fraud me","e scam me",
+  "no be business","na my shop","na my goods","na my money",
+  "e no balance","e no correct","e chop my money","e take my sika",
+  "make we do business","let do business","business time","market time",
+  "shop open","shop dey open","open shop","close shop","shop close",
+  "morning sales","evening sales","daily sales","weekly total",
+  "how much e reach","how much we sell","how we do today","e go well",
+  // ── More Twi expressions ─────────────────────────────────────────────────────
+  "adeɛ tɔn","adeɛ tɔ","meton adeɛ","wɔton adeɛ","yɛton adeɛ",
+  "mɛtɔ","yɛtɔ","wɔtɔ","ɛtɔ","mɛfa","yɛfa","wɔfa","ɛfa",
+  "mɛma","yɛma","wɔma","ɛma","mɛgye","yɛgye","wɔgye","ɛgye",
+  "mɛkyɛ","yɛkyɛ","wɔkyɛ","ɛkyɛ","mekyɛ adeɛ","wokyɛ adeɛ",
+  "me tua bi","wo tua bi","ɔ tua bi","yɛ tua bi",
+  "me ka bi","wo ka bi","ne ka bi","yɛ ka bi",
+  "mɛbɔsa","yɛbɔsa","wɔbɔsa","abɔsa","bɔsa sika bi",
+  "sika no tɔ","sika no gye","sika no pa","sika firi","sika kɔ",
+  "adeɛ no tɔ","adeɛ no gye","me tɔn adeɛ wɔ","me tɔ adeɛ wɔ",
+  "twaa","twara","twere","kyɛa","kyɛe","kyɛɛ",
+  "brɛ me","brɛ me sika","fa brɛ me","brɛ sika","fa sika brɛ",
+  // ── More Ga expressions ──────────────────────────────────────────────────────
+  "he","he ni","he sika","mi he sika","wo he sika",
+  "blɛ ni","blɛ sika","mi blɛ sika","sika blɛ",
+  "ji sika","mi ji sika","wo ji sika","ɔ ji sika",
+  "fee sika","mi fee sika","wo fee sika","ɔ fee sika",
+  "ŋɔŋ sika","mi ŋɔŋ sika","wo ŋɔŋ sika","sika ŋɔŋ ni",
+  "obli sika","mi obli sika","wo obli sika",
+  "kpaa mi","kpaa wo","sika kpaa mi","mi kpaa sika no",
+  "ogbɔi ni sika","mi ogbɔi sika","ogbɔi ni",
+  "okpe sika","mi okpe sika","wo okpe sika",
+  "shwane sika","mi shwane sika","wo shwane ni",
+  "heyɛ mi sika","mi heyɛ sika","sika heyɛ mi",
+  // ── More Ewe expressions ─────────────────────────────────────────────────────
+  "dze ame","dze ame ga","ga dze","mi dze ga","xɔ ga ɖe","ga xɔ",
+  "fa ga ɖe","fa ga kple","fa ame ga","di ga ɖo","de ga ɖe",
+  "le ŋkɔ ɖe","le ŋku ɖe","dɔ ga kple","di ga nu","do ga na",
+  "ga le ŋkɔ","ga le ŋku","ga dɔ","mi dɔ ga","wo dɔ ga na",
+  "mi xɔ ga ɖe","wo xɔ ga ɖe","ɖe xɔ ga","mi xo ga",
+  "sika ɖe","sika le","sika kple","sika na","sika dɔ","sika di",
+  // ── More Hausa expressions ───────────────────────────────────────────────────
+  "na sayi","ya sayi","ta sayi","mun sayi","sun sayi",
+  "na saye","ya saye","ta saye","sun saye","mun saye",
+  "na karbi","ya karbi","ta karbi","mun karbi","sun karbi",
+  "na biya","ya biya","ta biya","mun biya kuɗi",
+  "yana da bashi","tana da bashi","muna da bashi",
+  "na yi aro","ya yi aro","ta yi aro","mun yi aro",
+  "na ranta","ya ranta","ta ranta","mun ranta wa",
+  "na fansa","ya fansa","ta fansa","mun fansa bashi",
+  "kuɗi ya zo","kuɗi ta zo","an biya ni","an biya mana",
+  "kayan shago","kayan kasuwanci","kayan aikin","kayan gona",
+  "albashi ya zo","an biya albashi","an biya ma",
+  "an yi asara","an samu riba","kasuwancin ya yi","cinikin ya yi",
+  // ── More Dagbani/Dagaare expressions ────────────────────────────────────────
+  "daa kpaɣa bi","naŋ kpaɣa bi","kpaɣa naŋ","kpaɣa daa",
+  "mi li kpaɣa","wo li kpaɣa","mi ŋani kpaɣa","wo ŋani kpaɣa",
+  "mi dali kpaɣa","wo dali kpaɣa","dali kpaɣa na","li kpaɣa ni",
+  "bon kpaɣa","mi bon kpaɣa","wo bon kpaɣa","bɔŋ kpaɣa",
+  "tuma ni kpaɣa","tumsim kpaɣa","salo kpaɣa bi","salo ni",
+  "kpaɣa firi","kpaɣa ba","kpaɣa kɔ","kpaɣa bɛ ba",
+  // ── More Pidgin variations ───────────────────────────────────────────────────
+  "e go come","dem go come","dem don come","e don come",
+  "dem collect am","e collect am","i go collect","make i collect",
+  "dem settle am","e settle am","dem go settle","e go settle",
+  "dem clear am","e clear am","i go clear","we go clear",
+  "how e be today","how much e be","e be how much","how things",
+  "business dey move","things dey go","sales dey move","market dey",
+  "nothing today","nothing sell","nothing buy","no sales today",
+  "slow today","slow market","market slow","business slow",
+  "customer no come","nobody buy","nobody sell","no customer",
+  "good day","good sales","sell well","buy well","e do well",
+  "record am","put am down","write am down","book am","note am",
+  "total am","count am","check am","balance am","check balance",
 ];
 
 // ─── 6. SCORING TYPES ────────────────────────────────────────────────────────
@@ -632,6 +1270,25 @@ function runSaleVotes(norm: string, raw: string, add: VoteMap["add"]) {
   if (/\b(piece rate|by piece|per piece|unit price)\b/.test(norm)) add(t, 6, "unit sale");
   if (/\b(price|cost of goods sold|cogs)\b/.test(norm) && /\bsold\b/.test(norm)) add(t, 7, "price+sold");
   if (/\b(my shop|from my shop|at my shop)\b/.test(norm)) add(t, 4, "my shop context");
+  // extended sale signals
+  if (/\b(ahe|mi he|naŋ|i naŋ|dze|mi dze)\b/.test(norm)) add(t, 9, "ga/dagbani/ewe:sell");
+  if (/\b(na sayar|ya sayar|ta sayar|mun sayar)\b/.test(norm)) add(t, 9, "hausa:sell");
+  if (/\b(e ton|tonton|mi ton|wo ton|ɔ ton)\b/.test(norm)) add(t, 9, "twi:sell boost");
+  if (/\b(haircut|shave|trim|braid|plait|weave|perm|relax|treatment)\b/.test(norm)) add(t, 7, "salon service");
+  if (/\b(plate|bowl|cup|pack|portion|serving)\b/.test(norm) && /\b(sold|sell|food|rice|fufu|banku|kenkey|waakye)\b/.test(norm)) add(t, 7, "food sold");
+  if (/\b(momo agent|float|sent|receive|charge|commission)\b/.test(norm) && !/\b(bought|buy|expense|paid)\b/.test(norm)) add(t, 5, "momo agent income");
+  if (/\b(print|scan|laminate|photocopy|passport photo)\b/.test(norm) && !/\b(paid|bought|expense)\b/.test(norm)) add(t, 6, "print/scan service");
+  if (/\b(repair|fix|service|maintenance)\b/.test(norm) && GH_NAMES_PATTERN.test(raw)) add(t, 5, "repair service + name");
+  if (/\b(delivery fee|shipping fee|handling fee|service charge)\b/.test(norm) && !/\b(paid|expense)\b/.test(norm)) add(t, 5, "fee collected");
+  if (/\b(butcher|butchering|slaughter|meat sold|fish sold)\b/.test(norm)) add(t, 7, "butcher/fish sale");
+  if (/\b(farm produce|harvest|fresh produce|crops sold|yam sold|cassava sold)\b/.test(norm)) add(t, 7, "farm sale");
+  if (/\b(sewed|tailored|sewn|designed|made dress|made cloth|made outfit)\b/.test(norm)) add(t, 7, "tailoring sale");
+  if (/\b(installed|fixed|wired|plumbed|painted|plastered|tiled)\b/.test(norm) && !/\b(paid|expense|bill)\b/.test(norm)) add(t, 6, "artisan work done");
+  if (/\b(photo|picture|shoot|photography|event photos|edited photos)\b/.test(norm) && !/\b(paid|bought)\b/.test(norm)) add(t, 6, "photography sale");
+  if (/\b(tutor|teaching|lessons|coaching|class fee)\b/.test(norm) && !/\b(paid|school fees)\b/.test(norm)) add(t, 6, "tutoring income");
+  if (/\b(rent received|house rent|room rent|rent payment received)\b/.test(norm)) add(t, 8, "rent received");
+  if (/\b(commission received|agent commission|sales commission received)\b/.test(norm)) add(t, 7, "commission received");
+  if (/\b(interest received|dividend|profit share)\b/.test(norm) && !/\b(paid|expense)\b/.test(norm)) add(t, 6, "interest/dividend received");
 }
 
 // ── EXPENSE (27 signals) ──────────────────────────────────────────────────────
@@ -666,10 +1323,29 @@ function runExpenseVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(waste|wastage|loss|damaged goods)\b/.test(norm)) add(t, 5, "loss/wastage");
   // Twi: "mepɛ X" = "I paid for / I bought X" → expense signal
   if (/mep[ɛε]|m[ɛe]p[ɛε]/i.test(norm)) add(t, 8, "twi:mepɛ:paid/bought");
+  // extended expense signals
+  if (/\b(na biya|ya biya|ta biya|mun biya)\b/.test(norm)) add(t, 8, "hausa:pay");
+  if (/\b(shwane|di ga|de ga|mi di ga)\b/.test(norm)) add(t, 7, "ewe:pay/spend");
+  if (/\b(dali|mi dali|mi kpaɣa)\b/.test(norm)) add(t, 7, "dagbani:pay");
+  if (/\b(school fees|school fee|class fee|exam fee|examination fee)\b/.test(norm)) add(t, 9, "education expense");
+  if (/\b(tuition|tutorial|private school|international school)\b/.test(norm)) add(t, 7, "tuition fee");
+  if (/\b(church|mosque|sunday|tithe|offering|harvest)\b/.test(norm) && /\b(paid|pay|give|gave)\b/.test(norm)) add(t, 6, "religious contribution");
+  if (/\b(wedding|engagement|funeral|naming|outdooring|celebration)\b/.test(norm) && /\b(paid|spend|spent|buy|bought)\b/.test(norm)) add(t, 7, "ceremony expense");
+  if (/\b(building|construction|renovation|extension|roofing|plastering|tiling)\b/.test(norm) && /\b(paid|pay|cost|expense)\b/.test(norm)) add(t, 7, "construction expense");
+  if (/\b(mechanic|electrician|plumber|painter|mason|tiler|welder|carpenter)\b/.test(norm) && /\b(paid|pay|cost)\b/.test(norm)) add(t, 7, "artisan payment");
+  if (/\b(internet data|data top up|wifi payment|broadband payment)\b/.test(norm)) add(t, 7, "internet expense");
+  if (/\b(hotel|accommodation|lodge|guesthouse|rest house)\b/.test(norm) && /\b(paid|pay|cost)\b/.test(norm)) add(t, 7, "accommodation expense");
+  if (/\b(insurance premium|insurance payment|insurance renewal|car insurance|fire insurance)\b/.test(norm)) add(t, 8, "insurance payment");
+  if (/\b(legal|lawyer|solicitor|attorney|court|affidavit|notary)\b/.test(norm) && /\b(paid|fee|cost)\b/.test(norm)) add(t, 7, "legal expense");
+  if (/\b(accounting|bookkeeping|audit|accountant fee)\b/.test(norm)) add(t, 6, "accounting fee");
+  if (/\b(courier|DHL|fedex|post office|postal|delivery charge)\b/.test(norm) && /\b(paid|pay)\b/.test(norm)) add(t, 6, "courier expense");
+  if (/\b(parking fee|parking charge|car park)\b/.test(norm)) add(t, 5, "parking");
+  if (/\b(cold room|cold store|freezer hire|storage fee|warehouse rent)\b/.test(norm)) add(t, 7, "storage cost");
+  if (/\b(cocoa farmer|farmer expense|farm expense|agric expense|crop expense)\b/.test(norm)) add(t, 6, "farm expense");
 }
 
 // ── DEBT (27 signals) ─────────────────────────────────────────────────────────
-function runDebtVotes(norm: string, _raw: string, add: VoteMap["add"]) {
+function runDebtVotes(norm: string, raw: string, add: VoteMap["add"]) {
   const t = "debt" as const;
   if (/\b(owes|owe)\b/.test(norm) && !/\b(i owe|we owe|owe back|owe them)\b/.test(norm)) add(t, 14, "owes/owe");
   if (/\b(on credit|credit sale|tab|credit goods)\b/.test(norm)) add(t, 10, "on credit");
@@ -698,6 +1374,19 @@ function runDebtVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(e owe|dem owe)\b/.test(norm)) add(t, 9, "pidgin:owe");
   if (/\b(add to his|add to her|put in his|put on her)\b/.test(norm)) add(t, 6, "add to account");
   if (/\b(goods taken|item taken|product taken)\b/.test(norm) && !/\bpaid\b/.test(norm)) add(t, 7, "goods taken no pay");
+  // extended debt signals
+  if (/\b(ɔka me|wo ka me|ɛ ka|ka me sika)\b/.test(norm)) add(t, 9, "twi:owe");
+  if (/\b(le ŋkɔ|le ŋku|mi le ŋkɔ)\b/.test(norm)) add(t, 8, "ewe:owe");
+  if (/\b(ŋɔŋ|sika ŋɔŋ|mi ŋɔŋ)\b/.test(norm)) add(t, 8, "ga:owe");
+  if (/\b(yana bashi|yake bashi|bashi)\b/.test(norm)) add(t, 8, "hausa:owe");
+  if (/\b(ka|mi ka|wo ka)\b/.test(norm) && GH_NAMES_PATTERN.test(raw)) add(t, 7, "twi:debt+name");
+  if (/\b(book am|write am|record am)\b/.test(norm) && /\b(credit|owe|debt)\b/.test(norm)) add(t, 7, "record credit");
+  if (/\b(e carry go|dem carry go)\b/.test(norm) && !/\bpaid\b/.test(norm)) add(t, 7, "pidgin:took goods");
+  if (/\b(account book|credit book|debt book|owe list)\b/.test(norm)) add(t, 6, "credit book");
+  if (/\b(school fee debt|utility debt|rent debt|outstanding bill)\b/.test(norm)) add(t, 7, "outstanding bill");
+  if (/\b(farmer credit|agric credit|input credit)\b/.test(norm)) add(t, 6, "agric credit");
+  if (/\b(buy now pay later|pay when you can|deferred payment)\b/.test(norm)) add(t, 8, "deferred payment");
+  if (/\b(e dash me|dem dash me)\b/.test(norm) && /\b(goods|item|product)\b/.test(norm)) add(t, 5, "dashed goods no pay");
 }
 
 // ── REPAYMENT (27 signals) ────────────────────────────────────────────────────
@@ -731,6 +1420,20 @@ function runRepaymentVotes(norm: string, raw: string, add: VoteMap["add"]) {
   if (/\b(repayment|debt repayment|credit repayment)\b/.test(norm)) add(t, 9, "repayment keyword");
   if (/\b(pay off|paid off|clear off)\b/.test(norm)) add(t, 8, "paid off");
   if (/\b(refund to me|they refunded me)\b/.test(norm)) add(t, 5, "refunded me (weak)");
+  // extended repayment signals
+  if (/\b(pa sika|gye sika|pa me sika)\b/.test(norm)) add(t, 9, "twi:pay me money");
+  if (/\b(na karba|ya karba|ta karba|karba kuɗi)\b/.test(norm)) add(t, 8, "hausa:received");
+  if (/\b(xɔ ga|mi xɔ ga|xo ga)\b/.test(norm)) add(t, 8, "ewe:received money");
+  if (/\b(ji|mi ji|sika ji)\b/.test(norm) && GH_NAMES_PATTERN.test(raw)) add(t, 7, "ga:received+name");
+  if (/\b(naŋ|mi naŋ)\b/.test(norm) && /\b(paid|pay)\b/.test(norm)) add(t, 7, "dagbani:received");
+  if (/\b(e come|dem come|they come|came today)\b/.test(norm) && /\b(pay|paid|money|sika)\b/.test(norm)) add(t, 8, "came to pay today");
+  if (/\b(send me momo|sent me momo|momo from|got momo)\b/.test(norm)) add(t, 8, "momo repayment");
+  if (/\b(bank transfer received|bank payment received|bank credited)\b/.test(norm)) add(t, 8, "bank repayment");
+  if (/\b(school fees paid|rent paid|utility paid|ecg paid|water paid)\b/.test(norm) && GH_NAMES_PATTERN.test(raw)) add(t, 6, "bill paid by someone");
+  if (/\b(farmer paid|agric customer paid|input loan paid)\b/.test(norm)) add(t, 7, "farm credit paid");
+  if (/\b(e remember|dem remember|finally came|eventually came)\b/.test(norm) && /\b(pay|paid|money)\b/.test(norm)) add(t, 6, "finally paid");
+  if (/\b(susu day|susu collect|my susu turn|susu win|won susu)\b/.test(norm)) add(t, 8, "susu collection");
+  if (/\b(NHIS|insurance claim paid|claim received|payout received)\b/.test(norm)) add(t, 7, "insurance payout");
 }
 
 // ── STOCK PURCHASE (27 signals) ───────────────────────────────────────────────
@@ -765,6 +1468,20 @@ function runStockPurchaseVotes(norm: string, _raw: string, add: VoteMap["add"]) 
   if (/\b(market trip|market run|went to market)\b/.test(norm)) add(t, 8, "market trip");
   // Twi: "mepɛ X" with a product name suggests a stock purchase
   if (/mep[ɛε]|m[ɛe]p[ɛε]/i.test(norm) && GH_PRODUCTS.some((p) => norm.includes(p))) add(t, 7, "twi:mepɛ:stock");
+  // extended stock purchase signals
+  if (/\b(mi to|i to|me tɔ adeɛ|me tɔ biribi)\b/.test(norm)) add(t, 8, "twi:buy goods");
+  if (/\b(blɛ|mi blɛ)\b/.test(norm) && GH_PRODUCTS.some((p) => norm.includes(p))) add(t, 7, "ga:buy product");
+  if (/\b(na saya|ya saya|ta saya|mun saya)\b/.test(norm) && GH_PRODUCTS.some((p) => norm.includes(p))) add(t, 7, "hausa:buy product");
+  if (/\b(daa|mi daa)\b/.test(norm) && GH_PRODUCTS.some((p) => norm.includes(p))) add(t, 7, "dagbani:buy product");
+  if (/\b(xɔ|mi xɔ|xo|dze|mi dze)\b/.test(norm) && GH_PRODUCTS.some((p) => norm.includes(p))) add(t, 7, "ewe:buy product");
+  if (/\b(makola|kantamanto|kumasi market|asafo market|techiman|kejetia)\b/.test(norm) && /\b(buy|bought|go|went|purchase)\b/.test(norm)) add(t, 9, "major market purchase");
+  if (/\b(imported|imported goods|foreign goods|china goods|dubai goods|secondhand)\b/.test(norm) && /\b(bought|buy|purchase)\b/.test(norm)) add(t, 7, "imported goods");
+  if (/\b(cocoa input|farm input|agric input|farming materials)\b/.test(norm) && /\b(bought|buy|purchase|paid)\b/.test(norm)) add(t, 8, "farm input purchase");
+  if (/\b(loading goods|offloading|received delivery|goods delivered|supplier delivered)\b/.test(norm)) add(t, 8, "goods delivery");
+  if (/\b(container|40 foot|20 foot|shipment arrived|consignment)\b/.test(norm) && /\b(goods|stock|items|merchandise)\b/.test(norm)) add(t, 9, "container/shipment");
+  if (/\b(depot|wholesale depot|distribution center|warehouse)\b/.test(norm) && /\b(bought|buy|purchase|collected|got)\b/.test(norm)) add(t, 8, "depot purchase");
+  if (/\b(market woman|market man|trader|hawker)\b/.test(norm) && /\b(bought|buy|from)\b/.test(norm)) add(t, 6, "bought from trader");
+  if (/\b(cold room stock|frozen goods|frozen stock|frozen food)\b/.test(norm) && /\b(bought|buy|purchase)\b/.test(norm)) add(t, 7, "frozen stock purchase");
 }
 
 // ── COST (29 signals) ─────────────────────────────────────────────────────────
@@ -799,6 +1516,27 @@ function runCostVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(logistics|supply chain|freight|cargo)\b/.test(norm) && /\b(paid|pay)\b/.test(norm)) add(t, 7, "logistics cost");
   if (/\b(renewal|renewed|renew)\b/.test(norm) && /\b(rent|lease|license|permit)\b/.test(norm)) add(t, 8, "renewal");
   if (/\b(accommodation|housing|shop owner|landlord)\b/.test(norm) && /\b(paid|pay)\b/.test(norm)) add(t, 7, "accommodation");
+  // language-specific cost signals
+  if (/\b(shwane|mi shwane|wo shwane)\b/.test(norm)) add(t, 8, "ga:spend");
+  if (/\b(tua ka|me tua|adeɛ no ka)\b/.test(norm)) add(t, 8, "twi:expense");
+  if (/\b(di ga|de ga|mi di ga)\b/.test(norm)) add(t, 8, "ewe:pay/spend");
+  if (/\b(na biya|ya biya|an biya)\b/.test(norm)) add(t, 8, "hausa:paid");
+  if (/\b(mi dali|wo dali|dali kpaɣa)\b/.test(norm)) add(t, 7, "dagbani:pay");
+  if (/\b(i spend|i pay|we spend|dem spend)\b/.test(norm)) add(t, 6, "pidgin:spend");
+  if (/\b(kwatir|quatir|four quarter|quarterly charge)\b/.test(norm)) add(t, 7, "quarterly bill");
+  if (/\b(annual fee|yearly charge|per annum)\b/.test(norm)) add(t, 7, "annual charge");
+  if (/\b(service charge|service fee|handling fee)\b/.test(norm)) add(t, 7, "service fee");
+  if (/\b(subscription fee|membership fee|dues)\b/.test(norm)) add(t, 7, "dues/subscription");
+  if (/\b(cooling|refrigeration|cold chain)\b/.test(norm) && /\b(paid|pay|rent|hire)\b/.test(norm)) add(t, 7, "cold chain cost");
+  if (/\b(shared cost|split cost|portion of)\b/.test(norm)) add(t, 6, "shared cost");
+  if (/\b(printing|stationery|office supplies)\b/.test(norm) && /\b(paid|buy|purchase)\b/.test(norm)) add(t, 6, "office supplies cost");
+  if (/\b(advertising cost|marketing cost|promo cost)\b/.test(norm)) add(t, 7, "marketing cost");
+  if (/\b(training|workshop|seminar|course)\b/.test(norm) && /\b(paid|fee|cost)\b/.test(norm)) add(t, 6, "training cost");
+  if (/\b(legal|lawyer|solicitor|court)\b/.test(norm) && /\b(paid|fee|cost)\b/.test(norm)) add(t, 7, "legal cost");
+  if (/\b(bank charge|bank fee|account charge|ledger fee)\b/.test(norm)) add(t, 8, "bank charge");
+  if (/\b(commission paid|agent fee|broker fee)\b/.test(norm)) add(t, 7, "agent fee");
+  if (/\b(depreciation|amortization|write off)\b/.test(norm)) add(t, 6, "depreciation");
+  if (/\b(rent advance|advance rent|key money)\b/.test(norm)) add(t, 9, "rent advance");
 }
 
 // ── SALARY (27 signals) ───────────────────────────────────────────────────────
@@ -831,6 +1569,22 @@ function runSalaryVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(gave worker|gave staff|gave apprentice)\b/.test(norm) && !/\b(loan|borrow)\b/.test(norm)) add(t, 8, "gave worker money");
   if (/\b(hired worker|new worker|took on worker)\b/.test(norm) && /\b(paid|pay)\b/.test(norm)) add(t, 7, "hired worker paid");
   if (/\b(feeding allowance|transport allowance|housing allowance)\b/.test(norm)) add(t, 8, "allowance types");
+  // extended salary signals
+  if (/\b(albashin|albashi)\b/.test(norm)) add(t, 9, "hausa:salary");
+  if (/\b(akoa ka|akoa sika|akyɛde)\b/.test(norm)) add(t, 8, "twi:worker pay");
+  if (/\b(tumsim|tuma ni)\b/.test(norm) && /\b(paid|pay|money|sika|kpaɣa)\b/.test(norm)) add(t, 7, "dagbani:work pay");
+  if (/\b(welder|carpenter|mason|painter|tiler|plumber|electrician)\b/.test(norm) && /\b(paid|pay|salary|wages?)\b/.test(norm)) add(t, 8, "artisan pay");
+  if (/\b(driver|truck driver|lorry driver|delivery man)\b/.test(norm) && /\b(paid|pay|salary|wages?)\b/.test(norm)) add(t, 8, "driver pay");
+  if (/\b(cleaner|janitor|sweeper|gardener|gateman|watchnight)\b/.test(norm) && /\b(paid|pay|salary|wages?)\b/.test(norm)) add(t, 7, "support staff pay");
+  if (/\b(farm worker|field worker|harvester|picker|planter)\b/.test(norm) && /\b(paid|pay|wages?)\b/.test(norm)) add(t, 7, "farm worker pay");
+  if (/\b(hawker|table top|street seller|roadside seller)\b/.test(norm) && /\b(paid|pay|wages?|commission)\b/.test(norm)) add(t, 6, "hawker pay");
+  if (/\b(nurse|midwife|health worker|community health)\b/.test(norm) && /\b(paid|pay|salary|wages?)\b/.test(norm)) add(t, 7, "health worker pay");
+  if (/\b(teacher|instructor|coach|tutor)\b/.test(norm) && /\b(paid|pay|salary|wages?)\b/.test(norm)) add(t, 7, "teacher pay");
+  if (/\b(mates|conductor|driver mate)\b/.test(norm) && /\b(paid|pay|wages?|daily)\b/.test(norm)) add(t, 7, "trotro mate pay");
+  if (/\b(gave him|gave her|give him|give her)\b/.test(norm) && /\b(salary|wages?|his money|her money|pay)\b/.test(norm)) add(t, 8, "gave him/her pay");
+  if (/\b(staff salary|employee salary|worker salary|team pay)\b/.test(norm)) add(t, 9, "staff salary phrase");
+  if (/\b(end of month salary|month end pay|payday)\b/.test(norm)) add(t, 9, "payday phrase");
+  if (/\b(piecework|piece work|task pay|completion pay)\b/.test(norm)) add(t, 7, "piecework pay");
 }
 
 // ── TAX (27 signals) ──────────────────────────────────────────────────────────
@@ -1152,6 +1906,47 @@ function runTwiPidginVotes(norm: string, _raw: string, add: VoteMap["add"]) {
     if (/\b(i spend|i pay|i spent)\b/.test(n)) add("expense", 6, "pidgin boost:expense");
     if (/\b(i go buy goods|goods don come|goods arrive)\b/.test(n)) add("stock_purchase", 7, "pidgin boost:stock");
   }
+  // ── Ga language boosts ─────────────────────────────────────────────────────
+  if (/\b(ahe|mi he|he sika)\b/.test(norm)) add("sale", 8, "ga:sell");
+  if (/\b(blɛ|mi blɛ|blɛ sika)\b/.test(norm)) add("stock_purchase", 8, "ga:buy");
+  if (/\b(ji sika|mi ji|heyɛ sika|yaafee)\b/.test(norm)) add("repayment", 8, "ga:receive money");
+  if (/\b(fee sika|mi fee|kpaa sika)\b/.test(norm)) add("expense", 7, "ga:pay/give");
+  if (/\b(ŋɔŋ|ogbɔi ni|sika ŋɔŋ)\b/.test(norm)) add("debt", 8, "ga:owe");
+  if (/\b(obli|mi obli|obli sika)\b/.test(norm)) add("borrow_in", 8, "ga:borrow");
+  if (/\b(okpe|mi okpe|okpe sika)\b/.test(norm)) add("borrow_out", 7, "ga:lend");
+  if (/\b(shwane|mi shwane)\b/.test(norm)) add("cost", 7, "ga:expense");
+  // ── Ewe language boosts ────────────────────────────────────────────────────
+  if (/\b(dze|mi dze|dze ga)\b/.test(norm)) add("sale", 8, "ewe:sell");
+  if (/\b(xɔ|mi xɔ|xɔ ɖokui)\b/.test(norm)) add("stock_purchase", 8, "ewe:buy");
+  if (/\b(xɔ ga|mi xɔ ga|ga xɔ)\b/.test(norm)) add("repayment", 8, "ewe:receive money");
+  if (/\b(fa|mi fa|fa ga|di ga)\b/.test(norm) && /\b(sika|ga|money)\b/.test(norm)) add("expense", 7, "ewe:give/pay");
+  if (/\b(le ŋkɔ|le ŋku|ga le ŋkɔ)\b/.test(norm)) add("debt", 8, "ewe:owe");
+  if (/\b(dɔ ga|do ga|mi dɔ ga)\b/.test(norm)) add("borrow_in", 8, "ewe:borrow");
+  // ── Hausa language boosts ──────────────────────────────────────────────────
+  if (/\b(na sayar|ya sayar|mun sayar)\b/.test(norm)) add("sale", 9, "hausa:sell");
+  if (/\b(na saya|ya saya|mun saya)\b/.test(norm)) add("stock_purchase", 9, "hausa:buy");
+  if (/\b(na karba|ya karba|ta karba|an biya ni)\b/.test(norm)) add("repayment", 8, "hausa:receive/paid");
+  if (/\b(na biya|ya biya|ta biya|mun biya)\b/.test(norm)) add("expense", 8, "hausa:pay");
+  if (/\b(yana bashi|tana bashi|da bashi)\b/.test(norm)) add("debt", 9, "hausa:owe");
+  if (/\b(na yi aro|ya yi aro|yi aro)\b/.test(norm)) add("borrow_in", 8, "hausa:borrow");
+  if (/\b(na ranta|ya ranta|ranta wa)\b/.test(norm)) add("borrow_out", 8, "hausa:lend");
+  if (/\b(na fansa|ya fansa|fansa bashi)\b/.test(norm)) add("loan_repay_out", 8, "hausa:repay");
+  if (/\b(albashi ya|albashin|an biya albashi)\b/.test(norm)) add("salary", 9, "hausa:salary paid");
+  // ── Dagbani/Dagaare language boosts ───────────────────────────────────────
+  if (/\b(naŋ|mi naŋ|naŋ kpaɣa)\b/.test(norm)) add("sale", 8, "dagbani:sell");
+  if (/\b(daa|mi daa|daa kpaɣa)\b/.test(norm)) add("stock_purchase", 8, "dagbani:buy");
+  if (/\b(ŋani|mi ŋani|ŋani kpaɣa)\b/.test(norm)) add("repayment", 7, "dagbani:receive");
+  if (/\b(dali|mi dali|dali kpaɣa)\b/.test(norm)) add("expense", 7, "dagbani:pay");
+  if (/\b(bon|mi bon|bon kpaɣa)\b/.test(norm)) add("borrow_in", 7, "dagbani:borrow");
+  if (/\b(tuma|mi tuma|tuma ni)\b/.test(norm)) add("salary", 7, "dagbani:work/salary");
+  // ── Additional Pidgin boosts ───────────────────────────────────────────────
+  if (/\b(sell finish|sell complete|all sell)\b/.test(norm)) add("sale", 8, "pidgin:all sold");
+  if (/\b(e don give|dem give am|give am)\b/.test(norm) && /\b(money|cash|sika|pay)\b/.test(norm)) add("repayment", 7, "pidgin:give money");
+  if (/\b(record am|book am|write am|note am)\b/.test(norm)) add("debt", 5, "pidgin:record transaction");
+  if (/\b(balance dey|e owe balance|still balance)\b/.test(norm)) add("debt", 7, "pidgin:balance owed");
+  if (/\b(restock shop|get more goods|go market buy)\b/.test(norm)) add("stock_purchase", 8, "pidgin:restock");
+  if (/\b(dem pay salary|pay my people|month end pay)\b/.test(norm)) add("salary", 8, "pidgin:pay salary");
+  if (/\b(slow market|nothing sell|no sales)\b/.test(norm)) add("sale", -3, "pidgin:slow market");
 }
 
 // ─── 12. ENTITY EXTRACTION ───────────────────────────────────────────────────
@@ -1266,6 +2061,141 @@ const CATEGORY_MAP: Record<string, string> = {
   medical: "Medical", hospital: "Medical", clinic: "Medical",
   miscellaneous: "Miscellaneous", misc: "Miscellaneous", petty: "Petty cash",
   sundry: "Miscellaneous", "petty cash": "Petty cash",
+  // extended (+145)
+  banner: "Marketing", poster: "Marketing", radio: "Marketing", tv: "Marketing",
+  promotion: "Marketing", social: "Marketing", facebook: "Marketing",
+  "social media": "Marketing", influencer: "Marketing", sponsored: "Marketing",
+  "whatsapp marketing": "Marketing", "broadcast message": "Marketing",
+  petrol: "Generator & fuel", genset: "Generator & fuel", power: "Generator & fuel",
+  "filling station": "Generator & fuel", "fuel station": "Generator & fuel",
+  "petrol station": "Generator & fuel",
+  vehicle: "Transport", car: "Transport", truck: "Transport",
+  motorbike: "Transport", "bike delivery": "Transport", courier: "Transport",
+  "transport fare": "Transport", "road toll": "Transport", "toll fee": "Transport",
+  pharmacy: "Medical", drug: "Medical", medicine: "Medical", nurse: "Medical",
+  doctor: "Medical", health: "Medical", treatment: "Medical", injection: "Medical",
+  "health insurance": "Medical", "nhis": "Medical", "nhia": "Medical",
+  "paracetamol": "Medical", "malaria drug": "Medical", "blood test": "Medical",
+  haircut: "Salon & Barbering", "hair cut": "Salon & Barbering",
+  barber: "Salon & Barbering", salon: "Salon & Barbering", braiding: "Salon & Barbering",
+  weave: "Salon & Barbering", perming: "Salon & Barbering", relaxer: "Salon & Barbering",
+  makeup: "Salon & Barbering", pedicure: "Salon & Barbering", manicure: "Salon & Barbering",
+  waxing: "Salon & Barbering", threading: "Salon & Barbering", facial: "Salon & Barbering",
+  rice: "Food & Beverages", fufu: "Food & Beverages", banku: "Food & Beverages",
+  kenkey: "Food & Beverages", waakye: "Food & Beverages", jollof: "Food & Beverages",
+  "fried rice": "Food & Beverages", "light soup": "Food & Beverages",
+  "groundnut soup": "Food & Beverages", "palm nut soup": "Food & Beverages",
+  "kontomire": "Food & Beverages", "kelewele": "Food & Beverages",
+  "roasted plantain": "Food & Beverages", "roasted yam": "Food & Beverages",
+  tilapia: "Food & Beverages", "grilled tilapia": "Food & Beverages",
+  beef: "Food & Beverages", chicken: "Food & Beverages", pork: "Food & Beverages",
+  "goat meat": "Food & Beverages", "turkey tail": "Food & Beverages",
+  malt: "Food & Beverages", fanta: "Food & Beverages", coke: "Food & Beverages",
+  beer: "Food & Beverages", sobolo: "Food & Beverages", "fan ice": "Food & Beverages",
+  "pure water": "Food & Beverages", "sachet water": "Food & Beverages",
+  "bottled water": "Food & Beverages", "energy drink": "Food & Beverages",
+  airtime: "Airtime & Data", credit: "Airtime & Data", recharge: "Airtime & Data",
+  data: "Airtime & Data", bundle: "Airtime & Data", "data bundle": "Airtime & Data",
+  sim: "Airtime & Data", "sim card": "Airtime & Data",
+  cement: "Building Materials", sand: "Building Materials", gravel: "Building Materials",
+  block: "Building Materials", "iron rod": "Building Materials", rebar: "Building Materials",
+  tile: "Building Materials", tiles: "Building Materials", wood: "Building Materials",
+  plank: "Building Materials", paint: "Building Materials", wire: "Building Materials",
+  pipe: "Building Materials", fitting: "Building Materials",
+  "spare parts": "Auto Parts", "car parts": "Auto Parts", tyre: "Auto Parts",
+  "engine oil": "Auto Parts", "brake pad": "Auto Parts", battery: "Auto Parts",
+  "oil filter": "Auto Parts", "air filter": "Auto Parts", alternator: "Auto Parts",
+  "shock absorber": "Auto Parts", bearing: "Auto Parts",
+  cocoa: "Cash Crops & Agro", "shea nuts": "Cash Crops & Agro",
+  "palm fruit": "Cash Crops & Agro", "palm kernel": "Cash Crops & Agro",
+  rubber: "Cash Crops & Agro", cashew: "Cash Crops & Agro",
+  coffee: "Cash Crops & Agro", "groundnut": "Cash Crops & Agro",
+  fertilizer: "Farm Inputs", pesticide: "Farm Inputs", herbicide: "Farm Inputs",
+  seeds: "Farm Inputs", seedling: "Farm Inputs", "farming inputs": "Farm Inputs",
+  decoration: "Events & Hospitality", catering: "Events & Hospitality",
+  tent: "Events & Hospitality", canopy: "Events & Hospitality",
+  cake: "Events & Hospitality", "sound system": "Events & Hospitality",
+  "event planning": "Events & Hospitality", funeral: "Events & Hospitality",
+  "outdoor catering": "Events & Hospitality", DJ: "Events & Hospitality",
+  fabric: "Textiles & Fashion", cloth: "Textiles & Fashion",
+  "ankara": "Textiles & Fashion", kente: "Textiles & Fashion",
+  "sewing": "Textiles & Fashion", tailoring: "Textiles & Fashion",
+  "ready made": "Textiles & Fashion", fashion: "Textiles & Fashion",
+  "second hand": "Second-Hand Goods", "bend-down boutique": "Second-Hand Goods",
+  "okirika": "Second-Hand Goods", "kantamanto": "Second-Hand Goods",
+  "used clothes": "Second-Hand Goods", "used goods": "Second-Hand Goods",
+  school: "Education", fees: "Education", tuition: "Education",
+  uniform: "Education", "school fees": "Education", "exam fees": "Education",
+  textbook: "Education", "school book": "Education", "private lesson": "Education",
+  printing: "Printing & Stationery", stationery: "Printing & Stationery",
+  "office supplies": "Printing & Stationery", toner: "Printing & Stationery",
+  photocopy: "Printing & Stationery", laminating: "Printing & Stationery",
+  phone: "Electronics", charger: "Electronics", earphone: "Electronics",
+  laptop: "Electronics", computer: "Electronics", tablet: "Electronics",
+  television: "Electronics", fridge: "Electronics", freezer: "Electronics",
+  "solar panel": "Electronics", inverter: "Electronics", UPS: "Electronics",
+  susu: "Savings & Credit Groups", "nananom": "Savings & Credit Groups",
+  "daily contribution": "Savings & Credit Groups", "weekly susu": "Savings & Credit Groups",
+  "susu contribution": "Savings & Credit Groups", "susu pay": "Savings & Credit Groups",
+  "group savings": "Savings & Credit Groups", "rotating fund": "Savings & Credit Groups",
+  // Additional categories (+100)
+  agric: "Agriculture", farming: "Agriculture", crop: "Agriculture", harvest: "Agriculture",
+  cassava: "Agriculture", yam: "Agriculture", maize: "Agriculture", plantain: "Agriculture",
+  cocoyam: "Agriculture", tomato: "Agriculture", pepper: "Agriculture", onion: "Agriculture",
+  "cowpea": "Agriculture", soya: "Agriculture", "groundnuts": "Agriculture",
+  moringa: "Herbal & Traditional", neem: "Herbal & Traditional", prekese: "Herbal & Traditional",
+  "herbal bitters": "Herbal & Traditional", bitters: "Herbal & Traditional",
+  adonko: "Herbal & Traditional", kasapreko: "Herbal & Traditional",
+  "dawadawa": "Herbal & Traditional", "shea butter": "Herbal & Traditional",
+  poultry: "Livestock & Poultry", broiler: "Livestock & Poultry", layer: "Livestock & Poultry",
+  "day old chick": "Livestock & Poultry", "poultry feed": "Livestock & Poultry",
+  cattle: "Livestock & Poultry", cow: "Livestock & Poultry", sheep: "Livestock & Poultry",
+  goat: "Livestock & Poultry", pig: "Livestock & Poultry", rabbit: "Livestock & Poultry",
+  catfish: "Aquaculture", "cat fish": "Aquaculture", fish: "Aquaculture",
+  "fish pond": "Aquaculture", "fish feed": "Aquaculture", "fish farm": "Aquaculture",
+  "smoked fish": "Aquaculture", "dried fish": "Aquaculture",
+  woodwork: "Carpentry & Furniture", furniture: "Carpentry & Furniture",
+  cabinet: "Carpentry & Furniture", cupboard: "Carpentry & Furniture",
+  "table made": "Carpentry & Furniture", "chair made": "Carpentry & Furniture",
+  welding: "Metal Fabrication", "metal work": "Metal Fabrication",
+  "iron gate": "Metal Fabrication", "steel door": "Metal Fabrication",
+  "iron window": "Metal Fabrication", "metal fabrication": "Metal Fabrication",
+  plumbing: "Plumbing", "pipe fitting": "Plumbing", "water pipe": "Plumbing",
+  "sanitary ware": "Plumbing", toilet: "Plumbing", shower: "Plumbing",
+  electrical: "Electrical Work", wiring: "Electrical Work", switchboard: "Electrical Work",
+  "electrical installation": "Electrical Work", "power point": "Electrical Work",
+  "gen set": "Power & Generator", "power inverter": "Power & Generator",
+  "solar system": "Power & Generator", "solar installation": "Power & Generator",
+  "power backup": "Power & Generator", "UPS system": "Power & Generator",
+  photography: "Photography & Media", videography: "Photography & Media",
+  editing: "Photography & Media", "video editing": "Photography & Media",
+  graphics: "Photography & Media", design: "Photography & Media",
+  branding: "Photography & Media", logo: "Photography & Media",
+  laundry: "Laundry & Dry Cleaning", "dry cleaning": "Laundry & Dry Cleaning",
+  "laundry service": "Laundry & Dry Cleaning", ironing: "Laundry & Dry Cleaning",
+  "outside catering": "Catering & Food Service",
+  "food delivery": "Catering & Food Service", "chop bar": "Catering & Food Service",
+  restaurant: "Catering & Food Service", "food vendor": "Catering & Food Service",
+  bakery: "Bakery & Confectionery", bread: "Bakery & Confectionery",
+  "pastry shop": "Bakery & Confectionery", "sweet bread": "Bakery & Confectionery",
+  "meat pie baked": "Bakery & Confectionery", biscuit: "Bakery & Confectionery",
+  "wholesale buying": "Wholesale & Distribution", distributor: "Wholesale & Distribution",
+  "wholesale price": "Wholesale & Distribution", bulk: "Wholesale & Distribution",
+  "trade price": "Wholesale & Distribution", "trade discount": "Wholesale & Distribution",
+  spare: "Spare Parts & Servicing", servicing: "Spare Parts & Servicing",
+  "car service": "Spare Parts & Servicing", "oil change": "Spare Parts & Servicing",
+  "tyre change": "Spare Parts & Servicing", vulcanizing: "Spare Parts & Servicing",
+  "car wash": "Car Wash & Auto Services", "car clean": "Car Wash & Auto Services",
+  "bus wash": "Car Wash & Auto Services", "truck wash": "Car Wash & Auto Services",
+  "engine wash": "Car Wash & Auto Services",
+  "estate agent": "Real Estate", "property agent": "Real Estate",
+  "house rent": "Real Estate", "room rent": "Real Estate", "house sale": "Real Estate",
+  "land sale": "Real Estate", "property sale": "Real Estate",
+  "mortgage payment": "Real Estate", "land purchase": "Real Estate",
+  forex: "Currency Exchange", "currency exchange": "Currency Exchange",
+  "money exchange": "Currency Exchange", "forex bureau": "Currency Exchange",
+  "dollar exchange": "Currency Exchange", "pound exchange": "Currency Exchange",
+  "euro exchange": "Currency Exchange", "cedis exchange": "Currency Exchange",
 };
 
 function detectCategory(norm: string, type: TransactionType): string {

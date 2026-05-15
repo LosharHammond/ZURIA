@@ -59,17 +59,13 @@ export async function GET() {
       firestore:  firestoreOk                  ? "ok" : "error",
     },
     env: {
-      critical: CRITICAL_ENVS.reduce<Record<string, boolean>>(
-        (acc, k) => { acc[k] = !!process.env[k]; return acc; }, {}
-      ),
-      optional: OPTIONAL_ENVS.reduce<Record<string, boolean>>(
-        (acc, k) => { acc[k] = !!process.env[k]; return acc; }, {}
-      ),
+      criticalConfigured: CRITICAL_ENVS.length - missingCritical.length,
+      criticalTotal: CRITICAL_ENVS.length,
+      optionalConfigured: OPTIONAL_ENVS.length - missingOptional.length,
+      optionalTotal: OPTIONAL_ENVS.length,
     },
   };
 
-  if (missingCritical.length > 0) body.missingCritical = missingCritical;
-  if (missingOptional.length > 0) body.missingOptional = missingOptional;
   if (firestoreError)             body.firestoreError  = firestoreError;
 
   return NextResponse.json(body, { status: allCriticalOk ? 200 : 503 });

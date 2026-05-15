@@ -1,19 +1,11 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
+import { hashPin, verifyPin } from "@/lib/security/pin";
+import { normalisePhone, E164_REGEX } from "@/lib/utils/phone";
 
 export const dynamic = "force-dynamic";
-
-// Normalise any Ghana phone input → E.164 (+233XXXXXXXXX)
-function normalisePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("0") && digits.length === 10) return `+233${digits.slice(1)}`;
-  if (digits.startsWith("233") && digits.length === 12) return `+${digits}`;
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return `+${digits}`;
-}
 
 /**
  * POST /api/auth/phone-login
@@ -45,7 +37,7 @@ export async function POST(req: Request) {
   }
 
   const phone = normalisePhone(rawPhone);
-  if (!/^\+\d{10,15}$/.test(phone)) {
+  if (!E164_REGEX.test(phone)) {
     return NextResponse.json(
       { error: "Enter a valid phone number, e.g. 0241234567 or +233241234567" },
       { status: 400 }
@@ -98,17 +90,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // Constant-time comparison to prevent timing-based PIN enumeration attacks
-    const pinBuf    = Buffer.from(String(body.pin));
-    const storedBuf = Buffer.from(storedPin);
-    const isCorrect =
-      pinBuf.length === storedBuf.length &&
-      crypto.timingSafeEqual(pinBuf, storedBuf);
-    if (!isCorrect) {
+    const pinCheck = verifyPin(String(body.pin), storedPin);
+    if (!pinCheck.valid) {
       return NextResponse.json(
         { error: "Incorrect PIN. Please try again." },
         { status: 401 }
       );
+    }
+    if (pinCheck.needsRehash) {
+      userDoc.ref.update({ whatsappPin: hashPin(String(body.pin)) }).catch(() => {});
     }
 
     // PIN correct — issue a short-lived Firebase custom token

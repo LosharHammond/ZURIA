@@ -12,65 +12,105 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function businessOwnedByUser(businessId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/businesses/$(businessId))
+        && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
     // ─── Users ──────────────────────────────────────────────────────────────
     // Only the user themselves can read/write their own document.
     // Phone, PIN, referral balance — all locked to the owner.
     match /users/{userId} {
-      allow read, update: if isOwner(userId);
-      allow create: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["ownerName", "preferredLanguage", "updatedAt"])
+        && request.resource.data.ownerName is string
+        && request.resource.data.ownerName.size() >= 2
+        && request.resource.data.ownerName.size() <= 80
+        && request.resource.data.preferredLanguage in ["english", "twi", "ga", "ewe", "hausa", "fante"];
+      allow create: if false;
       allow delete: if false; // Never allow client-side delete
     }
 
     // ─── Businesses ─────────────────────────────────────────────────────────
     // A user can read/write the business they own (ownerId == uid).
     match /businesses/{businessId} {
-      allow read, write: if isSignedIn()
-        && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && request.resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name", "location", "updatedAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.location is string
+        && request.resource.data.location.size() >= 2
+        && request.resource.data.location.size() <= 100;
+      allow create, delete: if false;
     }
 
     // ─── Transactions ────────────────────────────────────────────────────────
     // Read/write only if the businessId on the document belongs to the user.
     // Enforce businessId matches a business the user owns.
     match /transactions/{txnId} {
-      allow read: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow read: if businessOwnedByUser(resource.data.businessId);
+      allow create: if businessOwnedByUser(request.resource.data.businessId)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.rawText is string
+        && request.resource.data.rawText.size() <= 500
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 500;
       allow update, delete: if false; // Transactions are immutable from the client
     }
 
     // ─── Debts ──────────────────────────────────────────────────────────────
     match /debts/{debtId} {
-      allow read, write: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow read: if businessOwnedByUser(resource.data.businessId);
+      allow create: if businessOwnedByUser(request.resource.data.businessId)
+        && request.resource.data.originalAmount is number
+        && request.resource.data.outstandingAmount is number
+        && request.resource.data.repaymentHistory is list
+        && request.resource.data.repaymentHistory.size() <= 200;
+      allow update: if businessOwnedByUser(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId
+        && request.resource.data.repaymentHistory is list
+        && request.resource.data.repaymentHistory.size() <= 200;
+      allow delete: if false;
     }
 
     // ─── Loans ──────────────────────────────────────────────────────────────
     match /loans/{loanId} {
-      allow read, write: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow read: if businessOwnedByUser(resource.data.businessId);
+      allow create: if businessOwnedByUser(request.resource.data.businessId)
+        && request.resource.data.originalAmount is number
+        && request.resource.data.outstandingAmount is number
+        && request.resource.data.repaymentHistory is list
+        && request.resource.data.repaymentHistory.size() <= 200;
+      allow update: if businessOwnedByUser(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId
+        && request.resource.data.repaymentHistory is list
+        && request.resource.data.repaymentHistory.size() <= 200;
+      allow delete: if false;
     }
 
     // ─── Inventory ──────────────────────────────────────────────────────────
     match /inventory/{itemId} {
-      allow read, write: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId))
-        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid;
+      allow read: if businessOwnedByUser(resource.data.businessId);
+      allow create: if businessOwnedByUser(request.resource.data.businessId)
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() <= 120
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity >= 0;
+      allow update: if businessOwnedByUser(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() <= 120
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity >= 0;
+      allow delete: if false;
     }
 
     // ─── WhatsApp sessions ───────────────────────────────────────────────────

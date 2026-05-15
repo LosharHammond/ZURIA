@@ -64,3 +64,9 @@ body {
 .text-balance {
   text-wrap: balance;
 }
+
+/* Landing page — health score progress bar animation */
+@keyframes zu-grow-bar {
+  from { width: 0; }
+  to   { width: 78%; }
+}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInAnonymously, signInWithCustomToken } from "firebase/auth";
+import { signInWithCustomToken } from "firebase/auth";
 import { KeyRound, MessageCircle, Phone, ShieldCheck, UserPlus } from "lucide-react";
 import { auth, firebaseReady } from "@/lib/firebase/config";
 import { Button } from "@/components/ui/button";
@@ -66,12 +66,11 @@ export function PhoneLoginForm() {
       }
 
       if (data.isNewUser) {
-        // No account yet — sign in anonymously so the auth-provider can set
-        // the session cookie, then its routing effect redirects to /onboarding
-        // automatically (because onboardingComplete will be undefined).
+        // No ZURIA account yet — send them to sign up.
+        // /signup will store the phone and go to /onboarding (public page).
+        // No anonymous auth needed; server-side registration handles account creation.
         sessionStorage.setItem("zuria_phone", norm);
-        await signInAnonymously(auth!);
-        // auth-provider's onAuthStateChanged handles redirect to /onboarding
+        router.push(`/signup`);
         return;
       }
 
@@ -188,7 +187,7 @@ export function PhoneLoginForm() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="••••"
-              autoComplete="one-time-code"
+              autoComplete="current-password"
               autoFocus
               className="tracking-[0.5em] text-center text-xl"
             />

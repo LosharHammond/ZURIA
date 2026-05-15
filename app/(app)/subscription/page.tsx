@@ -27,6 +27,7 @@ import type { SubscriptionPlan } from "@/types/domain";
 import { ReportDownloadButton } from "@/components/reports/report-download-button";
 import { PaystackButton } from "@/components/payments/paystack-button";
 import { computeHealthScoreBreakdown } from "@/lib/analytics/summary";
+import { getEffectivePlan, isOnReferralUnlock, formatPlanExpiry, daysUntilExpiry } from "@/lib/subscription";
 import { formatMoney } from "@/lib/utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -85,45 +86,12 @@ const PLAN_META: Record<SubscriptionPlan, {
   },
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers — imported from shared lib/subscription.ts ───────────────────────
+// getEffectivePlan, isOnReferralUnlock, formatPlanExpiry, daysUntilExpiry
 
-function getEffectivePlan(user: {
-  subscriptionPlan?: SubscriptionPlan;
-  subscriptionExpiresAt?: string | null;
-  referralUnlockExpiresAt?: string | null;
-}): SubscriptionPlan {
-  const plan = user.subscriptionPlan ?? "free";
-  const now = new Date();
-  if (plan !== "free") {
-    const expiresAt = user.subscriptionExpiresAt;
-    if (!expiresAt || new Date(expiresAt) > now) return plan;
-  }
-  const unlockExpiry = user.referralUnlockExpiresAt;
-  if (unlockExpiry && new Date(unlockExpiry) > now) return "growth";
-  return "free";
-}
-
-function isOnReferralUnlock(user: {
-  subscriptionPlan?: SubscriptionPlan;
-  referralUnlockExpiresAt?: string | null;
-}): boolean {
-  if ((user.subscriptionPlan ?? "free") !== "free") return false;
-  const unlockExpiry = user.referralUnlockExpiresAt;
-  return !!(unlockExpiry && new Date(unlockExpiry) > new Date());
-}
-
-function formatExpiry(isoDate?: string | null): string {
-  if (!isoDate) return "";
-  return new Date(isoDate).toLocaleDateString("en-GH", {
-    day: "numeric", month: "long", year: "numeric",
-  });
-}
-
-function daysRemaining(isoDate?: string | null): number | null {
-  if (!isoDate) return null;
-  const diff = new Date(isoDate).getTime() - Date.now();
-  return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
-}
+// Local aliases to preserve call-site names in this file
+const formatExpiry = formatPlanExpiry;
+const daysRemaining = daysUntilExpiry;
 
 // ── Plan Recommendation Engine ────────────────────────────────────────────────
 

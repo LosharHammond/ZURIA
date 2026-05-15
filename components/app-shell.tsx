@@ -21,6 +21,15 @@ const NAV_ITEMS = [
   { href: "/notifications",label: "Notifications", icon: Bell        },
 ];
 
+// Bottom nav items for mobile (max 5)
+const BOTTOM_NAV_ITEMS = [
+  { href: "/dashboard",    label: "Home",    icon: Home        },
+  { href: "/transactions", label: "Record",  icon: PlusCircle  },
+  { href: "/debts",        label: "Debts",   icon: HandCoins   },
+  { href: "/inventory",    label: "Stock",   icon: Boxes       },
+  { href: "/profile",      label: "Profile", icon: UserCircle  },
+];
+
 // ── ZURIA wordmark SVG ────────────────────────────────────────────────────────
 function ZuriaLogo({ size = 36 }: { size?: number }) {
   return (
@@ -48,13 +57,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* ── Global service status banner ──────────────────────────────────── */}
-      <ServiceBanner />
-
       <div className="flex flex-1">
 
-      {/* ── Left sidebar ──────────────────────────────────────────────────── */}
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-14 flex-col border-r border-white/10 bg-[#071514]/95 backdrop-blur-xl md:w-56">
+      {/* ── Left sidebar — hidden on mobile, visible on sm+ ───────────────── */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden sm:flex w-14 flex-col border-r border-white/10 bg-[#071514]/95 backdrop-blur-xl md:w-56">
 
         {/* Logo / brand */}
         <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-3">
@@ -104,15 +110,69 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Main content area ─────────────────────────────────────────────── */}
-      <div className="flex min-h-screen flex-1 flex-col pl-14 md:pl-56">
+      {/* No left padding on mobile (sidebar hidden), sm:pl-14, md:pl-56     */}
+      <div className="flex min-h-screen flex-1 flex-col sm:pl-14 md:pl-56">
+        {/* Banner lives INSIDE the padded column so the fixed sidebar never covers it */}
+        <ServiceBanner />
         <main className="flex-1 px-4 py-5 md:px-6 md:py-7">
-          <div className="mx-auto max-w-3xl">
+          {/* pb-20 on mobile so content isn't obscured by bottom nav */}
+          <div className="mx-auto max-w-3xl pb-20 sm:pb-0">
             {children}
           </div>
         </main>
       </div>
 
       </div>{/* end flex row */}
+
+      {/* ── Mobile bottom navigation — sm:hidden ──────────────────────────── */}
+      <nav
+        aria-label="Mobile navigation"
+        className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-white/10 bg-[#071514]/80 backdrop-blur-xl"
+      >
+        <div className="flex items-stretch">
+          {BOTTOM_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + "/");
+            const isRecord = href === "/transactions";
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                {/* Record tab gets a pill accent */}
+                {isRecord ? (
+                  <span
+                    className={cn(
+                      "flex items-center justify-center rounded-full p-2.5 transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-primary/20 text-primary"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                ) : (
+                  <span className="relative flex items-center justify-center">
+                    <Icon className="h-5 w-5" />
+                    {/* Active dot indicator */}
+                    {active && (
+                      <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
+                    )}
+                  </span>
+                )}
+                <span className={cn("text-[10px] font-medium leading-none", isRecord && !active && "text-primary")}>
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+        {/* Safe area spacer for phones with home indicator */}
+        <div className="h-safe-area-inset-bottom" style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
+      </nav>
     </div>
   );
 }

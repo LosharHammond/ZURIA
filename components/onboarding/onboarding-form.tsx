@@ -1,26 +1,33 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { KeyRound } from "lucide-react";
+import { KeyRound, ChevronLeft, RefreshCw } from "lucide-react";
+import { signInWithCustomToken } from "firebase/auth";
 import { BUSINESS_CATEGORIES, LANGUAGES } from "@/constants/business";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { useAuth } from "@/providers/auth-provider";
-import { isPhoneRegistered, saveOnboarding } from "@/lib/services/business-service";
+import { auth } from "@/lib/firebase/config";
 import { useAppStore } from "@/stores/app-store";
+import type { AppUser, Business } from "@/types/domain";
+
+// ─── Validation ────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  ownerName: z.string().min(2, "Enter your name"),
-  businessName: z.string().min(2, "Enter business name"),
-  category: z.enum(["provision", "food", "salon", "barber", "cosmetics", "pharmacy", "restaurant", "spare-parts", "hardware", "momo", "other"]),
-  location: z.string().min(2, "Enter town or area"),
+  phone: z
+    .string()
+    .regex(/^\+?\d{10,15}$/, "Enter a valid phone number, e.g. 0241234567"),
+  ownerName:         z.string().min(2, "Enter your name").max(80),
+  businessName:      z.string().min(2, "Enter your business name").max(120),
+  category:          z.enum(["provision", "food", "salon", "barber", "cosmetics", "pharmacy", "restaurant", "spare-parts", "hardware", "momo", "other"]),
+  location:          z.string().min(2, "Enter your town or area").max(100),
   preferredLanguage: z.enum(["english", "twi", "ga", "ewe", "hausa", "fante"]),
-  whatsappPin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 numbers"),
+  whatsappPin:       z.string().regex(/^\d{4}$/, "PIN must be exactly 4 numbers"),
   whatsappPinConfirm: z.string(),
 }).refine((d) => d.whatsappPin === d.whatsappPinConfirm, {
   message: "PINs do not match",
@@ -29,115 +36,200 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// ─── Normalise phone ───────────────────────────────────────────────────────────
+
+function normalisePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("0") && digits.length === 10) return `+233${digits.slice(1)}`;
+  if (digits.startsWith("233") && digits.length === 12) return `+${digits}`;
+  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
+  return raw.trim();
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function OnboardingForm() {
   const router = useRouter();
-  const { firebaseUser } = useAuth();
   const { setUser, setBusiness } = useAppStore();
+
+  // Store the referral code in a ref so it's accessible in onSubmit without
+  // causing a hydration mismatch (sessionStorage is client-only).
+  const referralCodeRef = useRef<string | undefined>(undefined);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { category: "provision", preferredLanguage: "english" }
+    defaultValues: {
+      // Always start with "" on both server and client — prevents hydration
+      // mismatch caused by sessionStorage reads differing between SSR and client.
+      phone:             "",
+      category:          "provision",
+      preferredLanguage: "english",
+    },
   });
 
+  // Read sessionStorage after mount (client-only — no SSR mismatch).
+  useEffect(() => {
+    const savedPhone = sessionStorage.getItem("zuria_phone");
+    const savedRef   = sessionStorage.getItem("zuria_ref");
+    if (savedPhone) form.setValue("phone", savedPhone, { shouldValidate: false });
+    if (savedRef)   referralCodeRef.current = savedRef;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onSubmit(values: FormValues) {
-    if (!firebaseUser) return;
+    const phone = normalisePhone(values.phone);
 
-    // Custom token auth has no phoneNumber on the Firebase user object —
-    // we stored it in sessionStorage during the login step.
-    const phone =
-      firebaseUser.phoneNumber ??
-      sessionStorage.getItem("zuria_phone") ??
-      "";
-
-    if (!phone) {
-      form.setError("root", { message: "Could not read your phone number. Please sign out and sign in again." });
+    if (!/^\+\d{10,15}$/.test(phone)) {
+      form.setError("phone", { message: "Enter a valid number with country code, e.g. 0241234567" });
       return;
     }
 
     try {
-      const alreadyRegistered = await isPhoneRegistered(phone);
-      if (alreadyRegistered) {
-        form.setError("root", { message: "This phone number already has a ZURIA account. Please sign in." });
-        return;
-      }
-    } catch {
-      form.setError("root", { message: "Could not verify your account. Check your connection and try again." });
-      return;
-    }
-
-    const referralCode = sessionStorage.getItem("zuria_ref") ?? undefined;
-
-    try {
-      const result = await saveOnboarding({
-        userId: firebaseUser.uid,
-        phoneNumber: phone,
-        ownerName: values.ownerName,
-        businessName: values.businessName,
-        category: values.category,
-        location: values.location,
-        preferredLanguage: values.preferredLanguage,
-        whatsappPin: values.whatsappPin,
-        referralCode,
-      });
-      sessionStorage.removeItem("zuria_ref");
-      sessionStorage.removeItem("zuria_phone");
-      setUser(result.user);
-      setBusiness(result.business);
-
-      // Send WhatsApp welcome + handle referral credit — best effort, non-blocking
-      const token = await firebaseUser.getIdToken();
-      fetch("/api/welcome", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      // ── Server-side account creation ──────────────────────────────────────
+      // /api/auth/register creates the Firebase Auth user + Firestore records
+      // and returns a custom token — no anonymous auth needed.
+      const res = await fetch("/api/auth/register", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone,
-          ownerName: values.ownerName,
-          businessName: values.businessName,
-          category: values.category,
-          referralCode,           // server credits referrer + sends WhatsApp notification
+          ownerName:         values.ownerName,
+          businessName:      values.businessName,
+          category:          values.category,
+          location:          values.location,
+          preferredLanguage: values.preferredLanguage,
+          pin:               values.whatsappPin,
+          referralCode:      referralCodeRef.current,
         }),
-      }).catch(() => {}); // ignore failures — user is already registered
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Phone already registered → guide them to sign in
+        if (res.status === 409) {
+          form.setError("phone", {
+            message: "This number already has an account. Please sign in instead.",
+          });
+          return;
+        }
+        form.setError("root", {
+          message: data.error ?? "Registration failed. Please check your connection and try again.",
+        });
+        return;
+      }
+
+      // ── Populate Zustand store immediately from API response ──────────────
+      // This avoids a Firestore round-trip before the welcome page renders.
+      if (data.user)     setUser(data.user as AppUser);
+      if (data.business) setBusiness(data.business as Business);
+
+      // ── Sign in with the custom token returned by the server ──────────────
+      if (!auth) {
+        form.setError("root", { message: "Firebase is not configured. Add .env.local values." });
+        return;
+      }
+      await signInWithCustomToken(auth, data.token);
+
+      // Clean up sessionStorage artifacts
+      sessionStorage.removeItem("zuria_phone");
+      sessionStorage.removeItem("zuria_ref");
+
+      // Send WhatsApp welcome + referral credit (best-effort, non-blocking)
+      const idToken = await auth.currentUser?.getIdToken();
+      if (idToken) {
+        fetch("/api/welcome", {
+          method:  "POST",
+          headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone,
+            ownerName:    values.ownerName,
+            businessName: values.businessName,
+            category:     values.category,
+            referralCode: referralCodeRef.current,
+          }),
+        }).catch(() => {});
+      }
 
       router.replace("/welcome");
-    } catch {
-      form.setError("root", { message: "Failed to save your account. Check your connection and try again." });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      form.setError("root", { message: msg });
     }
   }
 
+  const isSubmitting = form.formState.isSubmitting;
+  const rootError    = form.formState.errors.root?.message;
+
   return (
     <GlassCard className="mx-auto max-w-lg">
-      <p className="text-sm font-semibold text-primary">Set up your business memory</p>
-      <h1 className="mt-2 text-3xl font-black">A few details, then ZURIA starts helping.</h1>
+      {/* Back navigation */}
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+        Back
+      </button>
+
+      <p className="text-sm font-semibold text-primary">Create your ZURIA account</p>
+      <h1 className="mt-1 text-3xl font-black leading-tight">
+        A few details, then ZURIA starts helping.
+      </h1>
 
       <form className="mt-6 space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+
+        {/* Phone number — pre-filled from signup flow but editable */}
+        <Field label="Your WhatsApp number" error={form.formState.errors.phone?.message}>
+          <Input
+            placeholder="0241234567 or +233241234567"
+            inputMode="tel"
+            autoComplete="tel"
+            {...form.register("phone")}
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            This is how ZURIA identifies you on WhatsApp.
+          </p>
+        </Field>
+
         <Field label="Your name" error={form.formState.errors.ownerName?.message}>
           <Input placeholder="e.g. Ama Darko" autoComplete="name" {...form.register("ownerName")} />
         </Field>
+
         <Field label="Business name" error={form.formState.errors.businessName?.message}>
           <Input placeholder="e.g. Ama's Provision Store" autoComplete="organization" {...form.register("businessName")} />
         </Field>
+
         <Field label="Type of business">
           <Select {...form.register("category")}>
-            {BUSINESS_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </Select>
-        </Field>
-        <Field label="Location" error={form.formState.errors.location?.message}>
-          <Input placeholder="e.g. Madina Market, Accra" autoComplete="address-level2" {...form.register("location")} />
-        </Field>
-        <Field label="Preferred language">
-          <Select {...form.register("preferredLanguage")}>
-            {LANGUAGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            {BUSINESS_CATEGORIES.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
           </Select>
         </Field>
 
-        {/* WhatsApp PIN section */}
-        <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <div className="mb-3 flex items-center gap-2">
+        <Field label="Location" error={form.formState.errors.location?.message}>
+          <Input placeholder="e.g. Madina Market, Accra" autoComplete="address-level2" {...form.register("location")} />
+        </Field>
+
+        <Field label="Preferred language">
+          <Select {...form.register("preferredLanguage")}>
+            {LANGUAGES.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </Select>
+        </Field>
+
+        {/* PIN section */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="mb-2 flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-primary" />
             <p className="text-sm font-bold">Your WhatsApp PIN</p>
           </div>
-          <p className="mb-3 text-xs text-muted-foreground leading-5">
-            Choose a 4-digit PIN. You will type this when you start a WhatsApp conversation with ZURIA.
-            It protects your business records from others using your number.
+          <p className="mb-3 text-xs leading-5 text-muted-foreground">
+            Choose a 4-digit PIN. You will type this when you start a WhatsApp
+            conversation with ZURIA to protect your business records.
           </p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Choose PIN" error={form.formState.errors.whatsappPin?.message}>
@@ -146,7 +238,7 @@ export function OnboardingForm() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
-                autoComplete="one-time-code"
+                autoComplete="new-password"
                 className="text-center text-xl tracking-[0.4em]"
                 {...form.register("whatsappPin")}
               />
@@ -157,7 +249,7 @@ export function OnboardingForm() {
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="••••"
-                autoComplete="one-time-code"
+                autoComplete="new-password"
                 className="text-center text-xl tracking-[0.4em]"
                 {...form.register("whatsappPinConfirm")}
               />
@@ -165,17 +257,47 @@ export function OnboardingForm() {
           </div>
         </div>
 
-        {form.formState.errors.root && (
-          <p className="text-sm text-destructive">{form.formState.errors.root.message}</p>
+        {/* Root-level error with retry CTA */}
+        {rootError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+            <p className="text-sm text-destructive">{rootError}</p>
+            <button
+              type="button"
+              onClick={() => form.clearErrors("root")}
+              className="mt-1 flex items-center gap-1.5 text-xs text-destructive/80 hover:text-destructive transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" /> Try again
+            </button>
+          </div>
         )}
 
-        <Button className="w-full" type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Creating your account..." : "Enter ZURIA"}
+        <Button className="w-full" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Creating your account…
+            </>
+          ) : (
+            "Enter ZURIA →"
+          )}
         </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Already have an account?{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/login")}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Sign in
+          </button>
+        </p>
       </form>
     </GlassCard>
   );
 }
+
+// ─── Field wrapper ─────────────────────────────────────────────────────────────
 
 function Field({ children, error, label }: { children: React.ReactNode; error?: string; label?: string }) {
   return (

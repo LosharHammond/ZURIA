@@ -517,12 +517,13 @@ async function handlePaymentClaim(
   businessName: string,
   annual = false
 ): Promise<string> {
-  const monthlyPrices: Record<string, number> = { growth: 20, pro: 50, enterprise: 100 };
-  const annualPrices:  Record<string, number> = { growth: 200, pro: 500, enterprise: 1000 };
-  const amount = annual ? (annualPrices[plan] ?? 0) : (monthlyPrices[plan] ?? 0);
+  // Always derive prices from the canonical SUBSCRIPTION_TIERS source so that
+  // changes to pricing need to be made in one place only (types/domain.ts).
+  const tier = SUBSCRIPTION_TIERS[plan];
+  const amount = annual ? (tier.annualPriceGHS ?? tier.priceGHS * 10) : tier.priceGHS;
   const price = annual
-    ? `GHS ${annualPrices[plan] ?? "?"}/year (2 months free!)`
-    : `GHS ${monthlyPrices[plan] ?? "?"}/month`;
+    ? `GHS ${tier.annualPriceGHS ?? tier.priceGHS * 10}/year (2 months free!)`
+    : `GHS ${tier.priceGHS}/month`;
 
   const planLabels: Record<string, string> = {
     growth:     "ZURIA Growth",
@@ -731,12 +732,8 @@ function gateMsg(
   requiredPlan: SubscriptionPlan,
   businessName: string
 ): string {
-  const priceMap: Record<string, string> = {
-    growth: "GHS 20/month",
-    pro: "GHS 50/month",
-    enterprise: "GHS 100/month",
-  };
-  const price = priceMap[requiredPlan] ?? "";
+  const tierInfo = SUBSCRIPTION_TIERS[requiredPlan];
+  const price = tierInfo ? `GHS ${tierInfo.priceGHS}/month` : "";
   return [
     `🔒 *${feature.charAt(0).toUpperCase() + feature.slice(1)} requires ${requiredPlanLabel}.*`,
     ``,

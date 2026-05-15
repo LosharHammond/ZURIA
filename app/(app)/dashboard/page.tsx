@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -16,10 +17,21 @@ import {
 import { DailySummaryCard } from "@/components/dashboard/daily-summary-card";
 import { HealthScore } from "@/components/dashboard/health-score";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { SalesChart } from "@/components/dashboard/sales-chart";
 import { FinanceBreakdown } from "@/components/dashboard/finance-breakdown";
 import { TransactionComposer } from "@/components/transactions/transaction-composer";
 import { RecentActivity } from "@/components/transactions/recent-activity";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// ── Lazy-load recharts (SalesChart) ─────────────────────────────────────────
+// recharts is ~180 kB (50 kB gzipped). Deferring it keeps the dashboard
+// interactive on first paint while the chart loads in the background.
+const SalesChart = dynamic(
+  () => import("@/components/dashboard/sales-chart").then((m) => ({ default: m.SalesChart })),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-64" />,
+  }
+);
 import { useBusinessData } from "@/hooks/use-business-data";
 import { useAppStore } from "@/stores/app-store";
 import { formatMoney } from "@/lib/utils";

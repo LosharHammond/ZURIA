@@ -51,7 +51,7 @@ export default function ProfilePage() {
     try {
       if (auth) await signOut(auth);
       // Clear session cookie — auth provider will redirect to /login
-      document.cookie = "zuria_auth=; path=/; max-age=0; SameSite=Strict";
+      await fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
       setUser(undefined);
       setBusiness(undefined);
       router.replace("/login");

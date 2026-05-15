@@ -1,6 +1,6 @@
-import { timingSafeEqual } from "crypto";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { hashPin, verifyPin as verifyStoredPin } from "@/lib/security/pin";
 
 // ─── WhatsApp session document ────────────────────────────────────────────────
 // Stored at whatsapp_sessions/{normalizedPhone}
@@ -87,12 +87,13 @@ export async function verifyPin(
   const ref = db.collection(collections.whatsappSessions).doc(session.phone);
   const now = new Date().toISOString();
 
-  // Use timing-safe comparison to prevent timing-oracle attacks on PIN verification
-  const pinMatch = enteredPin.length === storedPin.length &&
-    timingSafeEqual(Buffer.from(enteredPin, "utf8"), Buffer.from(storedPin, "utf8"));
-  if (pinMatch) {
+  const pinCheck = verifyStoredPin(enteredPin, storedPin);
+  if (pinCheck.valid) {
     const expiry = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000).toISOString();
     await ref.update({ state: "active", failedAttempts: 0, verifiedAt: now, expiresAt: expiry });
+    if (pinCheck.needsRehash) {
+      getAdminDb().collection(collections.users).doc(session.userId).update({ whatsappPin: hashPin(enteredPin) }).catch(() => {});
+    }
     return { ok: true, locked: false, attemptsLeft: MAX_FAILED };
   }
 

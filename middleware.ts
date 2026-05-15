@@ -12,24 +12,51 @@ const PROTECTED_PREFIXES = [
   "/referrals",
   "/welcome",
   "/subscription",
-  "/onboarding", // new users must be authenticated to complete onboarding
+  // NOTE: /onboarding is intentionally NOT protected here.
+  // New users reach it before authentication (server-side registration flow).
+  // The OnboardingForm itself handles the "already onboarded" redirect.
+  // The auth-provider's routing effect redirects authenticated+incomplete users to it.
 ];
 
 // Routes that should redirect to dashboard if already authenticated
 const AUTH_PREFIXES = ["/login", "/verify", "/signup"];
 
-export function middleware(req: NextRequest) {
+function getSessionSecret(): string {
+  return process.env.AUTH_SESSION_SECRET ?? (process.env.NODE_ENV === "production" ? "" : "development-only-zuria-session-secret");
+}
+
+function base64Url(bytes: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(bytes)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+async function sign(value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(getSessionSecret()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return base64Url(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)));
+}
+
+async function hasValidSession(cookieVal: string): Promise<boolean> {
+  if (!cookieVal || !getSessionSecret()) return false;
+  const parts = cookieVal.split(".");
+  if (parts.length !== 3) return false;
+  const [uid, exp, sig] = parts;
+  if (!uid || !/^\d+$/.test(exp) || Number(exp) <= Math.floor(Date.now() / 1000)) return false;
+  return sig === await sign(`${uid}.${exp}`);
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Check for the auth session cookie (set by auth-provider on sign-in).
-  // NOTE: This only verifies cookie presence for page-level redirects.
-  // The cookie value is NOT cryptographically verified here because Edge
-  // middleware cannot call Firebase Admin SDK. All API routes perform their
-  // own server-side token verification via verifyIdToken / verifyAdminToken.
-  // A user who sets an arbitrary cookie value will reach the dashboard HTML
-  // but every authenticated API call will still return 401/403.
   const cookieVal = req.cookies.get("zuria_auth")?.value ?? "";
-  const isAuthenticated = cookieVal.length > 0;
+  const isAuthenticated = await hasValidSession(cookieVal);
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   const isAuthPage = AUTH_PREFIXES.some((p) => pathname.startsWith(p));

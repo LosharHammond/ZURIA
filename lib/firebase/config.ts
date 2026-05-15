@@ -3,6 +3,7 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, indexedDBLocalPersistence, setPersistence } from "firebase/auth";
 import {
+  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -24,9 +25,20 @@ export const auth = getAuth(app);
 // Firestore with IndexedDB persistence enabled at init time (multi-tab aware).
 // This replaces the deprecated enableIndexedDbPersistence() which had to be
 // called after getFirestore() and could fail silently when multiple tabs were open.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-});
+//
+// Guard: initializeFirestore throws "settings can no longer be changed" if the
+// same Firebase app is already initialised (e.g. Next.js HMR re-imports this
+// module while the same app instance persists in memory). Fall back to the plain
+// getFirestore() accessor which is safe to call multiple times.
+export const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return getFirestore(app);
+  }
+})();
 
 export const firebaseReady = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInAnonymously } from "firebase/auth";
 import { MessageCircle, Phone, ArrowRight } from "lucide-react";
-import { auth, firebaseReady } from "@/lib/firebase/config";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,7 @@ function normalise(raw: string) {
 }
 
 export function SignupForm() {
+  const router = useRouter();
   const [phone, setPhone] = useState("+233");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,11 +29,6 @@ export function SignupForm() {
     const norm = normalise(phone);
     if (!/^\+\d{10,15}$/.test(norm)) {
       setError("Enter a valid number, e.g. +233241234567 or 0241234567");
-      return;
-    }
-
-    if (!auth || !firebaseReady) {
-      setError("App is not configured yet. Add Firebase credentials in .env.local.");
       return;
     }
 
@@ -53,17 +48,16 @@ export function SignupForm() {
       }
 
       if (!data.isNewUser) {
-        // Already registered — send to login
-        setError("This number already has a ZURIA account. Sign in instead.");
+        // Already registered — direct to sign in
+        setError("This number already has a ZURIA account. Please sign in instead.");
         return;
       }
 
-      // New user — sign in anonymously so the auth-provider sets the session
-      // cookie, then its routing effect automatically redirects to /onboarding.
+      // New user: store phone and go to onboarding (public page — no auth required).
+      // The onboarding form will call /api/auth/register server-side to create the
+      // account and return a custom token, avoiding the need for anonymous auth.
       sessionStorage.setItem("zuria_phone", norm);
-      await signInAnonymously(auth);
-      // Auth-provider onAuthStateChanged fires → sets cookie → routing effect
-      // detects onboardingComplete === undefined → router.replace("/onboarding")
+      router.push("/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -78,15 +72,8 @@ export function SignupForm() {
       </div>
       <h1 className="text-3xl font-black">Create your account</h1>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Enter the WhatsApp number you use for your business. We will use it to
-        connect ZURIA to your WhatsApp.
+        Enter the WhatsApp number you use for your business. ZURIA will connect to it.
       </p>
-
-      {!firebaseReady && (
-        <p className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-sm text-amber-400">
-          Add Firebase credentials in .env.local to enable sign-up.
-        </p>
-      )}
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         <div>
@@ -107,7 +94,7 @@ export function SignupForm() {
           <p className="text-sm text-destructive">{error}</p>
         )}
 
-        <Button className="w-full" type="submit" disabled={loading || !firebaseReady}>
+        <Button className="w-full" type="submit" disabled={loading}>
           <Phone className="mr-2 h-4 w-4" />
           {loading ? "Checking…" : "Continue"}
           {!loading && <ArrowRight className="ml-2 h-4 w-4" />}

@@ -67,11 +67,58 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// Health-check for the webhook URL
-export async function GET() {
-  const hasToken = !!process.env.TELEGRAM_BOT_TOKEN;
+// Health-check + one-click webhook registration
+// GET  /api/telegram/webhook        → show current status
+// GET  /api/telegram/webhook?setup=1 → register webhook with Telegram
+export async function GET(req: NextRequest) {
+  const token  = process.env.TELEGRAM_BOT_TOKEN ?? "";
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET ?? "";
+
+  if (!token) {
+    return NextResponse.json({
+      service: "ZURIA Telegram Bot",
+      status:  "error",
+      problem: "TELEGRAM_BOT_TOKEN is not set",
+      fix:     "Add TELEGRAM_BOT_TOKEN in Vercel → Project Settings → Environment Variables, then redeploy",
+    }, { status: 503 });
+  }
+
+  const url = new URL(req.url);
+
+  // Auto-register webhook when ?setup=1 is passed
+  if (url.searchParams.get("setup") === "1") {
+    const webhookUrl = `${appUrl}/api/telegram/webhook`;
+    const body: Record<string, string> = { url: webhookUrl };
+    if (secret) body.secret_token = secret;
+
+    const tgRes  = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const tgData = await tgRes.json() as { ok: boolean; description?: string };
+    return NextResponse.json({
+      service:    "ZURIA Telegram Bot",
+      registered: tgData.ok,
+      webhookUrl,
+      message:    tgData.ok ? "✅ Webhook registered! Bot is now live." : `❌ ${tgData.description}`,
+    });
+  }
+
+  // Status check only
+  const infoRes  = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+  const infoData = await infoRes.json() as { result?: { url?: string; pending_update_count?: number; last_error_message?: string } };
+  const isRegistered = !!(infoData.result?.url);
+
   return NextResponse.json({
-    service: "ZURIA Telegram Bot",
-    status:  hasToken ? "configured" : "missing TELEGRAM_BOT_TOKEN",
+    service:        "ZURIA Telegram Bot",
+    status:         isRegistered ? "✅ active" : "❌ not registered",
+    webhookUrl:     infoData.result?.url || "(none)",
+    pendingUpdates: infoData.result?.pending_update_count ?? 0,
+    lastError:      infoData.result?.last_error_message ?? null,
+    next:           isRegistered
+      ? "Bot is live. Send a message to your bot to test."
+      : `Visit ${appUrl}/api/telegram/webhook?setup=1 to register the webhook`,
   });
 }

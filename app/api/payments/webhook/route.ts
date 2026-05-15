@@ -170,6 +170,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, message: "Already processed" });
       }
 
+      const amountGHS = typeof data.amount === "number" ? data.amount / 100 : 0;
+      const currency = data.currency as string | undefined;
+      if (currency !== "GHS" || Math.round(amountGHS * 100) !== Math.round(payment.amountGHS * 100)) {
+        await paymentSnap.ref.update({ status: "failed", paystackStatus: "amount_mismatch" });
+        console.warn(`[webhook] amount mismatch for reference: ${reference}`);
+        return NextResponse.json({ ok: true, message: "Amount mismatch rejected" });
+      }
+
       await activateSubscription(payment.userId, payment.plan, payment.annual, reference);
       return NextResponse.json({ ok: true, message: "Subscription activated" });
     }

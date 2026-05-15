@@ -1,10 +1,18 @@
+import { memo, useEffect, useState } from "react";
 import { GlassCard } from "@/components/ui/card";
 import type { DailySummary } from "@/types/domain";
 import { formatMoney } from "@/lib/utils";
 
-export function DailySummaryCard({ summary, ownerName }: { summary: DailySummary; ownerName?: string }) {
+function getGreeting(): string {
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+export const DailySummaryCard = memo(function DailySummaryCard({ summary, ownerName }: { summary: DailySummary; ownerName?: string }) {
+  // Initialise with a neutral value so SSR and client initial render match,
+  // then resolve the real time-of-day greeting client-side only.
+  const [greeting, setGreeting] = useState("Hello");
+  useEffect(() => { setGreeting(getGreeting()); }, []);
 
   return (
     <GlassCard>
@@ -38,7 +46,7 @@ export function DailySummaryCard({ summary, ownerName }: { summary: DailySummary
       )}
     </GlassCard>
   );
-}
+});
 
 function Row({ label, value, positive }: { label: string; value: string; positive?: boolean }) {
   return (

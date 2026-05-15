@@ -18,13 +18,14 @@ import {
   UserCheck,
   Wallet,
 } from "lucide-react";
+import { memo, type ElementType } from "react";
 import type { Transaction, TransactionType } from "@/types/domain";
 import { MONEY_IN_TYPES, TRANSACTION_TYPE_LABELS } from "@/types/domain";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatMoney } from "@/lib/utils";
 
-const ICON_MAP: Record<TransactionType, React.ElementType> = {
+const ICON_MAP: Record<TransactionType, ElementType> = {
   sale: ArrowUpRight,
   expense: ArrowDownLeft,
   debt: HandCoins,
@@ -64,7 +65,7 @@ const COLOR_MAP: Partial<Record<TransactionType, string>> = {
   debt: "text-yellow-400",
 };
 
-export function RecentActivity({ transactions }: { transactions: Transaction[] }) {
+export const RecentActivity = memo(function RecentActivity({ transactions }: { transactions: Transaction[] }) {
   if (!transactions.length) {
     return <EmptyState icon={CircleDollarSign} title="Nothing recorded yet" message="Type what happened in your shop — your records will appear here." />;
   }
@@ -99,4 +100,4 @@ export function RecentActivity({ transactions }: { transactions: Transaction[] }
       })}
     </div>
   );
-}
+});

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
@@ -120,30 +119,22 @@ export function TransactionComposer({ initialText, onInitialUsed }: Props) {
         }}
       />
 
-      {/* Live preview */}
-      <AnimatePresence>
-        {parsed && parsed.amount > 0 && (
-          <motion.div
-            key="preview"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-white/[0.06] px-4 py-3"
-          >
-            <span className="text-xs text-muted-foreground">{typeLabel}</span>
-            <span className={`text-sm ${amountColor}`}>{formatMoney(parsed.amount)}</span>
-            {parsed.productName && (
-              <span className="text-xs text-muted-foreground">{productWord}: <span className="text-foreground">{parsed.productName}</span></span>
-            )}
-            {parsed.customerName && (
-              <span className="text-xs text-muted-foreground">{personLabel}: <span className="text-foreground">{parsed.customerName}</span></span>
-            )}
-            {parsed.confidence < 0.55 && (
-              <span className="text-xs text-amber-400">⚠ Check this</span>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Live preview — CSS animate-in replaces framer-motion AnimatePresence */}
+      {parsed && parsed.amount > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-white/[0.06] px-4 py-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <span className="text-xs text-muted-foreground">{typeLabel}</span>
+          <span className={`text-sm ${amountColor}`}>{formatMoney(parsed.amount)}</span>
+          {parsed.productName && (
+            <span className="text-xs text-muted-foreground">{productWord}: <span className="text-foreground">{parsed.productName}</span></span>
+          )}
+          {parsed.customerName && (
+            <span className="text-xs text-muted-foreground">{personLabel}: <span className="text-foreground">{parsed.customerName}</span></span>
+          )}
+          {parsed.confidence < 0.55 && (
+            <span className="text-xs text-amber-400">⚠ Check this</span>
+          )}
+        </div>
+      )}
 
       {error && (
         <p className="mt-2 text-xs text-rose-400">⚠ {error}</p>

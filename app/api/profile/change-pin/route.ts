@@ -1,8 +1,8 @@
-import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { hashPin, verifyPin } from "@/lib/security/pin";
 
 const PinSchema = z.object({
   currentPin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
@@ -42,16 +42,13 @@ export async function POST(req: Request) {
   }
 
   const stored = snap.data()?.whatsappPin as string | undefined;
-  // Use timing-safe comparison to prevent timing-oracle attacks
-  const pinMatch = !!stored &&
-    stored.length === currentPin.length &&
-    timingSafeEqual(Buffer.from(stored, "utf8"), Buffer.from(currentPin, "utf8"));
-  if (!pinMatch) {
+  const pinCheck = verifyPin(currentPin, stored);
+  if (!pinCheck.valid) {
     return NextResponse.json({ error: "Current PIN is incorrect" }, { status: 403 });
   }
 
   await db.collection(collections.users).doc(decoded.uid).update({
-    whatsappPin: newPin,
+    whatsappPin: hashPin(newPin),
     updatedAt: new Date().toISOString(),
   });
 

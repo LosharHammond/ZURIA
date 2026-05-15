@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -34,6 +33,27 @@ const TELEGRAM_BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "ZuriaBot"
 
 // ── Animation helpers ─────────────────────────────────────────────────────────
 
+function useFadeIn() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "-60px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
+}
+
 function FadeUp({
   children,
   delay = 0,
@@ -43,18 +63,19 @@ function FadeUp({
   delay?: number;
   className?: string;
 }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const { ref, visible } = useFadeIn();
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: 28 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] }}
       className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(28px)",
+        transition: `opacity 0.6s cubic-bezier(0.25,0.1,0.25,1) ${delay}s, transform 0.6s cubic-bezier(0.25,0.1,0.25,1) ${delay}s`,
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -392,45 +413,35 @@ function HeroSection() {
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_460px]">
           {/* Left — copy */}
           <div>
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
               <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
                 The AI memory system for African businesses
               </span>
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.08 }}
-              className="mt-6 text-5xl font-black leading-[0.92] tracking-tight text-balance md:text-7xl"
+            <h1
+              className="mt-6 text-5xl font-black leading-[0.92] tracking-tight text-balance md:text-7xl animate-in fade-in slide-in-from-bottom-5 duration-[600ms] fill-mode-both"
+              style={{ animationDelay: "80ms" }}
             >
               Your shop.<br />
               <span className="text-primary">Your money.</span><br />
               Your memory.
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.16 }}
-              className="mt-6 max-w-lg text-lg leading-7 text-muted-foreground"
+            <p
+              className="mt-6 max-w-lg text-lg leading-7 text-muted-foreground animate-in fade-in slide-in-from-bottom-5 duration-[600ms] fill-mode-both"
+              style={{ animationDelay: "160ms" }}
             >
               Old merchants kept wisdom in notebooks and memory.
               ZURIA transforms that ancient rhythm into{" "}
               <span className="text-foreground font-medium">living intelligence</span> —
               a digital accountant, business advisor, debt tracker, and sales engine in one.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.24 }}
-              className="mt-8 flex flex-wrap gap-3"
+            <div
+              className="mt-8 flex flex-wrap gap-3 animate-in fade-in slide-in-from-bottom-5 duration-[600ms] fill-mode-both"
+              style={{ animationDelay: "240ms" }}
             >
               <Button asChild size="default" className="gap-2 shadow-lg shadow-primary/20">
                 <Link href="/login">
@@ -445,13 +456,11 @@ function HeroSection() {
               <Button asChild variant="ghost" size="default">
                 <Link href="#pricing">See plans</Link>
               </Button>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-8 flex flex-wrap gap-4 text-sm text-muted-foreground"
+            <div
+              className="mt-8 flex flex-wrap gap-4 text-sm text-muted-foreground animate-in fade-in duration-[600ms] fill-mode-both"
+              style={{ animationDelay: "400ms" }}
             >
               {["No credit card needed", "Works offline", "6 local languages"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5">
@@ -459,14 +468,13 @@ function HeroSection() {
                   {item}
                 </span>
               ))}
-            </motion.div>
+            </div>
           </div>
 
           {/* Right — WhatsApp demo card */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
+          <div
+            className="animate-in fade-in slide-in-from-right-10 duration-700 fill-mode-both"
+            style={{ animationDelay: "200ms" }}
           >
             <GlassCard className="overflow-hidden p-0">
               {/* Header bar */}
@@ -481,12 +489,10 @@ function HeroSection() {
               {/* Conversation */}
               <div className="space-y-3 p-4">
                 {whatsappConversation.map((msg, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 + i * 0.18, duration: 0.4 }}
-                    className={`flex ${msg.side === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex animate-in fade-in slide-in-from-bottom-2 duration-[400ms] fill-mode-both ${msg.side === "user" ? "justify-end" : "justify-start"}`}
+                    style={{ animationDelay: `${500 + i * 180}ms` }}
                   >
                     <div
                       className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-5 whitespace-pre-line ${
@@ -497,11 +503,11 @@ function HeroSection() {
                     >
                       {msg.text}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </GlassCard>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>
@@ -691,11 +697,9 @@ function DashboardPreviewSection() {
             <div className="mt-4 rounded-2xl bg-primary/10 p-4">
               <p className="text-xs font-semibold text-primary uppercase tracking-widest">Health score</p>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: "78%" }}
-                  transition={{ duration: 1.2, delay: 0.6, ease: "easeOut" }}
+                <div
                   className="h-full rounded-full bg-primary"
+                  style={{ animation: "zu-grow-bar 1.2s 0.6s ease-out both" }}
                 />
               </div>
               <p className="mt-2 text-sm font-bold text-primary">78/100 — Very good! Keep it up 🌟</p>
@@ -973,7 +977,7 @@ function Footer() {
               <Send className="h-3.5 w-3.5" /> Telegram
             </a>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} ZURIA. Built for Ghana.</p>
+          <p className="text-xs text-muted-foreground" suppressHydrationWarning>© {new Date().getFullYear()} ZURIA. Built for Ghana.</p>
         </div>
       </div>
     </footer>

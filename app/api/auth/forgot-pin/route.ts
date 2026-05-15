@@ -2,16 +2,10 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
+import { hashPin } from "@/lib/security/pin";
+import { normalisePhone, E164_REGEX } from "@/lib/utils/phone";
 
 export const dynamic = "force-dynamic";
-
-function normalisePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("0") && digits.length === 10) return `+233${digits.slice(1)}`;
-  if (digits.startsWith("233") && digits.length === 12) return `+${digits}`;
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return `+${digits}`;
-}
 
 /**
  * POST /api/auth/forgot-pin
@@ -39,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   const phone = normalisePhone(rawPhone);
-  if (!/^\+\d{10,15}$/.test(phone)) {
+  if (!E164_REGEX.test(phone)) {
     return NextResponse.json(
       { error: "Enter a valid phone number, e.g. 0241234567" },
       { status: 400 }
@@ -118,7 +112,7 @@ export async function POST(req: Request) {
 
     // Identity confirmed — update the PIN
     await db.collection(collections.users).doc(uid).update({
-      whatsappPin: newPin,
+      whatsappPin: hashPin(newPin),
       updatedAt:   new Date().toISOString(),
     });
 

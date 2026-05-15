@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { memo } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -15,18 +15,35 @@ interface MetricCardProps {
 }
 
 const variantStyles = {
-  default: { icon: "bg-primary/15 text-primary", value: "" },
+  default:  { icon: "bg-primary/15 text-primary",       value: "" },
   positive: { icon: "bg-emerald-500/15 text-emerald-400", value: "text-emerald-400" },
-  negative: { icon: "bg-rose-500/15 text-rose-400", value: "text-rose-400" },
-  warning: { icon: "bg-amber-500/15 text-amber-400", value: "text-amber-400" },
-  neutral: { icon: "bg-sky-500/15 text-sky-400", value: "text-sky-400" },
+  negative: { icon: "bg-rose-500/15 text-rose-400",      value: "text-rose-400" },
+  warning:  { icon: "bg-amber-500/15 text-amber-400",   value: "text-amber-400" },
+  neutral:  { icon: "bg-sky-500/15 text-sky-400",       value: "text-sky-400" },
 };
 
-export function MetricCard({ title, value, detail, icon: Icon, variant = "default", delay = 0 }: MetricCardProps) {
+/**
+ * MetricCard — pure display component, memoized.
+ *
+ * Entrance animation via CSS (tailwindcss-animate) instead of framer-motion.
+ * CSS animations are compositor-threaded (GPU-accelerated) — no JS overhead,
+ * no ~150 kB framer-motion import, runs smoothly on low-end phones.
+ */
+export const MetricCard = memo(function MetricCard({
+  title,
+  value,
+  detail,
+  icon: Icon,
+  variant = "default",
+  delay = 0,
+}: MetricCardProps) {
   const styles = variantStyles[variant];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
+    <div
+      className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-300"
+      style={delay > 0 ? { animationDelay: `${Math.round(delay * 1000)}ms` } : undefined}
+    >
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -39,6 +56,6 @@ export function MetricCard({ title, value, detail, icon: Icon, variant = "defaul
           </div>
         </div>
       </Card>
-    </motion.div>
+    </div>
   );
-}
+});

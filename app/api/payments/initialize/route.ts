@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { getAdminDb, verifyIdToken } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { initializePayment } from "@/lib/services/paystack-service";
@@ -26,7 +27,7 @@ function planPrice(plan: SubscriptionPlan, annual: boolean): number {
 
 function generateReference(): string {
   const ts   = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const rand = randomBytes(4).toString("hex").toUpperCase();
   return `ZURIA-${ts}-${rand}`;
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowDownToLine, CheckCircle, Clock, Copy, Gift,
   MessageCircle, Sparkles, TrendingUp, Users, Zap,
@@ -293,9 +292,12 @@ export default function ReferralsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [user?.id]);
 
-  const referralLink = typeof window !== "undefined"
-    ? `${window.location.origin}/?ref=${stats.code}`
-    : `/?ref=${stats.code}`;
+  // Initialise with the relative path so SSR and the first client render match,
+  // then upgrade to the absolute URL after mount (client-only).
+  const [referralLink, setReferralLink] = useState(`/?ref=${stats.code}`);
+  useEffect(() => {
+    setReferralLink(`${window.location.origin}/?ref=${stats.code}`);
+  }, [stats.code]);
 
   const shareMessage = user ? buildShareMessage(referralLink, user.ownerName) : "";
   const waShareUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
@@ -366,7 +368,7 @@ export default function ReferralsPage() {
       </div>
 
       {/* ── Earnings counter + milestone progress ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300">
         <GlassCard>
           <div className="flex items-center gap-4 mb-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15">
@@ -387,10 +389,10 @@ export default function ReferralsPage() {
             <MilestoneProgress balance={stats.balance} monthlyCount={stats.monthlyCount} />
           )}
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* ── Two-milestone explainer ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
+      <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300" style={{ animationDelay: '50ms' }}>
         <GlassCard>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-3">Two ways to win</p>
           <div className="space-y-3">
@@ -430,10 +432,10 @@ export default function ReferralsPage() {
             </p>
           </div>
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* ── Problem/solution section ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
+      <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300" style={{ animationDelay: '80ms' }}>
         <GlassCard>
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">Why your friends need ZURIA</p>
@@ -455,10 +457,10 @@ export default function ReferralsPage() {
             ))}
           </div>
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* ── Why ZURIA is amazing ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
+      <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300" style={{ animationDelay: '120ms' }}>
         <GlassCard>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-3">What makes ZURIA special</p>
           <div className="grid grid-cols-2 gap-3">
@@ -475,10 +477,10 @@ export default function ReferralsPage() {
             <p className="text-xs text-muted-foreground mt-0.5">Used by provision stores, barbers, food sellers & MoMo agents across Ghana</p>
           </div>
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* ── Ready-to-send message ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}>
+      <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-300" style={{ animationDelay: '150ms' }}>
         <GlassCard>
           <div className="mb-3 flex items-center gap-2">
             <MessageCircle className="h-4 w-4 text-[#25D366]" />
@@ -515,7 +517,7 @@ export default function ReferralsPage() {
             </>
           )}
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* ── Referral link (for manual sharing) ── */}
       <GlassCard>

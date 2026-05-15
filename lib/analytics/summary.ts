@@ -3,20 +3,42 @@ import type { ChartPoint, DailySummary, Debt, InventoryItem, Loan, SmartNotifica
 import { MONEY_IN_TYPES, MONEY_OUT_TYPES, OPERATING_COST_TYPES, REVENUE_TYPES } from "@/types/domain";
 import { createId, formatMoney, todayKey } from "@/lib/utils";
 
+const MONEY_IN_SET = new Set(MONEY_IN_TYPES);
+const MONEY_OUT_SET = new Set(MONEY_OUT_TYPES);
+const OPERATING_COST_SET = new Set(OPERATING_COST_TYPES);
+const REVENUE_SET = new Set(REVENUE_TYPES);
+
 // ─── Daily Summary ────────────────────────────────────────────────────────────
 
 export function generateDailySummary(transactions: Transaction[], ownerName = "friend"): DailySummary {
   const today = todayKey();
-  const todays = transactions.filter((t) => t.createdAt.startsWith(today));
+  let businessId = "";
+  let moneyIn = 0;
+  let moneyOut = 0;
+  let salesRevenue = 0;
+  let operatingCosts = 0;
+  let borrowingsIn = 0;
+  let lendingsOut = 0;
+  const productTotals = new Map<string, number>();
 
-  const moneyIn = sum(todays.filter((t) => MONEY_IN_TYPES.includes(t.type)));
-  const moneyOut = sum(todays.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
-  const salesRevenue = sum(todays.filter((t) => REVENUE_TYPES.includes(t.type)));
-  const operatingCosts = sum(todays.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
-  const borrowingsIn = sum(todays.filter((t) => t.type === "borrow_in"));
-  const lendingsOut = sum(todays.filter((t) => t.type === "borrow_out"));
+  for (const transaction of transactions) {
+    if (!transaction.createdAt.startsWith(today)) continue;
+    businessId ||= transaction.businessId;
+    if (MONEY_IN_SET.has(transaction.type)) moneyIn += transaction.amount;
+    if (MONEY_OUT_SET.has(transaction.type)) moneyOut += transaction.amount;
+    if (REVENUE_SET.has(transaction.type)) {
+      salesRevenue += transaction.amount;
+      if (transaction.productName) {
+        productTotals.set(transaction.productName, (productTotals.get(transaction.productName) ?? 0) + transaction.amount);
+      }
+    }
+    if (OPERATING_COST_SET.has(transaction.type)) operatingCosts += transaction.amount;
+    if (transaction.type === "borrow_in") borrowingsIn += transaction.amount;
+    if (transaction.type === "borrow_out") lendingsOut += transaction.amount;
+  }
+
   const estimatedProfit = salesRevenue - operatingCosts;
-  const topProduct = getTopProduct(todays);
+  const topProduct = getTopProduct(productTotals);
 
   let warning: string | undefined;
   if (operatingCosts > salesRevenue * 0.75 && operatingCosts > 0 && salesRevenue > 0) {
@@ -56,7 +78,7 @@ export function generateDailySummary(transactions: Transaction[], ownerName = "f
 
   return {
     id: `${today}_summary`,
-    businessId: todays[0]?.businessId ?? "",
+    businessId,
     date: today,
     moneyIn,
     moneyOut,
@@ -105,18 +127,21 @@ export function computeHealthScoreBreakdown(
   loans: Loan[] = []
 ): HealthScoreBreakdown {
   const sevenDaysAgo = subDays(new Date(), 7);
-  const recent = transactions.filter((t) => new Date(t.createdAt) >= sevenDaysAgo);
+  let weeklyRevenue = 0;
+  let weeklyExpenses = 0;
+  const salesDayKeys = new Set<string>();
+  for (const transaction of transactions) {
+    if (new Date(transaction.createdAt) < sevenDaysAgo) continue;
+    if (REVENUE_SET.has(transaction.type)) weeklyRevenue += transaction.amount;
+    if (OPERATING_COST_SET.has(transaction.type)) weeklyExpenses += transaction.amount;
+    if (transaction.type === "sale") salesDayKeys.add(transaction.createdAt.slice(0, 10));
+  }
 
-  const weeklyRevenue  = sum(recent.filter((t) => REVENUE_TYPES.includes(t.type)));
-  const weeklyExpenses = sum(recent.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
   const totalDebt      = debts.reduce((acc, d) => acc + d.outstandingAmount, 0);
   const totalLoansTaken = loans
     .filter((l) => l.direction === "taken" && l.status === "open")
     .reduce((acc, l) => acc + l.outstandingAmount, 0);
-
-  const salesDays = new Set(
-    recent.filter((t) => t.type === "sale").map((t) => t.createdAt.slice(0, 10))
-  ).size;
+  const salesDays = salesDayKeys.size;
 
   const consistency  = Math.min(30, salesDays * (30 / 7));
   const margin       = weeklyRevenue > 0
@@ -160,48 +185,82 @@ export function computeHealthScore(
 // ─── Chart Data ───────────────────────────────────────────────────────────────
 
 export function buildChartData(transactions: Transaction[]): ChartPoint[] {
-  return Array.from({ length: 7 }).map((_, index) => {
+  const points = Array.from({ length: 7 }).map((_, index) => {
     const date = subDays(new Date(), 6 - index);
-    const key = todayKey(date);
-    const daily = transactions.filter((t) => t.createdAt.startsWith(key));
-    const sales = sum(daily.filter((t) => REVENUE_TYPES.includes(t.type)));
-    const expenses = sum(daily.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
-    const borrowings = sum(daily.filter((t) => t.type === "borrow_in" || t.type === "borrow_out"));
     return {
+      key: todayKey(date),
       label: format(date, "EEE"),
-      sales,
-      expenses,
-      net: sales - expenses,
-      borrowings,
+      sales: 0,
+      expenses: 0,
+      net: 0,
+      borrowings: 0,
     };
   });
+  const byDate = new Map(points.map((point) => [point.key, point]));
+
+  for (const transaction of transactions) {
+    const point = byDate.get(transaction.createdAt.slice(0, 10));
+    if (!point) continue;
+    if (REVENUE_SET.has(transaction.type)) point.sales += transaction.amount;
+    if (OPERATING_COST_SET.has(transaction.type)) point.expenses += transaction.amount;
+    if (transaction.type === "borrow_in" || transaction.type === "borrow_out") point.borrowings += transaction.amount;
+  }
+
+  return points.map((point) => ({
+    label: point.label,
+    sales: point.sales,
+    expenses: point.expenses,
+    net: point.sales - point.expenses,
+    borrowings: point.borrowings,
+  }));
 }
 
 // ─── Dashboard Aggregations ───────────────────────────────────────────────────
 
 export function aggregateTodayBreakdown(transactions: Transaction[]) {
   const today = todayKey();
-  const todays = transactions.filter((t) => t.createdAt.startsWith(today));
-
-  return {
-    moneyIn: sum(todays.filter((t) => MONEY_IN_TYPES.includes(t.type))),
-    moneyOut: sum(todays.filter((t) => MONEY_OUT_TYPES.includes(t.type))),
-    salesToday: sum(todays.filter((t) => t.type === "sale")),
-    repayments: sum(todays.filter((t) => t.type === "repayment")),
-    expensesToday: sum(todays.filter((t) => t.type === "expense")),
-    stockCosts: sum(todays.filter((t) => t.type === "stock_purchase")),
-    salaryCosts: sum(todays.filter((t) => t.type === "salary")),
-    taxCosts: sum(todays.filter((t) => t.type === "tax")),
-    fixedCosts: sum(todays.filter((t) => t.type === "cost")),
-    borrowingsIn: sum(todays.filter((t) => t.type === "borrow_in")),
-    borrowingsOut: sum(todays.filter((t) => t.type === "borrow_out")),
-    loanRepaymentsOut: sum(todays.filter((t) => t.type === "loan_repay_out")),
-    loanCollectionsIn: sum(todays.filter((t) => t.type === "loan_collect_in")),
-    investmentsIn: sum(todays.filter((t) => t.type === "investment")),
-    withdrawalsOut: sum(todays.filter((t) => t.type === "withdrawal")),
-    refundsIn: sum(todays.filter((t) => t.type === "refund_in")),
-    refundsOut: sum(todays.filter((t) => t.type === "refund_out")),
+  const breakdown = {
+    moneyIn: 0,
+    moneyOut: 0,
+    salesToday: 0,
+    repayments: 0,
+    expensesToday: 0,
+    stockCosts: 0,
+    salaryCosts: 0,
+    taxCosts: 0,
+    fixedCosts: 0,
+    borrowingsIn: 0,
+    borrowingsOut: 0,
+    loanRepaymentsOut: 0,
+    loanCollectionsIn: 0,
+    investmentsIn: 0,
+    withdrawalsOut: 0,
+    refundsIn: 0,
+    refundsOut: 0,
   };
+
+  for (const transaction of transactions) {
+    if (!transaction.createdAt.startsWith(today)) continue;
+    if (MONEY_IN_SET.has(transaction.type)) breakdown.moneyIn += transaction.amount;
+    if (MONEY_OUT_SET.has(transaction.type)) breakdown.moneyOut += transaction.amount;
+    if (transaction.type === "sale") breakdown.salesToday += transaction.amount;
+    if (transaction.type === "repayment") breakdown.repayments += transaction.amount;
+    if (transaction.type === "expense") breakdown.expensesToday += transaction.amount;
+    if (transaction.type === "stock_purchase") breakdown.stockCosts += transaction.amount;
+    if (transaction.type === "salary") breakdown.salaryCosts += transaction.amount;
+    if (transaction.type === "tax") breakdown.taxCosts += transaction.amount;
+    if (transaction.type === "cost") breakdown.fixedCosts += transaction.amount;
+    if (transaction.type === "borrow_in") breakdown.borrowingsIn += transaction.amount;
+    if (transaction.type === "borrow_out") breakdown.borrowingsOut += transaction.amount;
+    if (transaction.type === "loan_repay_out") breakdown.loanRepaymentsOut += transaction.amount;
+    if (transaction.type === "loan_collect_in") breakdown.loanCollectionsIn += transaction.amount;
+    if (transaction.type === "investment") breakdown.investmentsIn += transaction.amount;
+    if (transaction.type === "withdrawal") breakdown.withdrawalsOut += transaction.amount;
+    if (transaction.type === "refund_in") breakdown.refundsIn += transaction.amount;
+    if (transaction.type === "refund_out") breakdown.refundsOut += transaction.amount;
+  }
+
+  return breakdown;
 }
 
 // ─── Smart Notifications ──────────────────────────────────────────────────────
@@ -215,11 +274,16 @@ export function generateNotifications(params: {
 }): SmartNotification[] {
   const now = new Date().toISOString();
   const notifications: SmartNotification[] = [];
-  const todayTxns = params.transactions.filter((t) => t.createdAt.startsWith(todayKey()));
-
-  const todaySalesCount = todayTxns.filter((t) => t.type === "sale").length;
-  const todayOperatingCosts = sum(todayTxns.filter((t) => OPERATING_COST_TYPES.includes(t.type)));
-  const todaySalesRevenue = sum(todayTxns.filter((t) => REVENUE_TYPES.includes(t.type)));
+  const today = todayKey();
+  let todaySalesCount = 0;
+  let todayOperatingCosts = 0;
+  let todaySalesRevenue = 0;
+  for (const transaction of params.transactions) {
+    if (!transaction.createdAt.startsWith(today)) continue;
+    if (transaction.type === "sale") todaySalesCount += 1;
+    if (OPERATING_COST_SET.has(transaction.type)) todayOperatingCosts += transaction.amount;
+    if (REVENUE_SET.has(transaction.type)) todaySalesRevenue += transaction.amount;
+  }
 
   const openDebts = params.debts.filter((d) => d.status === "open" && d.outstandingAmount > 0);
   const openLoansGiven = (params.loans ?? []).filter((l) => l.direction === "given" && l.status === "open");
@@ -263,18 +327,16 @@ export function generateNotifications(params: {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function sum(items: Transaction[]): number {
-  return items.reduce((acc, t) => acc + t.amount, 0);
-}
-
-function getTopProduct(transactions: Transaction[]): string | undefined {
-  const counts = new Map<string, number>();
-  transactions.forEach((t) => {
-    if (t.productName && REVENUE_TYPES.includes(t.type)) {
-      counts.set(t.productName, (counts.get(t.productName) ?? 0) + t.amount);
+function getTopProduct(productTotals: Map<string, number>): string | undefined {
+  let topProduct: string | undefined;
+  let topAmount = 0;
+  for (const [product, amount] of productTotals) {
+    if (amount > topAmount) {
+      topAmount = amount;
+      topProduct = product;
     }
-  });
-  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+  }
+  return topProduct;
 }
 
 function makeNote(

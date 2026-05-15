@@ -3,6 +3,7 @@ import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import type { SubscriptionPlan, Transaction, Debt, TransactionType } from "@/types/domain";
 import { MONEY_IN_TYPES, MONEY_OUT_TYPES, REVENUE_TYPES, OPERATING_COST_TYPES } from "@/types/domain";
+import { getEffectivePlan } from "@/lib/subscription";
 
 // Friendly cost-category labels for PDF reports (shorter than TRANSACTION_TYPE_LABELS)
 const COST_LABEL: Partial<Record<TransactionType, string>> = {
@@ -17,11 +18,6 @@ export const dynamic = "force-dynamic";
 
 // Plans allowed to download PDF reports (Growth and above)
 const PDF_ALLOWED_PLANS: SubscriptionPlan[] = ["growth", "pro", "enterprise"];
-
-function isExpired(expiresAt?: string | null): boolean {
-  if (!expiresAt) return false;
-  return new Date(expiresAt) <= new Date();
-}
 
 function fmt(n: number) {
   return `GHS ${Math.abs(n).toLocaleString("en-GH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -46,18 +42,12 @@ export async function GET(req: NextRequest) {
   if (!userSnap.exists) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const userData = userSnap.data()!;
 
-  const plan = (userData.subscriptionPlan as SubscriptionPlan) ?? "free";
-  const expiresAt = userData.subscriptionExpiresAt as string | null;
-  const referralUnlockExpiresAt = userData.referralUnlockExpiresAt as string | null;
-
-  // Determine effective plan — mirrors getEffectivePlan() from lib/whatsapp/session.ts
-  let effectivePlan: SubscriptionPlan = "free";
-  if (plan !== "free" && !isExpired(expiresAt)) {
-    effectivePlan = plan;
-  } else if (referralUnlockExpiresAt && !isExpired(referralUnlockExpiresAt)) {
-    // Referral milestone unlock: 30 referrals this month → Growth features
-    effectivePlan = "growth";
-  }
+  // Determine effective plan via shared utility (single canonical source of truth)
+  const effectivePlan = getEffectivePlan({
+    subscriptionPlan:        (userData.subscriptionPlan      as SubscriptionPlan) ?? "free",
+    subscriptionExpiresAt:   userData.subscriptionExpiresAt  as string | null,
+    referralUnlockExpiresAt: userData.referralUnlockExpiresAt as string | null,
+  });
 
   if (!PDF_ALLOWED_PLANS.includes(effectivePlan)) {
     return NextResponse.json({ error: "PDF reports require ZURIA Growth or above." }, { status: 403 });

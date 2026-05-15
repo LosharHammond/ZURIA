@@ -125,12 +125,11 @@ async function applyDebtEffect(transaction: Transaction): Promise<void> {
   const now = new Date().toISOString();
 
   if (transaction.type === "debt") {
-    // Prefer the original (display) casing from the transaction for new records,
-    // but always query / match by the normalized (lowercase) form.
-    // Title-case the stored name so the debt list looks professional ("Kofi" not "kofi").
-    const displayName = transaction.customerName
-      ? transaction.customerName.trim().replace(/\b\w/g, (c) => c.toUpperCase())
-      : normalizedName.replace(/\b\w/g, (c) => c.toUpperCase());
+    // Store customerName as lowercase so that both the web app and the WhatsApp
+    // handler (lib/whatsapp/session.ts) use the same casing when querying.
+    // Previously the web app stored title-case ("Kofi") but queried lowercase
+    // ("kofi"), causing every debt/repayment to miss the existing record and
+    // create a new duplicate document.
     const next: Debt = existing
       ? {
           ...existing,
@@ -142,7 +141,7 @@ async function applyDebtEffect(transaction: Transaction): Promise<void> {
       : {
           id: createId("debt"),
           businessId: transaction.businessId,
-          customerName: displayName,             // title-cased for display
+          customerName: normalizedName,          // lowercase — consistent with WA handler & findDebt query
           originalAmount: transaction.amount,
           outstandingAmount: transaction.amount,
           repaymentHistory: [],

@@ -17,6 +17,7 @@
 
 import { parseTransaction }   from "@/lib/parsers/transaction-parser";
 import { createId }           from "@/lib/utils";
+import { hashPin, verifyPin }  from "@/lib/security/pin";
 import {
   fmtConfirm,
   fmtDebts,
@@ -268,15 +269,16 @@ export async function handleTelegram(update: Record<string, unknown>): Promise<v
   // ── Step 1: resolve Telegram → ZURIA identity ─────────────────────────────
   const link = await getTgLink(chatId);
 
-  // Brand-new Telegram user
-  if (!link) {
-    await saveTgLink(chatId, { state: "awaiting_phone" });
+  // /start command or brand-new user → always show the welcome prompt
+  const isStartCommand = rawText === "/start" || rawText.startsWith("/start ");
+  if (!link || isStartCommand) {
+    await saveTgLink(chatId, { state: "awaiting_phone", pinAttempts: 0, lockedUntil: null });
     await reply(
       `👋 *Welcome to ZURIA, ${firstName}!*\n\n` +
       `I'm your personal business helper — record sales, track debts, check your balance, and more.\n\n` +
       `To get started, please send me your *ZURIA phone number* (the one you registered with).\n` +
       `Example: *0241234567*\n\n` +
-      `Don't have an account yet? Create one at:\n${APP_URL}/login`
+      `Don't have an account yet? Create one at:\n${APP_URL}/signup`
     );
     return;
   }
@@ -334,7 +336,10 @@ export async function handleTelegram(update: Record<string, unknown>): Promise<v
       return;
     }
 
-    if (rawText !== lookup.pin) {
+    const pinCheck = verifyPin(rawText, lookup.pin ?? "");
+    const pinCorrect = pinCheck.valid;
+
+    if (!pinCorrect) {
       const attempts = (link.pinAttempts ?? 0) + 1;
       const attemptsLeft = Math.max(0, MAX_PIN_ATTEMPTS - attempts);
       if (attempts >= MAX_PIN_ATTEMPTS) {
@@ -356,6 +361,9 @@ export async function handleTelegram(update: Record<string, unknown>): Promise<v
 
     // PIN correct — activate link, clear lockout counters
     await saveTgLink(chatId, { state: "active", pinAttempts: 0, lockedUntil: null });
+    if (pinCheck.needsRehash) {
+      getAdminDb().collection(collections.users).doc(lookup.user.id).update({ whatsappPin: hashPin(rawText) }).catch(() => {});
+    }
     const { user } = lookup;
     const name = user.ownerName?.split(" ")[0] ?? "there";
     await reply(
