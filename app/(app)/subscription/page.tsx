@@ -29,15 +29,11 @@ import { PaystackButton } from "@/components/payments/paystack-button";
 import { computeHealthScoreBreakdown } from "@/lib/analytics/summary";
 import { getEffectivePlan, isOnReferralUnlock, formatPlanExpiry, daysUntilExpiry } from "@/lib/subscription";
 import { formatMoney } from "@/lib/utils";
+import { SUPPORT_WA_LINK } from "@/lib/config";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ADMIN_MOMO =
-  process.env.NEXT_PUBLIC_ADMIN_MOMO ??
-  process.env.NEXT_PUBLIC_ADMIN_PHONE?.replace(/^\+233/, "0").replace(/^233/, "0") ??
-  "0242176603";
-
-const SUPPORT_WA_HREF = `https://wa.me/${ADMIN_MOMO.replace(/^0/, "233").replace(/^\+/, "")}`;
+const SUPPORT_WA_HREF = SUPPORT_WA_LINK;
 
 const PLAN_META: Record<SubscriptionPlan, {
   color: string;
@@ -46,7 +42,6 @@ const PLAN_META: Record<SubscriptionPlan, {
   glow: string;
   emoji: string;
   annualPrice: number | null;
-  payCmd: string;
 }> = {
   free: {
     color: "text-muted-foreground",
@@ -55,7 +50,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     glow: "",
     emoji: "🆓",
     annualPrice: null,
-    payCmd: "",
   },
   growth: {
     color: "text-emerald-400",
@@ -64,7 +58,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     glow: "shadow-emerald-500/10",
     emoji: "🟢",
     annualPrice: 180,   // GHS 180/yr — 2 months free on GHS 20/mo
-    payCmd: "PAID GROWTH",
   },
   pro: {
     color: "text-cyan-400",
@@ -73,7 +66,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     glow: "shadow-cyan-500/10",
     emoji: "🔵",
     annualPrice: 500,   // GHS 500/yr — 2 months free on GHS 50/mo
-    payCmd: "PAID PRO",
   },
   enterprise: {
     color: "text-amber-400",
@@ -82,7 +74,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     glow: "shadow-amber-500/10",
     emoji: "🟣",
     annualPrice: 1000,  // GHS 1000/yr — 2 months free on GHS 100/mo
-    payCmd: "PAID ENTERPRISE",
   },
 };
 
@@ -932,41 +923,13 @@ export default function SubscriptionPage() {
           ))}
         </div>
 
-        <details className="mt-4 group">
-          <summary className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors list-none">
-            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-            Prefer to pay manually via MoMo USSD?
-          </summary>
-          <div className="mt-3 space-y-2">
-            {[
-              { network: "MTN MoMo",        code: "*170#", instruction: "Send Money"   },
-              { network: "Telecel Cash",     code: "*100#", instruction: "Send Money"   },
-              { network: "AirtelTigo Money", code: "*185#", instruction: "Make Payment" },
-              { network: "Vodafone Cash",    code: "*110#", instruction: "Send Money"   },
-            ].map((n) => (
-              <div key={n.network} className="flex items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold">{n.network}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Dial {n.code} → {n.instruction} → {ADMIN_MOMO}
-                  </p>
-                </div>
-                <button
-                  onClick={() => copyText(ADMIN_MOMO)}
-                  className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  {ADMIN_MOMO}
-                </button>
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground leading-5 px-1">
-              After manual payment, message ZURIA on <strong className="text-[#5AC8FA]">Telegram</strong> or the <strong className="text-amber-300">WhatsApp Sandbox</strong> with{" "}
-              <code className="font-mono">PAID GROWTH</code>, <code className="font-mono">PAID PRO</code>, or <code className="font-mono">PAID ENTERPRISE</code>.
-              We will verify and activate within 1 hour.
-            </p>
-          </div>
-        </details>
+        <p className="mt-4 text-xs text-muted-foreground leading-5">
+          Having trouble with payment? Message us on{" "}
+          <a href={SUPPORT_WA_HREF} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline">
+            WhatsApp
+          </a>{" "}
+          and we&apos;ll sort it out for you. 🙏
+        </p>
       </GlassCard>
 
       {/* Feature comparison */}

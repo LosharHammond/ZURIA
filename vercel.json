@@ -2,6 +2,21 @@
   "framework": "nextjs",
   "regions": ["iad1"],
 
+  "crons": [
+    {
+      "path": "/api/cron/process-webhooks",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-payments",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/expire-subscriptions",
+      "schedule": "0 1 * * *"
+    }
+  ],
+
   "functions": {
     "app/api/telegram/webhook/route.ts": {
       "maxDuration": 30
@@ -15,8 +30,17 @@
     "app/api/reports/pdf/route.ts": {
       "maxDuration": 60
     },
+    "app/api/cron/process-webhooks/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/reconcile-payments/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/expire-subscriptions/route.ts": {
+      "maxDuration": 60
+    },
     "app/api/payments/webhook/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 10
     },
     "app/api/payments/initialize/route.ts": {
       "maxDuration": 20

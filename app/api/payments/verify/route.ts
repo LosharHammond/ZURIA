@@ -13,7 +13,7 @@ import { collections } from "@/lib/firebase/collections";
 import { verifyTransaction } from "@/lib/services/paystack-service";
 import { sendText } from "@/lib/whatsapp/client";
 import { fmtSubscriptionActivated } from "@/lib/whatsapp/formatter";
-import type { PaystackPayment, SubscriptionPlan } from "@/types/domain";
+import type { PaystackPayment, SubscriptionPlan, PaymentLedgerEntry } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +70,29 @@ export async function GET(req: Request) {
     const result = await verifyTransaction(reference);
 
     if (!result.ok || result.status !== "success") {
-      // Mark as failed in Firestore if Paystack says it's definitively failed/abandoned
+      // Mark as failed in Firestore and write an immutable PAYMENT_FAILED ledger entry.
       if (result.status === "failed" || result.status === "abandoned") {
-        await paymentSnap.ref.update({ status: result.status, paystackStatus: result.status });
+        const nowIso        = new Date().toISOString();
+        const failedLedgerId = `${reference}_PAYMENT_FAILED`;
+        const failBatch      = db.batch();
+        failBatch.update(paymentSnap.ref, { status: result.status, paystackStatus: result.status });
+        failBatch.set(db.collection(collections.paymentEvents).doc(failedLedgerId), {
+          id:               failedLedgerId,
+          paystackReference: reference,
+          userId:           payment.userId,
+          plan:             payment.plan,
+          annual:           payment.annual,
+          amountGHS:        payment.amountGHS,
+          currency:         "GHS",
+          eventType:        "PAYMENT_FAILED",
+          status:           "failed",
+          source:           "verify_api",
+          failureReason:    result.status,
+          idempotencyKey:   failedLedgerId,
+          createdAt:        nowIso,
+          _immutable:       true,
+        } as PaymentLedgerEntry);
+        await failBatch.commit();
       }
       return NextResponse.json({
         ok: false,
@@ -83,7 +103,29 @@ export async function GET(req: Request) {
 
     // ── Activate subscription ─────────────────────────────────────────────────
     if (result.currency !== "GHS" || Math.round(result.amountGHS * 100) !== Math.round(payment.amountGHS * 100)) {
-      await paymentSnap.ref.update({ status: "failed", paystackStatus: "amount_mismatch" });
+      // Amount or currency mismatch — reject and write an immutable PAYMENT_FAILED ledger entry.
+      const nowIso         = new Date().toISOString();
+      const failedLedgerId = `${reference}_PAYMENT_FAILED`;
+      const failureReason  = `amount_mismatch: expected ${payment.amountGHS} GHS, received ${result.amountGHS} ${result.currency}`;
+      const failBatch      = db.batch();
+      failBatch.update(paymentSnap.ref, { status: "failed", paystackStatus: "amount_mismatch" });
+      failBatch.set(db.collection(collections.paymentEvents).doc(failedLedgerId), {
+        id:               failedLedgerId,
+        paystackReference: reference,
+        userId:           payment.userId,
+        plan:             payment.plan,
+        annual:           payment.annual,
+        amountGHS:        payment.amountGHS,
+        currency:         "GHS",
+        eventType:        "PAYMENT_FAILED",
+        status:           "failed",
+        source:           "verify_api",
+        failureReason,
+        idempotencyKey:   failedLedgerId,
+        createdAt:        nowIso,
+        _immutable:       true,
+      } as PaymentLedgerEntry);
+      await failBatch.commit();
       return NextResponse.json({ error: "Payment amount could not be verified" }, { status: 400 });
     }
 
@@ -100,19 +142,24 @@ export async function GET(req: Request) {
 
     const userRef = db.collection(collections.users).doc(payment.userId);
 
-    // BUG-6 FIX: Run the user update and payment update inside a single Firestore
-    // transaction.  Concurrent calls to /verify for the same reference (e.g. user
-    // double-clicking the callback) previously used Promise.all — both could read
-    // payment.status === "pending" and both activate the subscription, potentially
-    // resetting the message counter twice or updating conflicting plan states.
-    // The transaction serialises concurrent attempts; the second will still see
-    // status === "success" from the first (idempotency path above won't catch it
-    // mid-flight, so we guard inside the transaction too).
+    // Deterministic ledger doc IDs — one per (reference, eventType).
+    // Written atomically inside the transaction so ledger entries exist if and
+    // only if the subscription was activated. Idempotent: a second concurrent
+    // /verify or webhook call will find the ledger entry already present and exit.
+    const successLedgerId    = `${reference}_PAYMENT_SUCCESS`;
+    const activationLedgerId = `${reference}_SUBSCRIPTION_ACTIVATED`;
+    const successLedgerRef    = db.collection(collections.paymentEvents).doc(successLedgerId);
+    const activationLedgerRef = db.collection(collections.paymentEvents).doc(activationLedgerId);
+
+    // Serialise concurrent /verify calls (e.g. user double-clicking the callback)
+    // and concurrent webhook deliveries. All three reads are inside the transaction
+    // so they form a consistent snapshot.
     let userData: DocumentData | undefined;
     await db.runTransaction(async (txn) => {
-      const [freshPaySnap, freshUserSnap] = await Promise.all([
+      const [freshPaySnap, freshUserSnap, successLedgerSnap] = await Promise.all([
         txn.get(paymentSnap.ref),
         txn.get(userRef),
+        txn.get(successLedgerRef),
       ]);
 
       if (!freshUserSnap.exists) {
@@ -120,14 +167,15 @@ export async function GET(req: Request) {
       }
       userData = freshUserSnap.data()!;
 
-      // Guard inside the transaction: another concurrent request may have
-      // already committed the activation between our read above and now.
+      // ── DUAL idempotency guard ────────────────────────────────────────────
+      // The second concurrent call (webhook retry, double-click) will find at
+      // least one of these conditions true and exit without double-crediting.
       const freshPayment = freshPaySnap.data() as { status?: string } | undefined;
-      if (freshPayment?.status === "success") {
-        // Already activated — mark userData so we can still send the WhatsApp confirmation.
+      if (freshPayment?.status === "success" || successLedgerSnap.exists) {
         return;
       }
 
+      // ── 1. Activate user subscription ────────────────────────────────────
       txn.update(userRef, {
         subscriptionPlan:        plan,
         subscriptionExpiresAt:   expiresAt,
@@ -136,13 +184,51 @@ export async function GET(req: Request) {
         updatedAt:               now.toISOString(),
       });
 
-      // Mark payment record as success
+      // ── 2. Mark payment record as success ────────────────────────────────
       txn.update(paymentSnap.ref, {
         status:         "success",
         paidAt:         result.paidAt ?? now.toISOString(),
         channel:        result.channel,
         paystackStatus: result.status,
       });
+
+      // ── 3. Write immutable PAYMENT_SUCCESS ledger entry ───────────────────
+      txn.set(successLedgerRef, {
+        id:                   successLedgerId,
+        paystackReference:    reference,
+        userId:               payment.userId,
+        plan,
+        annual,
+        amountGHS:            payment.amountGHS,
+        currency:             "GHS",
+        eventType:            "PAYMENT_SUCCESS",
+        status:               "success",
+        source:               "verify_api",
+        channel:              result.channel,
+        subscriptionExpiresAt: expiresAt,
+        idempotencyKey:       successLedgerId,
+        createdAt:            now.toISOString(),
+        _immutable:           true,
+      } as PaymentLedgerEntry);
+
+      // ── 4. Write immutable SUBSCRIPTION_ACTIVATED ledger entry ────────────
+      txn.set(activationLedgerRef, {
+        id:                   activationLedgerId,
+        paystackReference:    reference,
+        userId:               payment.userId,
+        plan,
+        annual,
+        amountGHS:            payment.amountGHS,
+        currency:             "GHS",
+        eventType:            "SUBSCRIPTION_ACTIVATED",
+        status:               "success",
+        source:               "verify_api",
+        channel:              result.channel,
+        subscriptionExpiresAt: expiresAt,
+        idempotencyKey:       activationLedgerId,
+        createdAt:            now.toISOString(),
+        _immutable:           true,
+      } as PaymentLedgerEntry);
     });
 
     if (!userData) {

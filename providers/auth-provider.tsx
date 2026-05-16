@@ -11,9 +11,11 @@ interface AuthContextValue {
   firebaseUser?: User;
   initializing: boolean;
   firebaseReady: boolean;
+  /** True when session cookie creation failed after retries — user is Firebase-authed but can't access protected routes. */
+  sessionError: boolean;
 }
 
-const AuthContext = createContext<AuthContextValue>({ initializing: true, firebaseReady });
+const AuthContext = createContext<AuthContextValue>({ initializing: true, firebaseReady, sessionError: false });
 
 // Routes that require authentication (client-side guard after auth resolves)
 const APP_ROUTES = [
@@ -49,9 +51,13 @@ async function withRetry<T>(
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | undefined>();
   const [initializing, setInitializing] = useState(true);
+  const [sessionError, setSessionError] = useState(false);
   // Ref stores onboarding state so the routing effect can read the latest
   // value without being added as a dep to the auth subscription effect.
   const onboardingCompleteRef = useRef<boolean | undefined>(undefined);
+  // Tracks whether the session cookie was successfully created so the routing
+  // effect doesn't navigate to protected routes when middleware would block.
+  const sessionReadyRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
   const { setUser, setBusiness, setLoading, clearUserData } = useAppStore();
@@ -82,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Wipe ALL user-scoped state — prevents data bleeding between sessions
         clearUserData();
         onboardingCompleteRef.current = undefined;
+        sessionReadyRef.current = false;
+        setSessionError(false);
         setInitializing(false);
         return;
       }
@@ -98,23 +106,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // effect makes any navigation decision.
       const [sessionResult, profileResult] = await Promise.allSettled([
         // ── Session cookie ────────────────────────────────────────────
-        withRetry(() =>
-          firebaseUserResult
-            .getIdToken()
-            .then((token) =>
-              fetch("/api/auth/session", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-              })
-            )
-        ),
+        withRetry(async () => {
+          const token = await firebaseUserResult.getIdToken();
+          const res = await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          // Throw on non-2xx so withRetry actually retries transient server errors.
+          if (!res.ok) throw new Error(`[auth] session API ${res.status}`);
+          return res;
+        }),
         // ── User profile ──────────────────────────────────────────────
         withRetry(() => getAppUser(firebaseUserResult.uid)),
       ]);
 
       if (sessionResult.status === "rejected") {
-        console.error("[auth] session cookie creation failed:", sessionResult.reason);
-        // Non-fatal — user may still be functional; next navigation will retry.
+        console.error("[auth] session cookie creation failed after retries:", sessionResult.reason);
+        // Session cookie could not be created — middleware will block protected routes.
+        // Show a recoverable error so the user knows to try again rather than looping silently.
+        sessionReadyRef.current = false;
+        setSessionError(true);
+      } else {
+        sessionReadyRef.current = true;
+        setSessionError(false);
       }
 
       if (profileResult.status === "fulfilled") {
@@ -187,12 +201,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Already authenticated: redirect away from auth pages (login, verify, signup)
+    // Only navigate once the session cookie is confirmed — otherwise middleware
+    // would immediately redirect back to /login in a silent loop.
     if (AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
-      router.replace("/dashboard");
+      if (sessionReadyRef.current) {
+        router.replace("/dashboard");
+      }
+      // If session creation failed (sessionReadyRef.current === false), stay on the
+      // auth page. The sessionError state will surface an error message to the user.
     }
   }, [firebaseUser, initializing, pathname, router]);
 
-  const value = useMemo(() => ({ firebaseUser, initializing, firebaseReady }), [firebaseUser, initializing]);
+  const value = useMemo(
+    () => ({ firebaseUser, initializing, firebaseReady, sessionError }),
+    [firebaseUser, initializing, sessionError],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

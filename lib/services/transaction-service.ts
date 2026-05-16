@@ -2,6 +2,7 @@
 
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   limit,
@@ -220,4 +221,75 @@ async function findInventoryItem(businessId: string, productName: string): Promi
   );
   const snap = await getDocs(q);
   return snap.docs[0]?.data() as InventoryItem | undefined;
+}
+
+// ─── Delete transaction + best-effort side-effect reversal ───────────────────
+//
+// Reversal logic mirrors applyDebtEffect / applyInventoryEffect but in reverse:
+//  • "debt" added amount → subtract it from outstandingAmount / originalAmount
+//  • "repayment" subtracted amount → add it back to outstandingAmount
+//  • "stock_purchase" added quantity → subtract it from inventory
+//  • "sale" subtracted quantity → add it back to inventory
+//
+// Reversal is best-effort: if the related debt/inventory record was already
+// corrected manually the update will still apply but won't go below zero.
+
+export async function deleteTransaction(
+  transactionId: string,
+  transaction?: Pick<Transaction, "type" | "amount" | "quantity" | "productName" | "customerName" | "businessId">
+): Promise<void> {
+  if (!db) throw new Error("Firebase is not configured.");
+  await deleteDoc(doc(db, collections.transactions, transactionId));
+  if (transaction) {
+    await Promise.allSettled([
+      reverseDebtEffect(transaction),
+      reverseInventoryEffect(transaction),
+    ]);
+  }
+}
+
+async function reverseDebtEffect(
+  transaction: Pick<Transaction, "type" | "amount" | "customerName" | "businessId">
+): Promise<void> {
+  if (!db || !transaction.customerName) return;
+  if (transaction.type !== "debt" && transaction.type !== "repayment") return;
+  const normalizedName = transaction.customerName.trim().toLowerCase();
+  const existing = await findDebt(transaction.businessId, normalizedName);
+  if (!existing) return;
+  const now = new Date().toISOString();
+  if (transaction.type === "debt") {
+    const newOriginal    = Math.max(0, existing.originalAmount    - transaction.amount);
+    const newOutstanding = Math.max(0, existing.outstandingAmount - transaction.amount);
+    await updateDoc(doc(db, collections.debts, existing.id), {
+      originalAmount:    newOriginal,
+      outstandingAmount: newOutstanding,
+      status:            newOutstanding === 0 ? "paid" : "open",
+      lastActivityAt:    now,
+    });
+  } else {
+    // repayment reversed → restore what was repaid
+    const newOutstanding = existing.outstandingAmount + transaction.amount;
+    await updateDoc(doc(db, collections.debts, existing.id), {
+      outstandingAmount: newOutstanding,
+      status:            "open",
+      lastActivityAt:    now,
+    });
+  }
+}
+
+async function reverseInventoryEffect(
+  transaction: Pick<Transaction, "type" | "quantity" | "productName" | "businessId">
+): Promise<void> {
+  if (!db || !transaction.productName || !transaction.quantity) return;
+  if (transaction.type !== "sale" && transaction.type !== "stock_purchase") return;
+  const existing = await findInventoryItem(transaction.businessId, transaction.productName);
+  if (!existing) return;
+  const now   = new Date().toISOString();
+  // stock_purchase added quantity → reverse by subtracting; sale subtracted → reverse by adding
+  const delta = transaction.type === "stock_purchase" ? -transaction.quantity : transaction.quantity;
+  const newQty = Math.max(0, (existing.quantity ?? 0) + delta);
+  await updateDoc(doc(db, collections.inventory, existing.id), {
+    quantity:  newQty,
+    updatedAt: now,
+  });
 }

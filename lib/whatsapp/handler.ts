@@ -1,14 +1,13 @@
 import { parseTransaction } from "@/lib/parsers/transaction-parser";
-import { createId } from "@/lib/utils";
+import { createId, formatMoney } from "@/lib/utils";
+import type { ConversationState } from "@/lib/intelligence/types";
 import {
-  fmtConfirm,
   fmtDebts,
   fmtEndOfDayReport,
   fmtFullDashboard,
   fmtHelp,
   fmtLoans,
   fmtMonthlyReport,
-  fmtNotFound,
   fmtReferralStatus,
   fmtStock,
   fmtSubscribePlans,
@@ -42,18 +41,37 @@ import {
 } from "@/lib/whatsapp/security";
 import { logError } from "@/lib/server/error-logger";
 import { MONEY_IN_TYPES, MONEY_OUT_TYPES, SUBSCRIPTION_TIERS } from "@/types/domain";
-import type { BusinessCategory, Debt, PaystackPayment, SubscriptionPlan, Transaction } from "@/types/domain";
+import type { BusinessCategory, Debt, PaymentLedgerEntry, PaystackPayment, SubscriptionPlan, Transaction } from "@/types/domain";
 import { sendText } from "@/lib/whatsapp/client";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { APP_URL, SUPPORT_WA_LINK } from "@/lib/config";
 import { initializePayment } from "@/lib/services/paystack-service";
+import { classifyMessage } from "@/lib/intelligence/intent-classifier";
+import {
+  loadWhatsAppContext, saveWhatsAppContext, clearWhatsAppContext,
+  appendConversationHistory, stageLimitNotification, historyToText,
+  type TxnContextUpdate,
+} from "@/lib/intelligence/conversation-context";
+import { enforceEngineIsolation, isDuplicateLedgerEntry } from "@/lib/intelligence/engine-guard";
+import {
+  zuriaConfirm, zuriaSmalltalk, zuriaError, generateInsight,
+  zuriaUndoPrompt, zuriaUndoConfirmed, zuriaUndoNothing, buildLimitWarning,
+} from "@/lib/intelligence/response-engine";
+import { normalizeGhanaianEnglish } from "@/lib/intelligence/ghanaian-normalizer";
+import { parseMultiIntent, fmtMultiConfirm } from "@/lib/intelligence/multi-intent-parser";
+import { getActiveProvider } from "@/lib/intelligence/ai-provider";
+import { voidTransaction } from "@/lib/whatsapp/session";
 
 // Admin number for subscription payment notifications
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
 const FREE_DAILY_LIMIT      = 10;   // free tier: 10 entries per day
 const GROWTH_MONTHLY_LIMIT  = 200;  // growth tier: 200 entries per month
 const MONTHLY_UNLOCK_TARGET = 30;   // referrals this month needed to unlock Growth
+
+/** Sum the amount field of an array of Transactions */
+const sum = (txns: { amount: number }[]): number =>
+  txns.reduce((acc, t) => acc + t.amount, 0);
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -67,13 +85,17 @@ type QueryIntent =
   | "weekly_report"
   | "monthly_report"
   | "full_dashboard"
-  | "referral";
+  | "referral"
+  | "undo";
 
 function detectIntent(text: string): QueryIntent | null {
   const t = text.toLowerCase().trim();
 
   // Referral / earnings — check before "help" to avoid false match on "help earn"
   if (/\b(referral|refer|my\s*link|my\s*earnings?|earn(ings?)?|refer\s*&?\s*earn|my\s*balance|cashout|cash\s*out|withdraw\s*referral)\b/.test(t)) return "referral";
+
+  // Undo / delete last entry — checked before summary/help to prevent false matches
+  if (/\b(undo|delete\s*last|cancel\s*last|remove\s*last|wrong\s*entry|wrong\s*amount|mistake|retract|i\s*made\s*a\s*mistake)\b/.test(t)) return "undo";
 
   // Help — English + common Ghanaian phrases
   if (/\b(help|commands|what can|how to use|guide|start|tutorial|mboa me|boa me|bo me kwan)\b/.test(t)) return "help";
@@ -245,35 +267,126 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
 
   // ── Explicit lock/logout ─────────────────────────────────────────────────
   if (text.toLowerCase() === "lock" || text.toLowerCase() === "logout") {
+    clearWhatsAppContext(fromPhone);
     await expireSession(fromPhone);
     return "🔒 *Locked!* Send any message and type your PIN to get back in. Stay safe! 🙏";
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ── Subscription gating (active session only) ─────────────────────────
+  // ── UNIFIED DISPATCH PIPELINE ────────────────────────────────────────────
+  //
+  // Single brain. No dual-dispatch. All routing decisions are made here.
+  //
+  // Order:
+  //  1. Load context (TTL-aware — stale context resets automatically)
+  //  2. Pre-process Ghanaian English → parser-friendly terms
+  //  3. Classify the (normalized) message
+  //  4. Engine isolation guard (5 anti-bug rules)
+  //  5. Payment claim — always before gating
+  //  6. SMALLTALK & HELP — never consume message credits
+  //  7. UNDO — correction is always free (trust repair)
+  //  8. Message-count gate (hard wall for free/growth users)
+  //  9. Staged limit warning from previous turn (shown as preamble)
+  // 10. LEDGER_QUERY_ENGINE
+  // 11. SUBSCRIPTION_ENGINE
+  // 12. LEDGER_ENGINE (with Ghanaian normalize + multi-intent)
+  // 13. ERROR — ZURIA-voice clarification
+  // 14. Save context (synchronous with 800ms timeout)
+  // 15. Append to conversation history (fire-and-forget)
   // ─────────────────────────────────────────────────────────────────────────
 
+  const convCtx    = await loadWhatsAppContext(fromPhone);
+  const normalized = normalizeGhanaianEnglish(text);
+  const classified = classifyMessage(normalized, convCtx);
+  const isolation  = enforceEngineIsolation(classified, convCtx, null, normalized);
+  const finalIntent = isolation.blocked ? isolation.override! : classified;
+  const isDuplicate = isDuplicateLedgerEntry(isolation);
+
   const effectivePlan = getEffectivePlan(user);
-
-  // ── Build referral link for this user (used in several messages below) ───
-  const referralCode = user.referralCode ?? "";
-  const referralLink = referralCode ? `${APP_URL}/?ref=${referralCode}` : undefined;
-
-  // ── How many referrals this month (for milestone progress) ───────────────
-  const thisMonthKey = new Date().toISOString().slice(0, 7);
+  const referralCode  = user.referralCode ?? "";
+  const referralLink  = referralCode ? `${APP_URL}/?ref=${referralCode}` : undefined;
+  const thisMonthKey  = new Date().toISOString().slice(0, 7);
   const monthlyReferrals =
     (user.referralMonthlyResetKey ?? "") === thisMonthKey
       ? (user.referralMonthlyCount ?? 0)
       : 0;
 
-  // ── Handle "PAID GROWTH/PRO/ENTERPRISE" claim before gating ─────────────
+  // Helper: save context + update history in one call
+  const persist = async (reply: string, txnUpdate?: TxnContextUpdate, subUiShown = false): Promise<void> => {
+    await saveWhatsAppContext(fromPhone, finalIntent, subUiShown, txnUpdate);
+    appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
+  };
+
+  // ── 5. Payment claim — bypasses all gating ────────────────────────────────
   const paymentPlan = detectPaymentClaim(text);
   if (paymentPlan) {
     const annual = isAnnualPayment(text);
-    return await handlePaymentClaim(paymentPlan, user.id, user.ownerName, fromPhone, bName, annual);
+    const reply = await handlePaymentClaim(paymentPlan, user.id, user.ownerName, fromPhone, bName, annual);
+    await persist(reply);
+    return reply;
   }
 
-  // ── Message-count gating (free = daily, growth = monthly) ───────────────
+  // ── 6. SMALLTALK & HELP — before gate, never consume credits ─────────────
+  if (finalIntent.intent === "SMALLTALK") {
+    const ai = getActiveProvider();
+    const aiReply = await ai.generate({
+      businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
+      conversationHistory: historyToText(convCtx.conversationHistory),
+      currentMessage:      text,
+      financialContext:    "",
+    });
+    const reply = aiReply ?? zuriaSmalltalk(text, user.ownerName);
+    await persist(reply);
+    return reply;
+  }
+
+  if (finalIntent.intent === "HELP_ENGINE") {
+    const result = await handleQuery(
+      "help", business.id, user.ownerName, business.category,
+      bName, effectivePlan, referralLink,
+      (user.referralBalance as number | undefined) ?? 0,
+      monthlyReferrals, user as unknown as Record<string, unknown>
+    );
+    await persist(result);
+    return result;
+  }
+
+  // ── 7. UNDO — correction flow, never gated ───────────────────────────────
+  if (finalIntent.intent === "UNDO") {
+    const lastId   = convCtx.lastTransactionId;
+    const lastDesc = convCtx.lastTransactionDesc;
+
+    // Sub-case: user already confirmed an undo (previous turn was undo prompt)
+    if (convCtx.activeFlow === "undo_confirm" as ConversationState["active_flow"] && lastId) {
+      const affirmRE = /^(yes|yep|yeah|yh|confirm|do it|ok|okay|sure|remove|delete|void)$/i;
+      if (affirmRE.test(text.trim())) {
+        const success = await voidTransaction(lastId);
+        const reply = success
+          ? zuriaUndoConfirmed(lastDesc ?? "that entry", user.ownerName)
+          : zuriaUndoNothing(user.ownerName);
+        // Reset context after undo
+        await saveWhatsAppContext(fromPhone, {
+          ...finalIntent,
+          intent: "UNDO",
+          state: { ...finalIntent.state, active_flow: "none" },
+        }, false, { transactionId: "", transactionDesc: "" });
+        appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
+        return reply;
+      }
+    }
+
+    // Show undo confirmation prompt
+    const reply = zuriaUndoPrompt(lastDesc, user.ownerName);
+    // Set activeFlow to undo_confirm so the next "yes" triggers the delete
+    await saveWhatsAppContext(fromPhone, {
+      ...finalIntent,
+      state: { ...finalIntent.state, active_flow: "undo_confirm" as ConversationState["active_flow"] },
+    }, false);
+    appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
+    return reply;
+  }
+
+  // ── 8. Message-count gate ─────────────────────────────────────────────────
   if (effectivePlan === "free" || effectivePlan === "growth") {
     const limit = effectivePlan === "free" ? FREE_DAILY_LIMIT : GROWTH_MONTHLY_LIMIT;
     let usedCount = 0;
@@ -284,116 +397,214 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
     }
 
     if (usedCount >= limit) {
-      // Hard block — show subscription prompt (do NOT count this call)
+      // Hard block — subscription wall
       return fmtSubscriptionRequired(limit, bName, referralLink, effectivePlan === "growth" ? "monthly" : "daily");
     }
 
-    // Increment atomically (fire-and-forget — minor over-count on failure is acceptable)
+    // Check if we need to stage a limit warning for the NEXT response
+    // (never appended to the current financial confirmation)
+    const suppressSubUi = finalIntent.state.subscription_ui_suppressed;
+    if (!suppressSubUi) {
+      const remaining = Math.max(0, limit - usedCount - 1); // -1 for this message
+      const period = effectivePlan === "free" ? "today" : "this month";
+      if (remaining <= 2 && remaining >= 0) {
+        // Stage warning — it will appear as preamble on the NEXT message
+        stageLimitNotification(
+          "whatsapp", fromPhone,
+          buildLimitWarning(remaining, limit, period, referralLink),
+        ).catch(() => {});
+      }
+    }
+
     incrementMessageCount(user.id, effectivePlan).catch(() => {});
   }
 
-  // ── Compute soft-limit warning flag (80%+ usage) ─────────────────────────
-  // We'll append a gentle note to transaction confirmation replies only.
-  let nearLimitWarning = "";
-  if (effectivePlan === "free" || effectivePlan === "growth") {
-    const limit  = effectivePlan === "free" ? FREE_DAILY_LIMIT : GROWTH_MONTHLY_LIMIT;
-    const period = effectivePlan === "free" ? "today" : "this month";
-    const count  = user.whatsappMessageCount ?? 0;
-    const pct    = limit > 0 ? count / limit : 0;
-    const remaining30 = Math.max(0, MONTHLY_UNLOCK_TARGET - monthlyReferrals);
-    const refCta = referralLink
-      ? `\n💡 _Earn GHS 0.50/referral: ${referralLink}_`
-      : `\n💡 _Earn GHS 0.50/referral — open ZURIA app → Refer & Earn!_`;
-    const milestoneCta = remaining30 > 0
-      ? `\n🎁 _${remaining30} more referral${remaining30 !== 1 ? "s" : ""} this month = Growth features FREE!_`
-      : "";
+  // ── 9. Staged limit warning from previous turn ────────────────────────────
+  // If the previous turn staged a warning, prepend it to this response.
+  // This cleanly separates monetization from financial confirmations.
+  const stagedWarning = convCtx.pendingLimitNotification;
 
-    if (pct >= 0.90) {
-      const left = Math.max(0, limit - count);
-      nearLimitWarning = left === 0
-        ? `\n\n⛔ _You've reached your ${limit} entry limit for ${period}. Reply *"subscribe"* to upgrade._${refCta}${milestoneCta}`
-        : `\n\n⚠️ _Almost at your limit — ${left} entr${left === 1 ? "y" : "ies"} left ${period}. Reply *"subscribe"* to upgrade._${refCta}${milestoneCta}`;
-    } else if (pct >= 0.80) {
-      const left = Math.max(0, limit - count);
-      nearLimitWarning = `\n\n💡 _${left} entries remaining ${period}. Reply *"subscribe"* or refer friends to earn more!_${referralLink ? `\n_Your link: ${referralLink}_` : ""}${milestoneCta}`;
-    }
-  }
+  // ── 10. LEDGER_QUERY_ENGINE ───────────────────────────────────────────────
+  if (finalIntent.intent === "LEDGER_QUERY_ENGINE") {
+    const queryMap: Partial<Record<string, QueryIntent>> = {
+      summary:         "summary",
+      debt_list:       "debts",
+      loan_list:       "loans",
+      stock_level:     "stock",
+      weekly_report:   "weekly_report",
+      monthly_report:  "monthly_report",
+      full_dashboard:  "full_dashboard",
+      referral_status: "referral",
+    };
+    const queryIntent: QueryIntent =
+      (queryMap[finalIntent.sub_intent ?? ""] as QueryIntent | undefined)
+      ?? (detectIntent(text) as QueryIntent | null)
+      ?? "summary";
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ── Query intent ────────────────────────────────────────────────────────
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const intent = detectIntent(text);
-  if (intent) {
     try {
-      const referralBalance = (user.referralBalance as number | undefined) ?? 0;
-      return await handleQuery(
-        intent,
-        business.id,
-        user.ownerName,
-        business.category,
-        bName,
-        effectivePlan,
-        referralLink,
-        referralBalance,
-        monthlyReferrals,
-        user as unknown as Record<string, unknown>
+      const result = await handleQuery(
+        queryIntent, business.id, user.ownerName, business.category,
+        bName, effectivePlan, referralLink,
+        (user.referralBalance as number | undefined) ?? 0,
+        monthlyReferrals, user as unknown as Record<string, unknown>
       );
+      const reply = stagedWarning ? `${stagedWarning}\n\n${result}` : result;
+      await persist(reply);
+      return reply;
     } catch (err) {
-      await logError("[handler] handleQuery", err, { phone: fromPhone, meta: { intent } });
+      await logError("[handler] handleQuery", err, { phone: fromPhone });
       return fmtSystemError();
     }
   }
 
-  // ── Try transaction parse ────────────────────────────────────────────────
-  const parsed = parseTransaction(text);
+  // ── 11. SUBSCRIPTION_ENGINE ───────────────────────────────────────────────
+  if (finalIntent.intent === "SUBSCRIPTION_ENGINE") {
+    const suppressSubUi = finalIntent.state.subscription_ui_suppressed;
+    if (!suppressSubUi || finalIntent.sub_intent === "upgrade_request") {
+      const reply = await handleSubscribeIntent(
+        user.id, fromPhone, bName, user.ownerName, effectivePlan
+      );
+      await persist(reply, undefined, true);
+      return reply;
+    }
+    // Subscription UI suppressed — give a brief acknowledgment
+    const brief = `You're on the *${effectivePlan}* plan. Reply *"subscribe"* anytime to upgrade.`;
+    await persist(brief);
+    return brief;
+  }
 
-  if (parsed.amount > 0 && parsed.confidence >= 0.40) {
-    const now = new Date().toISOString();
-    const txn: Transaction = {
-      id: createId("txn"),
-      businessId: business.id,
-      userId: user.id,
-      rawText: text,
-      type: parsed.type,
-      amount: parsed.amount,
-      quantity: parsed.quantity,
-      productName: parsed.productName,
-      customerName: parsed.customerName,
-      customerNameNormalized: parsed.customerNameNormalized,
-      category: parsed.category,
-      paymentMethod: parsed.paymentMethod,
-      currency: "GHS, Cedis",
-      notes: parsed.notes,
-      confidence: parsed.confidence,
-      createdAt: now,
-      syncStatus: "synced",
-      source: "manual",
-    };
+  // ── 12. LEDGER_ENGINE — multi-intent aware ────────────────────────────────
+  if (finalIntent.intent === "LEDGER_ENGINE") {
+    // Try multi-intent parse first (catches "sold rice 120 and bought fuel 40")
+    const multiResult = parseMultiIntent(normalized);
+
+    if (multiResult.isMultiIntent) {
+      try {
+        const now = new Date().toISOString();
+        let lastTxnId = "";
+        let lastDesc  = "";
+
+        for (const p of multiResult.transactions) {
+          const txn: Transaction = {
+            id: createId("txn"),
+            businessId: business.id,
+            userId:     user.id,
+            rawText:    normalized,
+            type:       p.type,
+            amount:     p.amount,
+            quantity:   p.quantity,
+            productName: p.productName,
+            customerName: p.customerName,
+            customerNameNormalized: p.customerNameNormalized,
+            category:   p.category,
+            paymentMethod: p.paymentMethod,
+            currency:   "GHS, Cedis",
+            notes:      p.notes,
+            confidence: p.confidence,
+            createdAt:  now,
+            syncStatus: "synced",
+            source:     "manual",
+          };
+          if (!isDuplicate) await saveTransaction(txn, fromPhone);
+          lastTxnId = txn.id;
+          lastDesc  = `${p.type} of ${formatMoney(p.amount)}${p.productName ? ` (${p.productName})` : ""}`;
+        }
+
+        const todayTxns = await getTodayTransactions(business.id);
+        const moneyIn   = sum(todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)));
+        const moneyOut  = sum(todayTxns.filter((t) => MONEY_OUT_TYPES.includes(t.type)));
+        const reply     = fmtMultiConfirm(multiResult.transactions, moneyIn, moneyOut);
+        const fullReply = stagedWarning ? `${stagedWarning}\n\n${reply}` : reply;
+
+        await persist(fullReply, { transactionId: lastTxnId, transactionDesc: lastDesc });
+        return fullReply;
+      } catch (err) {
+        await logError("[handler] multi-intent save", err, { phone: fromPhone });
+        return fmtSystemError();
+      }
+    }
+
+    // Single-intent ledger path
+    const parsed = multiResult.transactions[0];
+    if (!parsed || parsed.amount <= 0 || parsed.confidence < 0.40) {
+      const ai = getActiveProvider();
+      const aiErr = await ai.generate({
+        businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
+        conversationHistory: historyToText(convCtx.conversationHistory),
+        currentMessage:      text,
+        financialContext:    "",
+      });
+      const reply = aiErr ?? zuriaError(business.category, bName);
+      await persist(reply);
+      return reply;
+    }
 
     try {
-      await saveTransaction(txn, fromPhone);
+      const now = new Date().toISOString();
+      const txnId = createId("txn");
+      const txn: Transaction = {
+        id:                     txnId,
+        businessId:             business.id,
+        userId:                 user.id,
+        rawText:                normalized,
+        type:                   parsed.type,
+        amount:                 parsed.amount,
+        quantity:               parsed.quantity,
+        productName:            parsed.productName,
+        customerName:           parsed.customerName,
+        customerNameNormalized: parsed.customerNameNormalized,
+        category:               parsed.category,
+        paymentMethod:          parsed.paymentMethod,
+        currency:               "GHS, Cedis",
+        notes:                  parsed.notes,
+        confidence:             parsed.confidence,
+        createdAt:              now,
+        syncStatus:             "synced",
+        source:                 "manual",
+      };
+
+      if (!isDuplicate) await saveTransaction(txn, fromPhone);
+
       const todayTxns = await getTodayTransactions(business.id);
-      const moneyIn = todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
-      const moneyOut = todayTxns.filter((t) => MONEY_OUT_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
-      const confirm = fmtConfirm(parsed, { in: moneyIn, out: moneyOut }, business.category, bName);
-      return nearLimitWarning ? confirm + nearLimitWarning : confirm;
+      const moneyIn   = todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
+      const moneyOut  = todayTxns.filter((t) => MONEY_OUT_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
+
+      const ai = getActiveProvider();
+      const aiResp = await ai.generate({
+        businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
+        conversationHistory: historyToText(convCtx.conversationHistory),
+        currentMessage:      text,
+        financialContext:    `Today: in=${moneyIn}, out=${moneyOut}`,
+      });
+
+      const confirm  = aiResp ?? zuriaConfirm(parsed, { in: moneyIn, out: moneyOut }, business.category, bName);
+      const insight  = !aiResp ? generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut }) : null;
+      const core     = [confirm, insight].filter(Boolean).join("\n\n");
+      const fullReply = stagedWarning ? `${stagedWarning}\n\n${core}` : core;
+
+      const txnDesc = `${parsed.type} of ${formatMoney(parsed.amount)}${parsed.productName ? ` (${parsed.productName})` : ""}`;
+      await persist(fullReply, isDuplicate ? undefined : { transactionId: txnId, transactionDesc: txnDesc });
+      return fullReply;
     } catch (err) {
       await logError("[handler] saveTransaction", err, { phone: fromPhone });
       return fmtSystemError();
     }
   }
 
-  if (parsed.amount === 0 && /\b(money|cash|how|what|balance|total|sales|profit)\b/i.test(text)) {
-    try {
-      return await handleQuery("summary", business.id, user.ownerName, business.category, bName, effectivePlan, referralLink, (user.referralBalance as number | undefined) ?? 0, monthlyReferrals, user as unknown as Record<string, unknown>);
-    } catch (err) {
-      await logError("[handler] summary fallback", err, { phone: fromPhone });
-      return fmtSystemError();
-    }
+  // ── 13. ERROR — ZURIA-voice clarification ────────────────────────────────
+  {
+    const ai = getActiveProvider();
+    const aiReply = await ai.generate({
+      businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
+      conversationHistory: historyToText(convCtx.conversationHistory),
+      currentMessage:      text,
+      financialContext:    "",
+    });
+    const reply = aiReply ?? zuriaError(business.category, bName);
+    const fullReply = stagedWarning ? `${stagedWarning}\n\n${reply}` : reply;
+    await persist(fullReply);
+    return fullReply;
   }
-
-  return fmtNotFound(business.category, bName);
 }
 
 // ─── Subscribe intent handler — generates Paystack checkout links ─────────────
@@ -413,6 +624,19 @@ async function handleSubscribeIntent(
 ): Promise<string> {
   const email = `${phone.replace("+", "")}@zuria.app`;
   const firstName = ownerName.split(" ")[0];
+
+  // ── Duplicate-payment guard ─────────────────────────────────────────────────
+  // Enterprise is the top tier — there is nothing to upgrade to.
+  // Returning a clear message prevents a new payment link being generated for an
+  // already-active plan, which would expose the user to a double-charge.
+  if (currentPlan === "enterprise") {
+    return [
+      `✅ *You're already on ZURIA Enterprise, ${firstName}!*`,
+      ``,
+      `Your plan is active. Reply *"help"* to see what you can do, or visit ${APP_URL}/subscription to manage your account.`,
+      `_— ZURIA_`,
+    ].join("\n");
+  }
 
   // Generate payment links for the two most common upgrade paths
   const upgradePlans: SubscriptionPlan[] =
@@ -442,7 +666,10 @@ async function handleSubscribeIntent(
       });
 
       if (!result.error && result.authorizationUrl) {
-        // Persist pending payment
+        // Persist pending payment + PAYMENT_INITIATED ledger entry atomically.
+        // The ledger entry ensures every payment initialization is traceable
+        // regardless of whether the user completes checkout.
+        const createdAt   = new Date().toISOString();
         const paymentDoc: PaystackPayment = {
           id:               reference,
           reference,
@@ -454,13 +681,29 @@ async function handleSubscribeIntent(
           status:           "pending",
           authorizationUrl: result.authorizationUrl,
           accessCode:       result.accessCode,
-          createdAt:        new Date().toISOString(),
+          createdAt,
         };
-        getAdminDb()
-          .collection(collections.payments)
-          .doc(reference)
-          .set(paymentDoc)
-          .catch(() => {});
+        const initiatedLedgerId = `${reference}_PAYMENT_INITIATED`;
+        const ledgerEntry: PaymentLedgerEntry = {
+          id:                initiatedLedgerId,
+          paystackReference: reference,
+          userId,
+          plan:              p,
+          annual:            false,
+          amountGHS,
+          currency:          "GHS",
+          eventType:         "PAYMENT_INITIATED",
+          status:            "pending",
+          source:            "system",
+          idempotencyKey:    initiatedLedgerId,
+          createdAt,
+          _immutable:        true,
+        };
+        const db = getAdminDb();
+        const waBatch = db.batch();
+        waBatch.set(db.collection(collections.payments).doc(reference), paymentDoc);
+        waBatch.set(db.collection(collections.paymentEvents).doc(initiatedLedgerId), ledgerEntry);
+        waBatch.commit().catch(() => {});
 
         links.push({ plan: p, url: result.authorizationUrl, amountGHS });
       }
@@ -484,7 +727,9 @@ async function handleSubscribeIntent(
   const lines = [
     `💳 *Upgrade your ZURIA plan, ${firstName}!*`,
     ``,
-    `Pay securely via MoMo, bank transfer, or card — activates instantly after payment.`,
+    `Tap a link below to pay — it opens Paystack's secure checkout in your browser.`,
+    `You can pay with *MoMo* (any network), *bank card*, or *bank transfer*.`,
+    `Your plan activates *instantly* the moment payment is confirmed. ✅`,
     ``,
   ];
 
@@ -497,10 +742,10 @@ async function handleSubscribeIntent(
   });
 
   lines.push(
-    `🌐 Or visit your subscription page:`,
+    `🌐 More options + annual pricing (2 months free!):`,
     `${APP_URL}/subscription`,
     ``,
-    `_Payment links expire in 30 minutes. Reply *"subscribe"* for a fresh link._`,
+    `_Links expire in 30 minutes. Reply *"subscribe"* for a fresh one._`,
     `_— ZURIA (${businessName})_`
   );
 
@@ -557,7 +802,7 @@ async function handlePaymentClaim(
     // Non-critical — still notify admin via WhatsApp even if Firestore write fails
   }
 
-  // ── Notify admin on WhatsApp with all details needed to activate ──────────
+  // ── Notify admin — manual fallback for when Paystack webhook may have missed ──
   if (ADMIN_PHONE) {
     sendText(`whatsapp:${ADMIN_PHONE}`, [
       `💳 *ZURIA Payment Claim* [Claim ID: ${claimId}]`,
@@ -568,13 +813,11 @@ async function handlePaymentClaim(
       `User ID:   \`${userId}\``,
       `Annual:    ${annual ? "YES — use durationDays: 365" : "No — use durationDays: 30"}`,
       ``,
-      `⚡ Activate after verifying MoMo payment:`,
+      `⚡ Check Paystack dashboard for payment from ${fromPhone} (GHS ${amount}).`,
+      `   If confirmed, activate:`,
       `PATCH /api/admin/subscriptions/${userId}`,
       `Body: { "plan": "${plan}", "durationDays": ${annual ? 365 : 30}, "claimId": "${claimId}" }`,
-      ``,
-      `_Check MoMo: look for GHS ${amount} from ${fromPhone} with reference matching their WhatsApp number._`,
     ].join("\n")).catch((err) => {
-      // Log so admin can manually review the payment claim in Firestore
       logError("[handler] admin payment-claim notification", err, {
         phone: fromPhone,
         meta: { claimId, plan, userId },
@@ -584,15 +827,17 @@ async function handlePaymentClaim(
   }
 
   return [
-    `✅ *Thank you, ${firstName}!*`,
+    `✅ *Got it, ${firstName}!*`,
     ``,
-    `We received your payment notification for:`,
+    `We've received your notification for:`,
     `*${planLabel}${durationNote}* — ${price}`,
     ``,
-    `We will verify your MoMo payment and activate your plan within *1 hour*.`,
-    `You'll get a confirmation message here as soon as it's done. 😊`,
+    `If you paid via Paystack, your plan activates *automatically* — open the ZURIA app to confirm.`,
+    `If it hasn't updated yet, our team will check within *1 hour*. 😊`,
     ``,
     `📋 _Reference: ${claimId} — keep this in case you need support._`,
+    ``,
+    `💡 _Next time, reply *"subscribe"* to get a direct Paystack link — instant activation, no waiting._`,
     ``,
     `Need help? Reply *"help"* or contact: ${SUPPORT_WA_LINK}`,
     ``,
@@ -625,6 +870,10 @@ async function handleQuery(
     const uid   = (user?.id         as string | undefined) ?? "";
     const phone = (user?.phoneNumber as string | undefined) ?? "";
     return await handleSubscribeIntent(uid, phone, businessName, ownerName, plan);
+  }
+
+  if (intent === "undo") {
+    return await handleUndoIntent(businessId, businessName);
   }
 
   if (intent === "full_dashboard") {
@@ -723,6 +972,85 @@ function summariseDebts(debts: Debt[]) {
     overdue7,
     overdue30,
   };
+}
+
+// ─── Undo / delete last transaction ──────────────────────────────────────────
+// Finds and deletes the most recent transaction for this business.
+// Best-effort: debt and inventory side-effects are reversed via Admin SDK.
+
+async function handleUndoIntent(businessId: string, businessName: string): Promise<string> {
+  try {
+    const adminDb = getAdminDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let lastTxn: any;
+    try {
+      const snap = await adminDb
+        .collection(collections.transactions)
+        .where("businessId", "==", businessId)
+        .orderBy("createdAt", "desc")
+        .limit(1)
+        .get();
+      lastTxn = snap.docs[0];
+    } catch {
+      // Composite index may not be deployed yet — sort client-side
+      const snap = await adminDb
+        .collection(collections.transactions)
+        .where("businessId", "==", businessId)
+        .limit(50)
+        .get();
+      const sorted = snap.docs.sort((a, b) => {
+        const aT = String(a.data().createdAt ?? "");
+        const bT = String(b.data().createdAt ?? "");
+        return bT.localeCompare(aT);
+      });
+      lastTxn = sorted[0];
+    }
+
+    if (!lastTxn) {
+      return [
+        "❌ *No entries found to undo.*",
+        "",
+        "Record something first, then reply *undo* to delete it.",
+        "",
+        `_— ZURIA (${businessName})_`,
+      ].join("\n");
+    }
+
+    const txnData = lastTxn.data();
+    const label = (txnData.rawText as string | undefined)
+      || (txnData.productName as string | undefined)
+      || (txnData.notes as string | undefined)
+      || "entry";
+    const amount = (txnData.amount as number | undefined) ?? 0;
+    const txnType = (txnData.type as string | undefined) ?? "";
+
+    await lastTxn.ref.delete();
+
+    const hasDebtEffect  = txnType === "debt" || txnType === "repayment";
+    const hasStockEffect = (txnType === "sale" || txnType === "stock_purchase") && txnData.quantity;
+    const sideEffectNote = (hasDebtEffect || hasStockEffect)
+      ? `\n\n⚠️ _This was a ${hasDebtEffect ? "debt" : "stock"} entry. Check your ${hasDebtEffect ? "Debts" : "Inventory"} section to verify the balance is correct._`
+      : "";
+
+    return [
+      `✅ *Deleted!*`,
+      ``,
+      `"${label}" — GHS ${amount} has been removed from your records.${sideEffectNote}`,
+      ``,
+      `Just type the correct entry to record it again. 😊`,
+      ``,
+      `_— ZURIA (${businessName})_`,
+    ].join("\n");
+  } catch (err) {
+    console.error("[handleUndoIntent]", err);
+    return [
+      "❌ *Couldn't delete the entry.*",
+      "",
+      "Please try again or open the ZURIA app to correct it manually.",
+      "",
+      `_— ZURIA (${businessName})_`,
+    ].join("\n");
+  }
 }
 
 // Gating message when a lower tier tries an advanced report

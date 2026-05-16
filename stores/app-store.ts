@@ -17,6 +17,7 @@ interface AppState {
   setBusiness: (business?: Business) => void;
   setTransactions: (transactions: Transaction[]) => void;
   addTransaction: (transaction: Transaction) => void;
+  removeTransaction: (id: string) => void;
   setDebts: (debts: Debt[]) => void;
   setLoans: (loans: Loan[]) => void;
   setInventory: (inventory: InventoryItem[]) => void;
@@ -44,6 +45,7 @@ export const useAppStore = create<AppState>((set) => ({
   setBusiness: (business) => set({ business }),
   setTransactions: (transactions) => set({ transactions }),
   addTransaction: (transaction) => set((state) => ({ transactions: [transaction, ...state.transactions] })),
+  removeTransaction: (id) => set((state) => ({ transactions: state.transactions.filter((t) => t.id !== id) })),
   setDebts: (debts) => set({ debts }),
   setLoans: (loans) => set({ loans }),
   setInventory: (inventory) => set({ inventory }),

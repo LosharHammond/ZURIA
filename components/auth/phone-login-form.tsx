@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signInWithCustomToken } from "firebase/auth";
 import { KeyRound, MessageCircle, Phone, ShieldCheck, UserPlus } from "lucide-react";
 import { auth, firebaseReady } from "@/lib/firebase/config";
+import { useAuth } from "@/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ type Step = "enter_phone" | "enter_pin";
 
 export function PhoneLoginForm() {
   const router = useRouter();
+  const { sessionError } = useAuth();
   const [phone, setPhone]       = useState("+233");
   const [pin, setPin]           = useState("");
   const [step, setStep]         = useState<Step>("enter_phone");
@@ -131,6 +133,20 @@ export function PhoneLoginForm() {
         <p className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-sm text-amber-400">
           Add Firebase credentials in .env.local to enable sign-in.
         </p>
+      )}
+
+      {sessionError && (
+        <div className="mt-4 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">
+          Sign-in succeeded but your session could not be saved. Please{" "}
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-2 hover:opacity-80"
+            onClick={() => window.location.reload()}
+          >
+            reload the page
+          </button>{" "}
+          and try again. If this keeps happening, contact support.
+        </div>
       )}
 
       {/* ── Step 1: Phone number ─────────────────────────────────────────── */}

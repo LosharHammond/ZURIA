@@ -714,8 +714,6 @@ function DashboardPreviewSection() {
 // ── Pricing Section ────────────────────────────────────────────────────────────
 
 function PricingSection() {
-  const adminMomo = "0242176603";
-
   return (
     <section id="pricing" className="border-t border-white/[0.06] bg-white/[0.01]">
       <div className="mx-auto max-w-6xl px-4 py-24">
@@ -822,45 +820,45 @@ function PricingSection() {
           ))}
         </div>
 
-        {/* MoMo payment instructions */}
+        {/* Paystack payment explanation */}
         <FadeUp delay={0.3} className="mt-12">
           <GlassCard className="text-center">
             <div className="mx-auto max-w-2xl">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10">
-                <span className="text-2xl">📱</span>
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                <span className="text-2xl">💳</span>
               </div>
-              <h3 className="text-xl font-black">Pay with Mobile Money</h3>
+              <h3 className="text-xl font-black">Pay securely via Paystack</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                No card required. Pay directly with MoMo and get activated within 1 hour.
+                Ghana&apos;s most trusted payment platform. Your subscription activates <strong className="text-foreground">instantly</strong> — no waiting, no manual steps.
               </p>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 {[
-                  { network: "MTN MoMo", ussd: "*170#", step: "Send Money" },
-                  { network: "Telecel Cash", ussd: "*100#", step: "Send Money" },
-                  { network: "AirtelTigo", ussd: "*185#", step: "Make Payment" },
-                  { network: "Vodafone Cash", ussd: "*110#", step: "Send Money" },
-                ].map((n) => (
-                  <div key={n.network} className="rounded-2xl bg-white/[0.04] px-4 py-4 text-left">
-                    <p className="font-bold text-sm">{n.network}</p>
-                    <p className="mt-1 font-mono text-lg text-primary">{n.ussd}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      → {n.step} → {adminMomo}
-                    </p>
+                  { icon: "📱", label: "Mobile Money", desc: "MTN, Telecel, AirtelTigo, Vodafone" },
+                  { icon: "💳", label: "Bank Card",    desc: "Visa or Mastercard" },
+                  { icon: "🏦", label: "Bank Transfer", desc: "Any Ghanaian bank account" },
+                ].map((m) => (
+                  <div key={m.label} className="rounded-2xl bg-white/[0.04] px-4 py-4 text-left">
+                    <p className="text-xl mb-1">{m.icon}</p>
+                    <p className="font-bold text-sm">{m.label}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{m.desc}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-5 rounded-2xl bg-primary/5 border border-primary/10 px-5 py-4">
-                <p className="text-sm text-muted-foreground leading-6">
-                  After paying, message ZURIA on{" "}
-                  <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noopener noreferrer" className="text-[#5AC8FA] underline underline-offset-2">Telegram</a>{" "}
-                  or WhatsApp:{" "}
-                  <span className="font-mono font-bold text-foreground">PAID GROWTH</span>,{" "}
-                  <span className="font-mono font-bold text-foreground">PAID PRO</span>, or{" "}
-                  <span className="font-mono font-bold text-foreground">PAID ENTERPRISE</span>.
-                  <br />We will verify and activate your plan within <strong>1 hour</strong>.
-                </p>
+              <div className="mt-5 rounded-2xl bg-primary/5 border border-primary/10 px-5 py-4 text-left space-y-2">
+                {[
+                  "Click a plan button above — a secure Paystack checkout opens in your browser",
+                  "Select MoMo, card, or bank transfer and complete the payment",
+                  "Your subscription activates automatically — no codes to type, no waiting",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-black text-primary mt-0.5">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm text-muted-foreground leading-5">{step}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </GlassCard>
@@ -988,7 +986,7 @@ function Footer() {
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" suppressHydrationWarning>
       <NavBar />
       <ServiceBanner />
       <HeroSection />

@@ -5,6 +5,7 @@ import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
 import { createId } from "@/lib/utils";
+import type { WithdrawalLedgerEntry } from "@/types/domain";
 import {
   createTransferRecipient,
   initiateTransfer,
@@ -114,7 +115,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 3. Write the withdrawal document atomically with the balance deduction
+      // 3. Write the withdrawal document, immutable ledger entry, and balance
+      //    deduction atomically in one transaction.
+      //    • The ledger entry ensures every withdrawal request is permanently
+      //      traceable even if the withdrawal doc is later modified.
+      //    • The balance deduction prevents concurrent withdrawals from both
+      //      passing the threshold check.
       const withdrawalRef = db.collection(collections.withdrawals).doc(id);
       txn.set(withdrawalRef, {
         id,
@@ -129,6 +135,29 @@ export async function POST(req: NextRequest) {
         status:        "pending" as const,
         createdAt:     now,
       });
+
+      // Immutable WITHDRAWAL_REQUESTED ledger entry — written once, never modified.
+      const requestedLedgerId = `${id}_WITHDRAWAL_REQUESTED`;
+      const requestedEntry: WithdrawalLedgerEntry = {
+        id:            requestedLedgerId,
+        withdrawalId:  id,
+        userId:        uid,
+        ownerName,
+        amountGHS:     balance,
+        network,
+        accountNumber: momoNumber.trim(),
+        accountName:   momoName.trim(),
+        eventType:     "WITHDRAWAL_REQUESTED",
+        status:        "pending",
+        actorId:       "system",
+        idempotencyKey: requestedLedgerId,
+        createdAt:     now,
+        _immutable:    true,
+      };
+      txn.set(
+        db.collection(collections.withdrawalEvents).doc(requestedLedgerId),
+        requestedEntry
+      );
 
       // ── CRITICAL: Deduct referral balance atomically with the document write ─
       // This prevents users from submitting multiple withdrawals before the first

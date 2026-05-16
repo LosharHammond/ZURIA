@@ -24,6 +24,7 @@ import {
 import { getUserWithdrawals } from "@/lib/services/withdrawal-service";
 import type { WithdrawalNetwork, WithdrawalRequest } from "@/types/domain";
 import { formatMoney } from "@/lib/utils";
+import { APP_URL } from "@/lib/config";
 
 // ─── Pre-written shareable message ────────────────────────────────────────────
 
@@ -292,12 +293,9 @@ export default function ReferralsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [user?.id]);
 
-  // Initialise with the relative path so SSR and the first client render match,
-  // then upgrade to the absolute URL after mount (client-only).
-  const [referralLink, setReferralLink] = useState(`/?ref=${stats.code}`);
-  useEffect(() => {
-    setReferralLink(`${window.location.origin}/?ref=${stats.code}`);
-  }, [stats.code]);
+  // Build the referral link from the server-configured APP_URL — never from
+  // window.location.origin, which varies across Vercel preview deployments.
+  const referralLink = stats.code ? `${APP_URL}/?ref=${stats.code}` : APP_URL;
 
   const shareMessage = user ? buildShareMessage(referralLink, user.ownerName) : "";
   const waShareUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;

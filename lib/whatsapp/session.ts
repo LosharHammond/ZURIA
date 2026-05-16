@@ -260,6 +260,33 @@ export async function getInventory(businessId: string): Promise<InventoryItem[]>
 
 // ─── Write operations ─────────────────────────────────────────────────────────
 
+/**
+ * Soft-delete a transaction by marking it voided.
+ * Voided transactions are excluded from reports and balance calculations.
+ * An audit trail is preserved — the record is never physically deleted.
+ *
+ * Returns `true` if the transaction was found and voided, `false` if not found.
+ */
+export async function voidTransaction(
+  transactionId: string,
+  reason: "user_undo" | "duplicate" | "correction" = "user_undo",
+): Promise<boolean> {
+  const db  = getAdminDb();
+  const ref = db.collection(collections.transactions).doc(transactionId);
+  const doc = await ref.get();
+
+  if (!doc.exists) return false;
+
+  await ref.update({
+    deleted:       true,
+    deletedAt:     new Date().toISOString(),
+    deletedReason: reason,
+    syncStatus:    "synced",
+  });
+
+  return true;
+}
+
 export async function saveTransaction(txn: Transaction, senderPhone?: string): Promise<void> {
   await getAdminDb().collection(collections.transactions).doc(txn.id).set({
     ...txn,

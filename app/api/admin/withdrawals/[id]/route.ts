@@ -4,8 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb, verifyAdminToken } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
-import type { Transaction, WithdrawalRequest } from "@/types/domain";
-import { createId } from "@/lib/utils";
+import type { Transaction, WithdrawalLedgerEntry, WithdrawalRequest } from "@/types/domain";
 
 import {
   createTransferRecipient,
@@ -72,9 +71,56 @@ export async function PATCH(
           referralBalance: FieldValue.increment(data.amount),
           updatedAt: now,
         });
+        // Immutable WITHDRAWAL_REJECTED ledger entry — written once inside the
+        // transaction so it exists if and only if the rejection committed.
+        const rejectedLedgerId = `${id}_WITHDRAWAL_REJECTED`;
+        const rejectedEntry: WithdrawalLedgerEntry = {
+          id:            rejectedLedgerId,
+          withdrawalId:  id,
+          userId:        data.userId,
+          ownerName:     data.ownerName,
+          amountGHS:     data.amount,
+          network:       data.network ?? "",
+          accountNumber: data.accountNumber ?? "",
+          accountName:   data.accountName  ?? "",
+          eventType:     "WITHDRAWAL_REJECTED",
+          status:        "rejected",
+          actorId:       decoded.uid,
+          note:          note,
+          idempotencyKey: rejectedLedgerId,
+          createdAt:     now,
+          _immutable:    true,
+        };
+        tx.set(
+          db.collection(collections.withdrawalEvents).doc(rejectedLedgerId),
+          rejectedEntry
+        );
       } else {
         // Flip status to "processing" immediately to prevent double-approval
         tx.update(wdRef, { status: "processing", processedAt: now, note: note ?? "Pending transfer" });
+        // Immutable WITHDRAWAL_APPROVED ledger entry — locks in the admin decision.
+        const approvedLedgerId = `${id}_WITHDRAWAL_APPROVED`;
+        const approvedEntry: WithdrawalLedgerEntry = {
+          id:            approvedLedgerId,
+          withdrawalId:  id,
+          userId:        data.userId,
+          ownerName:     data.ownerName,
+          amountGHS:     data.amount,
+          network:       data.network ?? "",
+          accountNumber: data.accountNumber ?? "",
+          accountName:   data.accountName  ?? "",
+          eventType:     "WITHDRAWAL_APPROVED",
+          status:        "approved",
+          actorId:       decoded.uid,
+          note:          note,
+          idempotencyKey: approvedLedgerId,
+          createdAt:     now,
+          _immutable:    true,
+        };
+        tx.set(
+          db.collection(collections.withdrawalEvents).doc(approvedLedgerId),
+          approvedEntry
+        );
       }
     });
   } catch (err: unknown) {
@@ -110,7 +156,9 @@ export async function PATCH(
 
   if (businessId) {
     const txn: Transaction = {
-      id: createId("txn"),
+      // Deterministic ID prevents duplicate accounting entries if this endpoint
+      // is called twice for the same withdrawal (e.g. transient 500 + retry).
+      id: `wd_txn_${id}`,
       businessId,
       userId: wd.userId,
       type: "withdrawal",
@@ -129,8 +177,9 @@ export async function PATCH(
       syncStatus: "synced",
       source: "system",
     };
+    // merge:true so a retried approve call does not overwrite an already-synced record
     await db.collection(collections.transactions).doc(txn.id)
-      .set({ ...txn, synced: now })
+      .set({ ...txn, synced: now }, { merge: true })
       .catch((err) => console.error("[admin/withdrawals] accounting txn write failed:", err));
   }
 

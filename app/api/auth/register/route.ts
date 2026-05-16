@@ -152,6 +152,20 @@ export async function POST(req: Request) {
       serverCreatedAt:   FieldValue.serverTimestamp(),
     };
 
+    // ── Guard: ensure the generated referral code is not already in use ───────
+    // The code is deterministic (djb2 hash of uid), collisions are rare but
+    // possible. If a collision is detected we append a character to break it.
+    let uniqueReferralCode = referralCode_;
+    const codeConflict = await db
+      .collection(collections.users)
+      .where("referralCode", "==", uniqueReferralCode)
+      .limit(1)
+      .get();
+    if (!codeConflict.empty) {
+      // Extremely rare — append the last 2 chars of uid to make it unique
+      uniqueReferralCode = `${referralCode_}${uid.slice(-2).toUpperCase()}`;
+    }
+
     const userDoc = {
       id:                uid,
       phoneNumber:       phone,
@@ -160,7 +174,12 @@ export async function POST(req: Request) {
       onboardingComplete: true,
       preferredLanguage,
       whatsappPin:       hashPin(pin),
-      referralCode:      referralCode_,
+      referralCode:      uniqueReferralCode,
+      // Store the referral code used to discover ZURIA (the referrer's code).
+      // This is the AUTHORITATIVE source used by /api/welcome to credit the referrer.
+      // We store it server-side so the welcome route cannot be tricked by a
+      // client-supplied code that differs from the one used at registration.
+      referredByCode:    referralCode ?? null,
       referralBalance:   0,
       referralCount:     0,
       subscriptionPlan:  "free",
@@ -175,12 +194,12 @@ export async function POST(req: Request) {
     batch.set(db.collection(collections.users).doc(uid), userDoc);
     await batch.commit();
 
-    // ── 5. Credit referrer (best-effort, non-blocking) ────────────────────────
-    if (referralCode) {
-      creditReferrerAsync(db, referralCode, uid, phone).catch((err) =>
-        console.error("[register] referral credit failed:", err)
-      );
-    }
+    // ── 5. Referral credit is intentionally NOT triggered here ───────────────
+    // Per the referral lifecycle policy, the reward fires ONLY after the user
+    // has completed onboarding and the /api/welcome endpoint is called with a
+    // valid auth token. Triggering here (before the user reaches /welcome or
+    // /dashboard) violates the policy and creates a duplicate credit path.
+    // The referredByCode stored above is the authoritative source for /api/welcome.
 
     // ── 6. Issue custom token for immediate sign-in ───────────────────────────
     const token = await auth.createCustomToken(uid, { phone });
@@ -198,7 +217,7 @@ export async function POST(req: Request) {
         businessId,
         onboardingComplete: true,
         preferredLanguage,
-        referralCode:      referralCode_,
+        referralCode:      uniqueReferralCode,
         referralBalance:   0,
         referralCount:     0,
         subscriptionPlan:  "free" as const,
@@ -239,60 +258,7 @@ export async function POST(req: Request) {
   }
 }
 
-// ─── Async referral crediting ─────────────────────────────────────────────────
-
-async function creditReferrerAsync(
-  db: ReturnType<typeof getAdminDb>,
-  refCode: string,
-  refereeId: string,
-  refereePhone: string
-): Promise<void> {
-  const REFERRAL_REWARD = 0.5;
-
-  const snap = await db
-    .collection(collections.users)
-    .where("referralCode", "==", refCode)
-    .limit(1)
-    .get();
-
-  if (snap.empty) return;
-  const referrerDoc = snap.docs[0];
-  const referrerId  = referrerDoc.id;
-  if (referrerId === refereeId) return; // no self-referral
-
-  const refDocId  = `${referrerId}_${refereeId}`;
-  const refDocRef = db.collection(collections.referrals).doc(refDocId);
-  const referrerRef = db.collection(collections.users).doc(referrerId);
-
-  await db.runTransaction(async (tx) => {
-    const refSnap = await tx.get(refDocRef);
-    if (refSnap.exists) return; // already credited — idempotent
-
-    const referrerSnap = await tx.get(referrerRef);
-    const referrerData = referrerSnap.data() ?? {};
-
-    const now        = new Date().toISOString();
-    const thisMonth  = now.slice(0, 7);
-    const storedKey  = (referrerData.referralMonthlyResetKey as string) ?? "";
-    const oldMonthly = storedKey === thisMonth
-      ? ((referrerData.referralMonthlyCount as number) ?? 0)
-      : 0;
-
-    tx.set(refDocRef, {
-      id:           refDocId,
-      referrerId,
-      refereeId,
-      refereePhone,
-      amount:       REFERRAL_REWARD,
-      createdAt:    now,
-    });
-
-    tx.update(referrerRef, {
-      referralBalance:         FieldValue.increment(REFERRAL_REWARD),
-      referralCount:           FieldValue.increment(1),
-      referralMonthlyCount:    oldMonthly + 1,
-      referralMonthlyResetKey: thisMonth,
-      updatedAt:               now,
-    });
-  });
-}
+// creditReferrerAsync was removed in the referral lifecycle refactor.
+// Referral rewards are now triggered exclusively by POST /api/welcome,
+// which is called after the user has completed onboarding and holds a
+// valid Firebase ID token. See app/api/welcome/route.ts.

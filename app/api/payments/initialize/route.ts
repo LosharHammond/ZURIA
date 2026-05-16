@@ -3,9 +3,10 @@ import { randomBytes } from "crypto";
 import { getAdminDb, verifyIdToken } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { initializePayment } from "@/lib/services/paystack-service";
-import type { SubscriptionPlan, PaystackPayment } from "@/types/domain";
+import type { SubscriptionPlan, PaystackPayment, PaymentLedgerEntry } from "@/types/domain";
 import { SUBSCRIPTION_TIERS } from "@/types/domain";
 import { APP_URL } from "@/lib/config";
+import { getEffectivePlan } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,23 @@ export async function POST(req: Request) {
     const db       = getAdminDb();
     const userSnap = await db.collection(collections.users).doc(uid).get();
     const userData = userSnap.data() ?? {};
+
+    // ── Duplicate-payment guard ───────────────────────────────────────────────
+    // Reject if the user already has an active subscription at or above the
+    // requested plan tier. Two valid payments with different Paystack references
+    // would both activate the subscription, effectively charging the user twice.
+    const effectivePlan = getEffectivePlan({
+      subscriptionPlan:       userData.subscriptionPlan,
+      subscriptionExpiresAt:  userData.subscriptionExpiresAt,
+      referralUnlockExpiresAt: userData.referralUnlockExpiresAt,
+    });
+    const PLAN_RANK: Record<string, number> = { free: 0, growth: 1, pro: 2, enterprise: 3 };
+    if (effectivePlan !== "free" && (PLAN_RANK[effectivePlan] ?? 0) >= (PLAN_RANK[plan] ?? 0)) {
+      return NextResponse.json(
+        { error: "You already have an active subscription. Visit the app to manage it." },
+        { status: 409 }
+      );
+    }
     const phone     = (userData.phoneNumber as string) ?? "";
     const ownerName = (userData.ownerName   as string) ?? "";
 
@@ -84,7 +102,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── Persist pending payment record ────────────────────────────────────────
+    // ── Persist pending payment record + PAYMENT_INITIATED ledger entry ─────
+    // Both writes are in the same batch so they succeed or fail together.
+    // The ledger entry is immutable — never updated, even if payment fails.
+    const now        = new Date().toISOString();
     const paymentDoc: PaystackPayment = {
       id:               reference,
       reference,
@@ -96,13 +117,30 @@ export async function POST(req: Request) {
       status:           "pending",
       authorizationUrl: result.authorizationUrl,
       accessCode:       result.accessCode,
-      createdAt:        new Date().toISOString(),
+      createdAt:        now,
     };
 
-    await db
-      .collection(collections.payments)
-      .doc(reference)
-      .set(paymentDoc);
+    const initiatedLedgerId = `${reference}_PAYMENT_INITIATED`;
+    const ledgerEntry: PaymentLedgerEntry = {
+      id:               initiatedLedgerId,
+      paystackReference: reference,
+      userId:           uid,
+      plan,
+      annual,
+      amountGHS,
+      currency:         "GHS",
+      eventType:        "PAYMENT_INITIATED",
+      status:           "pending",
+      source:           "system",
+      idempotencyKey:   initiatedLedgerId,
+      createdAt:        now,
+      _immutable:       true,
+    };
+
+    const batch = db.batch();
+    batch.set(db.collection(collections.payments).doc(reference), paymentDoc);
+    batch.set(db.collection(collections.paymentEvents).doc(initiatedLedgerId), ledgerEntry);
+    await batch.commit();
 
     return NextResponse.json({
       authorizationUrl: result.authorizationUrl,

@@ -4,6 +4,7 @@ import { verifyAdminToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
 import { fmtSubscriptionActivated } from "@/lib/whatsapp/formatter";
+import type { PaymentLedgerEntry } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -63,13 +64,36 @@ export async function PATCH(
     ? now.toISOString().slice(0, 7)   // YYYY-MM (monthly)
     : now.toISOString().slice(0, 10); // YYYY-MM-DD (daily — shouldn't matter for pro/enterprise)
 
-  await userRef.update({
-    subscriptionPlan: plan,
-    subscriptionExpiresAt: expiresAt,
-    whatsappMessageCount: 0,
+  // Write user update and immutable SUBSCRIPTION_ACTIVATED ledger entry atomically.
+  // Admin grants have no Paystack reference — a synthetic reference encodes the
+  // granting context so the ledger entry is traceable to this request.
+  const syntheticRef    = `admin_${userId}_${now.getTime()}`;
+  const ledgerId        = `${syntheticRef}_SUBSCRIPTION_ACTIVATED`;
+  const adminBatch      = db.batch();
+  adminBatch.update(userRef, {
+    subscriptionPlan:        plan,
+    subscriptionExpiresAt:   expiresAt,
+    whatsappMessageCount:    0,
     whatsappMessageResetKey: resetKey,
-    updatedAt: now.toISOString(),
+    updatedAt:               now.toISOString(),
   });
+  adminBatch.set(db.collection(collections.paymentEvents).doc(ledgerId), {
+    id:               ledgerId,
+    paystackReference: syntheticRef,
+    userId,
+    plan,
+    annual:           durationDays === 365,
+    amountGHS:        0, // admin grants are complimentary
+    currency:         "GHS",
+    eventType:        "SUBSCRIPTION_ACTIVATED",
+    status:           "success",
+    source:           "admin",
+    subscriptionExpiresAt: expiresAt,
+    idempotencyKey:   ledgerId,
+    createdAt:        now.toISOString(),
+    _immutable:       true,
+  } as PaymentLedgerEntry);
+  await adminBatch.commit();
 
   // ── Mark the payment claim as verified (idempotency guard) ─────────────────
   // If claimId was passed in the request body, mark it verified.

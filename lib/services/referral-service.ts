@@ -5,10 +5,7 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
-  limit,
   query,
-  runTransaction,
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
@@ -37,96 +34,12 @@ export function generateReferralCode(userId: string): string {
   return code;
 }
 
-// ─── Credit the referrer when a new user completes onboarding ─────────────────
-// Returns the referrer's userId if credit succeeded, null otherwise
-
-export async function creditReferrer(
-  refCode: string,
-  refereeId: string,
-  refereePhone: string
-): Promise<string | null> {
-  if (!db || !refCode) return null;
-
-  // Find the user who owns this referral code
-  const q = query(
-    collection(db, collections.users),
-    where("referralCode", "==", refCode),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-
-  const referrerDoc = snap.docs[0];
-  const referrerId = referrerDoc.id;
-
-  // Don't allow self-referral
-  if (referrerId === refereeId) return null;
-
-  // Deterministic doc ID = referrerId_refereeId prevents duplicate credits even
-  // under concurrent calls (TOCTOU-safe via Firestore transaction).
-  const refDocId = `${referrerId}_${refereeId}`;
-  const refDocRef = doc(db, collections.referrals, refDocId);
-  const referrerRef = doc(db, collections.users, referrerId);
-
-  let creditedReferrerId: string | null = null;
-
-  try {
-    await runTransaction(db, async (tx) => {
-      const refSnap = await tx.get(refDocRef);
-      if (refSnap.exists()) return; // Already credited — idempotent exit
-
-      const referrerSnap = await tx.get(referrerRef);
-      const referrerData = referrerSnap.data() ?? {};
-
-      const now = new Date().toISOString();
-      const thisMonth = now.slice(0, 7); // "YYYY-MM"
-
-      const storedMonthKey = (referrerData.referralMonthlyResetKey as string) ?? "";
-      const oldMonthlyCount = storedMonthKey === thisMonth
-        ? ((referrerData.referralMonthlyCount as number) ?? 0)
-        : 0; // reset if month rolled over
-      const newMonthlyCount = oldMonthlyCount + 1;
-
-      // Milestone fires when this referral CROSSES the threshold from below
-      const justHitMilestone =
-        newMonthlyCount >= MILESTONE_REFERRALS &&
-        oldMonthlyCount < MILESTONE_REFERRALS;
-
-      const endOfMonth = new Date();
-      endOfMonth.setMonth(endOfMonth.getMonth() + 1, 1);
-      endOfMonth.setHours(0, 0, 0, 0);
-
-      const referral: Referral = {
-        id: refDocId,
-        referrerId,
-        refereeId,
-        refereePhone,
-        amount: REFERRAL_REWARD,
-        createdAt: now,
-      };
-      tx.set(refDocRef, referral);
-
-      const updatePayload: Record<string, unknown> = {
-        referralBalance: increment(REFERRAL_REWARD),
-        referralCount: increment(1),
-        referralMonthlyCount: newMonthlyCount,
-        referralMonthlyResetKey: thisMonth,
-        updatedAt: now,
-      };
-      if (justHitMilestone) {
-        updatePayload.referralUnlockExpiresAt = endOfMonth.toISOString();
-      }
-      tx.update(referrerRef, updatePayload);
-
-      creditedReferrerId = referrerId;
-    });
-  } catch (err) {
-    console.error("[creditReferrer] transaction failed:", err);
-    return null;
-  }
-
-  return creditedReferrerId;
-}
+// NOTE: creditReferrer has been intentionally removed from this client-side module.
+// Referral rewards are a financial operation and MUST only be triggered server-side.
+// The sole authoritative trigger is POST /api/welcome (app/api/welcome/route.ts),
+// which runs after the user has a valid Firebase ID token and onboarding is complete.
+// Any client-side call to credit a referrer would bypass security rules and risk
+// double-crediting or fraud. Do not re-add this function here.
 
 // ─── Get all referrals made by a user ────────────────────────────────────────
 

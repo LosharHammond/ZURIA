@@ -548,6 +548,97 @@ export interface PaystackPayment {
   paystackStatus?: string;     // raw Paystack status string
 }
 
+// ─── Payment Ledger (immutable financial audit trail) ────────────────────────
+//
+// Every subscription payment lifecycle event is stored here as an immutable
+// append-only document.  The ledger is the SOLE authoritative source of truth
+// for subscription payment history — never derive subscription state from the
+// mutable `payments` doc or the `users.subscriptionPlan` field alone.
+//
+// Doc ID format: `${paystackReference}_${eventType}` — deterministic so the
+// same (reference, event) pair can never be written twice regardless of how
+// many concurrent webhook deliveries or verify-API calls arrive.
+//
+// NEVER update or delete documents in this collection.
+
+export type PaymentEventType =
+  | "PAYMENT_INITIATED"      // Paystack checkout session created
+  | "PAYMENT_SUCCESS"        // Paystack confirmed the charge succeeded
+  | "PAYMENT_FAILED"         // Charge failed, was abandoned, or amount mismatched
+  | "SUBSCRIPTION_ACTIVATED" // User subscription record updated after a success
+  | "SUBSCRIPTION_EXPIRED"   // Subscription expiry detected (lazy or cron-emitted)
+  | "SUBSCRIPTION_RENEWED"   // Renewal of an already-active subscription
+  | "SUBSCRIPTION_CANCELLED"; // Subscription explicitly cancelled
+
+export interface PaymentLedgerEntry {
+  /** Deterministic Firestore doc ID: `${paystackReference}_${eventType}` */
+  id: string;
+  /** Paystack transaction reference string, e.g. "ZURIA-XXX-YYY" */
+  paystackReference: string;
+  /** Paystack numeric transaction ID from webhook data.id (for deduplication) */
+  paystackTransactionId?: string;
+  /** Firebase UID of the paying user */
+  userId: string;
+  /** Subscription plan being purchased */
+  plan: SubscriptionPlan;
+  /** Whether this is an annual billing cycle */
+  annual: boolean;
+  /** Charge amount in Ghana Cedis */
+  amountGHS: number;
+  currency: "GHS";
+  eventType: PaymentEventType;
+  status: "pending" | "success" | "failed";
+  /** Origin of the financial event */
+  source: "webhook" | "verify_api" | "admin" | "system" | "queue";
+  /** Payment channel reported by Paystack: "mobile_money" | "card" | "bank_transfer" */
+  channel?: string;
+  /** ISO timestamp when the activated subscription expires (SUBSCRIPTION_ACTIVATED only) */
+  subscriptionExpiresAt?: string;
+  /** Human-readable failure reason (PAYMENT_FAILED only) */
+  failureReason?: string;
+  /** Idempotency key — equals `id`. One ledger entry per (reference, eventType). */
+  idempotencyKey: string;
+  createdAt: string;
+  /** Immutability marker — this collection is append-only. Never update or delete. */
+  _immutable: true;
+}
+
+// ─── Withdrawal event ledger ──────────────────────────────────────────────────
+//
+// Append-only audit trail for referral earnings withdrawal lifecycle events.
+// Collection: `withdrawal_events`  (see collections.ts → withdrawalEvents)
+// Doc ID: `${withdrawalId}_${eventType}` — deterministic and idempotent.
+//
+// NEVER update or delete documents in this collection.
+
+export type WithdrawalEventType =
+  | "WITHDRAWAL_REQUESTED"   // User submitted a withdrawal request
+  | "WITHDRAWAL_APPROVED"    // Admin approved + Paystack transfer initiated
+  | "WITHDRAWAL_REJECTED"    // Admin rejected; balance restored
+  | "WITHDRAWAL_FAILED";     // Paystack transfer failed; balance restored
+
+export interface WithdrawalLedgerEntry {
+  /** Deterministic Firestore doc ID: `${withdrawalId}_${eventType}` */
+  id: string;
+  withdrawalId: string;
+  userId: string;
+  ownerName: string;
+  amountGHS: number;
+  network: string;
+  accountNumber: string;
+  accountName: string;
+  eventType: WithdrawalEventType;
+  status: "pending" | "approved" | "rejected" | "failed";
+  /** Admin UID for approve/reject events; "system" for user-initiated requests */
+  actorId: string;
+  note?: string;
+  /** Idempotency key — equals `id`. One ledger entry per (withdrawalId, eventType). */
+  idempotencyKey: string;
+  createdAt: string;
+  /** Immutability marker — this collection is append-only. Never update or delete. */
+  _immutable: true;
+}
+
 // ─── Parser output ────────────────────────────────────────────────────────────
 
 export interface ParsedTransaction {
