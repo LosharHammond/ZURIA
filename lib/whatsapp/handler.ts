@@ -1,4 +1,3 @@
-import { parseTransaction } from "@/lib/parsers/transaction-parser";
 import { createId, formatMoney } from "@/lib/utils";
 import type { ConversationState } from "@/lib/intelligence/types";
 import {
@@ -67,7 +66,7 @@ import { voidTransaction } from "@/lib/whatsapp/session";
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
 const FREE_DAILY_LIMIT      = 10;   // free tier: 10 entries per day
 const GROWTH_MONTHLY_LIMIT  = 200;  // growth tier: 200 entries per month
-const MONTHLY_UNLOCK_TARGET = 30;   // referrals this month needed to unlock Growth
+const _MONTHLY_UNLOCK_TARGET = 30;   // referrals this month needed to unlock Growth (used in UI display)
 
 /** Sum the amount field of an array of Transactions */
 const sum = (txns: { amount: number }[]): number =>

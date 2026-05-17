@@ -216,7 +216,7 @@ function buildContextDelta(
   intent: ClassifiedIntent,
   subscriptionUiWasShown: boolean,
   txnUpdate?: TxnContextUpdate,
-  historyEntry?: { user: string; zuria: string },
+  _historyEntry?: { user: string; zuria: string }, // reserved — history updated via updateHistory() separately
 ): Record<string, unknown> {
   const now = new Date().toISOString();
 

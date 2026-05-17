@@ -258,7 +258,7 @@ class RuleBasedZuria implements AIProvider {
     return true; // always available
   }
 
-  async generate(_request: AIGenerateRequest): Promise<string | null> {
+  async generate(_: AIGenerateRequest): Promise<string | null> {
     // Signals the handler to use response-engine.ts directly.
     // The rule-based engine is not invoked through this interface —
     // the handler calls zuriaConfirm / zuriaSmalltalk / zuriaError directly.
@@ -282,8 +282,8 @@ class OpenAIZuria implements AIProvider {
 
     try {
       // openai is an optional dependency — not installed until OPENAI_API_KEY is used
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // @ts-expect-error — openai package not installed; loaded dynamically at runtime only
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const openaiModule: any = await (import("openai") as Promise<any>).catch(() => null);
       if (!openaiModule) return null;
 

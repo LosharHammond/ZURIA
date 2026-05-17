@@ -21,6 +21,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // Don't advertise our tech stack to attackers (removes "X-Powered-By: Next.js")
+  poweredByHeader: false,
+
   // Fix Vercel workspace-root detection when package-lock.json is above this dir
   outputFileTracingRoot: path.resolve(__dirname),
 

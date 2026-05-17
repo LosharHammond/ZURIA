@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Copy,
   CrownIcon,
   FileText,
   Lock,
@@ -680,7 +679,7 @@ function CompRow({ f, v }: { f: string; v: string[] }) {
 export default function SubscriptionPage() {
   const { user, transactions, debts, loans } = useAppStore();
   const [billingAnnual, setBillingAnnual] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
+
 
   const effectivePlan: SubscriptionPlan = user ? getEffectivePlan(user) : "free";
   const referralUnlock = user ? isOnReferralUnlock(user) : false;
@@ -706,16 +705,6 @@ export default function SubscriptionPage() {
   }), [effectivePlan, usagePct, transactions.length, debts, loans, scoreBreakdown.score]);
 
   const plans: SubscriptionPlan[] = ["growth", "pro", "enterprise"];
-
-  function copyText(text: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(text);
-      setTimeout(() => setCopied(null), 2000);
-    });
-  }
-
-  // suppress lint warning — copied is used in JSX below
-  void copied;
 
   // Compute annual savings for the banner (based on all paid plans)
   const maxAnnualSaving = Math.max(

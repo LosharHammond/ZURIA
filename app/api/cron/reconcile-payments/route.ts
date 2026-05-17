@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { collections } from "@/lib/firebase/collections";
 import {
   reconcileRecentPayments,
   reconcileReferralBalances,
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
 
   // Persist run result for audit trail
   await getAdminDb()
-    .collection("reconciliation_runs")
+    .collection(collections.reconciliationRuns)
     .add({ ...report, type: "scheduled" })
     .catch(() => {});
 

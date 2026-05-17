@@ -129,7 +129,8 @@ service cloud.firestore {
     // ─── Payment Claims ──────────────────────────────────────────────────────
     // Written by Admin SDK when a user sends "PAID GROWTH" etc. via WhatsApp.
     // Verified by admin routes — never accessible from the client.
-    match /paymentClaims/{claimId} {
+    // Collection name is "payment_claims" (snake_case) — matches collections.ts.
+    match /payment_claims/{claimId} {
       allow read, write: if false;
     }
 

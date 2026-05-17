@@ -28,8 +28,16 @@ export async function GET() {
     "TWILIO_AUTH_TOKEN",
     "TWILIO_WHATSAPP_NUMBER",
     "ADMIN_PHONE",
+    "AUTH_SESSION_SECRET",  // Required: session cookies are invalid without it
+    "CRON_SECRET",          // Required: all cron routes are blocked without it
   ];
-  const OPTIONAL_ENVS = ["PAYSTACK_SECRET_KEY", "NEXT_PUBLIC_WA_NUMBER", "NEXT_PUBLIC_APP_URL"];
+  const OPTIONAL_ENVS = [
+    "PAYSTACK_SECRET_KEY",
+    "NEXT_PUBLIC_WA_NUMBER",
+    "NEXT_PUBLIC_APP_URL",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_WEBHOOK_SECRET",
+  ];
 
   const missingCritical = CRITICAL_ENVS.filter((k) => !process.env[k]);
   const missingOptional = OPTIONAL_ENVS.filter((k) => !process.env[k]);

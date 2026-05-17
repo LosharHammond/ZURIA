@@ -15,7 +15,6 @@
  * or (if session still active) straight to message handling.
  */
 
-import { parseTransaction }   from "@/lib/parsers/transaction-parser";
 import { createId, formatMoney } from "@/lib/utils";
 import { sendText }           from "@/lib/whatsapp/client";
 import { hashPin, verifyPin }  from "@/lib/security/pin";
@@ -398,7 +397,7 @@ async function dispatchTgQuery(
   plan: SubscriptionPlan,
   referralLink: string | undefined,
   user: Record<string, unknown>,
-  _monthKey: string,
+  _monthKey: string, // reserved for future month-scoped queries
 ): Promise<string> {
   const canMonthly = plan === "growth" || plan === "pro" || plan === "enterprise";
   const canFull    = plan === "pro" || plan === "enterprise";

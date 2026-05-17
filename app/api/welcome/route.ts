@@ -27,7 +27,6 @@ import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { fmtWelcome } from "@/lib/whatsapp/formatter";
 import { collections } from "@/lib/firebase/collections";
-import { createId } from "@/lib/utils";
 import { APP_URL } from "@/lib/config";
 import type { Transaction } from "@/types/domain";
 
@@ -128,7 +127,7 @@ async function creditReferrer(
   referralCode: string,
   refereeId: string,
   refereePhone: string,
-  refereeBusinessId: string | null,
+  _refereeBusinessId: string | null,
 ): Promise<void> {
 
   // Find the referrer by their referral code
@@ -255,7 +254,7 @@ async function creditReferrer(
 
   // ── Record referral earning in business transaction history ───────────────
   // Makes referral income visible in dashboard stats and admin panel.
-  // Uses createId (random) — a separate read-model entry, not the idempotency doc.
+  // Uses a deterministic `ref_${refDocId}` ID — a separate read-model entry, not the idempotency doc.
   // Best-effort: failure here does NOT affect the balance (already updated above).
   const referrerBusinessId = (referrerData.businessId as string | undefined);
   if (referrerBusinessId) {

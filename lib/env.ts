@@ -12,7 +12,13 @@ type EnvKey =
   | "ADMIN_MOMO_NUMBER"
   | "SUPPORT_WA_NUMBER"
   | "NEXT_PUBLIC_APP_URL"
-  | "PAYSTACK_SECRET_KEY";
+  | "PAYSTACK_SECRET_KEY"
+  // Session / cron security secrets (required in production)
+  | "AUTH_SESSION_SECRET"
+  | "CRON_SECRET"
+  // Telegram integration (required when Telegram bot is active)
+  | "TELEGRAM_BOT_TOKEN"
+  | "TELEGRAM_WEBHOOK_SECRET";
 
 const REQUIRED_SERVER: EnvKey[] = [
   "TWILIO_ACCOUNT_SID",
@@ -21,6 +27,10 @@ const REQUIRED_SERVER: EnvKey[] = [
   "FIREBASE_CLIENT_EMAIL",
   "FIREBASE_PRIVATE_KEY",
   "ADMIN_PHONE",
+  // Must be set in production — session cookies are invalid without it
+  "AUTH_SESSION_SECRET",
+  // Must be set in production — cron routes reject all requests without it
+  "CRON_SECRET",
 ];
 
 const PLACEHOLDERS = ["paste_your_key_here", "from Firebase", "sk_live_paste"];
@@ -52,6 +62,13 @@ export function validateServerEnv(keys: EnvKey[] = REQUIRED_SERVER): void {
  */
 export function isPaystackConfigured(): boolean {
   return !isMissing(process.env.PAYSTACK_SECRET_KEY);
+}
+
+/**
+ * Check if the Telegram bot is fully configured (optional — app degrades gracefully without it).
+ */
+export function isTelegramConfigured(): boolean {
+  return !isMissing(process.env.TELEGRAM_BOT_TOKEN);
 }
 
 /**

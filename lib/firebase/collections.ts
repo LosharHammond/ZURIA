@@ -36,4 +36,7 @@ export const collections = {
   // Fraud signal events — best-effort append-only log of detected suspicious activity
   // (self-referral attempts, anomalous patterns, etc.). Never used for blocking decisions.
   fraudSignals: "fraud_signals",
+  // Reconciliation run audit trail — one doc per scheduled payment reconciliation run.
+  // Stores the full report (repaired, failed, drift) for anomaly detection and audit.
+  reconciliationRuns: "reconciliation_runs",
 } as const;
