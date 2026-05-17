@@ -106,7 +106,14 @@ export interface ClassifiedEntities {
 
 export interface ConversationState {
   /** Which engine is currently the primary handler for this session */
-  active_flow: "ledger" | "auth" | "query" | "subscription" | "none";
+  active_flow:
+    | "ledger"
+    | "auth"
+    | "query"
+    | "subscription"
+    | "none"
+    | "undo_confirm"         // Two-step undo: waiting for "yes" confirmation
+    | "pending_confirmation"; // Pre-save confirmation for low-confidence transactions
   /** Whether the current intent should render a UI widget/keyboard */
   should_trigger_ui: boolean;
   /**
@@ -115,6 +122,28 @@ export interface ConversationState {
    * When true, suppress near-limit warnings and unsolicited upgrade prompts.
    */
   subscription_ui_suppressed: boolean;
+}
+
+// ─── Pending transaction (pre-save confirmation) ──────────────────────────────
+
+/**
+ * A parsed transaction staged for user confirmation before being written to Firestore.
+ * Used when confidence < CONFIRMATION_THRESHOLD to prevent silent wrong entries.
+ */
+export interface PendingTransactionContext {
+  type:             string;
+  amount:           number;
+  confidence:       number;
+  customerName:     string | null;
+  customerNameNormalized: string | null;
+  productName:      string | null;
+  notes:            string | null;
+  quantity:         number | null;
+  paymentMethod:    string | null;
+  /** The Ghanaian-normalized version of the original text */
+  normalizedText:   string;
+  /** The user's original un-normalized text — stored for audit trail */
+  originalText:     string;
 }
 
 // ─── Full classification output ───────────────────────────────────────────────
@@ -185,6 +214,17 @@ export interface ConversationContext {
    * Used to enforce the 24h unsolicited-upgrade suppression rule.
    */
   subscriptionUiShownAt: string | null;
+  /**
+   * A parsed transaction staged for confirmation before being written to Firestore.
+   * Set when confidence < CONFIRMATION_THRESHOLD. Cleared on user "yes" (save)
+   * or "no" / any new financial message (abandon).
+   */
+  pendingTransaction:    PendingTransactionContext | null;
+  /**
+   * The Ghanaian-normalized text of the last processed message.
+   * Used by engine-guard RULE 5 to detect duplicate webhook deliveries.
+   */
+  lastNormalizedText:    string | null;
   /** ISO timestamp of last context update */
   updatedAt:             string;
 }

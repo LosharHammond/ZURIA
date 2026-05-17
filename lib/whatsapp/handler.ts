@@ -1,5 +1,4 @@
 import { createId, formatMoney } from "@/lib/utils";
-import type { ConversationState } from "@/lib/intelligence/types";
 import {
   fmtDebts,
   fmtEndOfDayReport,
@@ -50,23 +49,34 @@ import { classifyMessage } from "@/lib/intelligence/intent-classifier";
 import {
   loadWhatsAppContext, saveWhatsAppContext, clearWhatsAppContext,
   appendConversationHistory, stageLimitNotification, historyToText,
+  stagePendingTransaction, clearPendingTransaction,
   type TxnContextUpdate,
 } from "@/lib/intelligence/conversation-context";
+import type { PendingTransactionContext } from "@/lib/intelligence/types";
 import { enforceEngineIsolation, isDuplicateLedgerEntry } from "@/lib/intelligence/engine-guard";
 import {
   zuriaConfirm, zuriaSmalltalk, zuriaError, generateInsight,
-  zuriaUndoPrompt, zuriaUndoConfirmed, zuriaUndoNothing, buildLimitWarning,
+  zuriaUndoPrompt, zuriaUndoNothing, buildLimitWarning,
+  zuriaConfirmationRequest, zuriaUndoConfirmedWithEffects,
 } from "@/lib/intelligence/response-engine";
 import { normalizeGhanaianEnglish } from "@/lib/intelligence/ghanaian-normalizer";
 import { parseMultiIntent, fmtMultiConfirm } from "@/lib/intelligence/multi-intent-parser";
 import { getActiveProvider } from "@/lib/intelligence/ai-provider";
-import { voidTransaction } from "@/lib/whatsapp/session";
+import { voidTransactionWithSideEffects } from "@/lib/whatsapp/session";
 
 // Admin number for subscription payment notifications
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
 const FREE_DAILY_LIMIT      = 10;   // free tier: 10 entries per day
 const GROWTH_MONTHLY_LIMIT  = 200;  // growth tier: 200 entries per month
 const _MONTHLY_UNLOCK_TARGET = 30;   // referrals this month needed to unlock Growth (used in UI display)
+
+/**
+ * Transactions with confidence below this threshold trigger a pre-save confirmation
+ * prompt ("Did I get that right?") instead of being saved immediately.
+ * Threshold of 0.65 covers medium-confidence parses while letting high-confidence
+ * entries (typical well-formed messages) flow through without friction.
+ */
+const CONFIRMATION_THRESHOLD = 0.65;
 
 /** Sum the amount field of an array of Transactions */
 const sum = (txns: { amount: number }[]): number =>
@@ -297,7 +307,8 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
   const convCtx    = await loadWhatsAppContext(fromPhone);
   const normalized = normalizeGhanaianEnglish(text);
   const classified = classifyMessage(normalized, convCtx);
-  const isolation  = enforceEngineIsolation(classified, convCtx, null, normalized);
+  // Pass the stored last normalized text so RULE 5 can detect duplicate webhook deliveries.
+  const isolation  = enforceEngineIsolation(classified, convCtx, convCtx.lastNormalizedText, normalized);
   const finalIntent = isolation.blocked ? isolation.override! : classified;
   const isDuplicate = isDuplicateLedgerEntry(isolation);
 
@@ -310,18 +321,121 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
       ? (user.referralMonthlyCount ?? 0)
       : 0;
 
+  // Staged limit warning — declared here so it's available inside 4b and all engine branches.
+  const stagedWarning = convCtx.pendingLimitNotification;
+
   // Helper: save context + update history in one call
-  const persist = async (reply: string, txnUpdate?: TxnContextUpdate, subUiShown = false): Promise<void> => {
-    await saveWhatsAppContext(fromPhone, finalIntent, subUiShown, txnUpdate);
+  // Always passes the current normalized text for RULE 5 duplicate detection.
+  // Pass pendingTransaction=null to explicitly clear any staged confirmation.
+  const persist = async (
+    reply: string,
+    txnUpdate?: TxnContextUpdate,
+    subUiShown = false,
+    pendingTxn?: PendingTransactionContext | null,
+  ): Promise<void> => {
+    await saveWhatsAppContext(fromPhone, finalIntent, subUiShown, txnUpdate, undefined, normalized, pendingTxn);
     appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
   };
+
+  // ── 4b. Pre-save confirmation flow ───────────────────────────────────────────
+  // If the previous turn staged a low-confidence transaction awaiting user "yes",
+  // intercept this message BEFORE normal classification.
+  if (convCtx.activeFlow === "pending_confirmation" && convCtx.pendingTransaction) {
+    const pending = convCtx.pendingTransaction;
+    const affirmRE = /^(yes|yep|yeah|yh|confirm|ok|okay|sure|save|correct|right|ɛɛ|yoo|yes please|go ahead)$/i;
+    const negateRE = /^(no|nope|nah|wrong|incorrect|cancel|stop|nevermind|never\s*mind|try again|redo)$/i;
+
+    if (affirmRE.test(text.trim())) {
+      // User confirmed — save the staged transaction
+      try {
+        const now   = new Date().toISOString();
+        const txnId = createId("txn");
+        const txn: Transaction = {
+          id:                     txnId,
+          businessId:             business.id,
+          userId:                 user.id,
+          rawText:                pending.originalText,        // ← original user words
+          type:                   pending.type as Transaction["type"],
+          amount:                 pending.amount,
+          quantity:               pending.quantity,
+          productName:            pending.productName,
+          customerName:           pending.customerName,
+          customerNameNormalized: pending.customerNameNormalized,
+          paymentMethod:          pending.paymentMethod as Transaction["paymentMethod"],
+          notes:                  pending.notes ?? "",
+          category:               business.category,
+          currency:               "GHS, Cedis",
+          confidence:             pending.confidence,
+          createdAt:              now,
+          syncStatus:             "synced",
+          source:                 "manual",
+        };
+
+        await saveTransaction(txn, fromPhone);
+
+        const todayTxns = await getTodayTransactions(business.id);
+        const moneyIn   = todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
+        const moneyOut  = todayTxns.filter((t) => MONEY_OUT_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
+        // Build a minimal ParsedTransaction for zuriaConfirm — only the fields it reads
+        const parsedForConfirm = {
+          type:       pending.type as Transaction["type"],
+          amount:     pending.amount,
+          confidence: pending.confidence,
+          customerName:  pending.customerName ?? undefined,
+          productName:   pending.productName ?? undefined,
+          notes:         pending.notes ?? undefined,
+          quantity:      pending.quantity ?? undefined,
+          paymentMethod: (pending.paymentMethod ?? undefined) as Transaction["paymentMethod"],
+          category:      business.category,
+          currency:      "GHS, Cedis" as const,
+          syncStatus:    "synced" as const,
+          customerNameNormalized: pending.customerNameNormalized ?? undefined,
+        } as import("@/types/domain").ParsedTransaction;
+        const confirm   = zuriaConfirm(
+          parsedForConfirm,
+          { in: moneyIn, out: moneyOut },
+          business.category,
+          bName,
+        );
+        const insight   = generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut });
+        const core      = [confirm, insight].filter(Boolean).join("\n\n");
+        const fullReply = stagedWarning ? `${stagedWarning}\n\n${core}` : core;
+
+        const txnDesc = `${pending.type} of ${formatMoney(pending.amount)}${pending.productName ? ` (${pending.productName})` : ""}`;
+        // Clear pendingTransaction (null) and persist txnId for undo
+        await persist(fullReply, { transactionId: txnId, transactionDesc: txnDesc }, false, null);
+        return fullReply;
+      } catch (err) {
+        await logError("[handler] pending-confirmation save", err, { phone: fromPhone });
+        return fmtSystemError();
+      }
+    }
+
+    if (negateRE.test(text.trim())) {
+      // User rejected — clear pending, ask them to rephrase
+      await clearPendingTransaction("whatsapp", fromPhone, "none");
+      const retryReplies = [
+        "No problem. Tell me what happened and I'll record it correctly.",
+        "Got it. Say it again and I'll get it right.",
+        "Sure — just rephrase it and I'll try again.",
+      ];
+      const reply = retryReplies[Math.floor(Math.random() * retryReplies.length)]!;
+      appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
+      return reply;
+    }
+
+    // User sent something completely different — abandon the pending confirmation
+    // and fall through to normal processing. The pending transaction is lost, but
+    // that's better than recording something the user moved on from.
+    await clearPendingTransaction("whatsapp", fromPhone, "none");
+  }
 
   // ── 5. Payment claim — bypasses all gating ────────────────────────────────
   const paymentPlan = detectPaymentClaim(text);
   if (paymentPlan) {
     const annual = isAnnualPayment(text);
-    const reply = await handlePaymentClaim(paymentPlan, user.id, user.ownerName, fromPhone, bName, annual);
-    await persist(reply);
+    const reply = await handlePaymentClaim(paymentPlan, user.id, user.ownerName, fromPhone, bName, annual, effectivePlan);
+    await persist(reply, undefined, false, null);
     return reply;
   }
 
@@ -356,31 +470,38 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
     const lastDesc = convCtx.lastTransactionDesc;
 
     // Sub-case: user already confirmed an undo (previous turn was undo prompt)
-    if (convCtx.activeFlow === "undo_confirm" as ConversationState["active_flow"] && lastId) {
+    if (convCtx.activeFlow === "undo_confirm" && lastId) {
       const affirmRE = /^(yes|yep|yeah|yh|confirm|do it|ok|okay|sure|remove|delete|void)$/i;
       if (affirmRE.test(text.trim())) {
-        const success = await voidTransaction(lastId);
-        const reply = success
-          ? zuriaUndoConfirmed(lastDesc ?? "that entry", user.ownerName)
+        const result = await voidTransactionWithSideEffects(lastId);
+        const reply = result.success
+          ? zuriaUndoConfirmedWithEffects(
+              lastDesc ?? "that entry",
+              user.ownerName,
+              result.hasDebtEffect,
+              result.hasInventoryEffect,
+              result.hasLoanEffect,
+            )
           : zuriaUndoNothing(user.ownerName);
-        // Reset context after undo
+        // Reset context after undo — clear pendingTransaction too
         await saveWhatsAppContext(fromPhone, {
           ...finalIntent,
           intent: "UNDO",
           state: { ...finalIntent.state, active_flow: "none" },
-        }, false, { transactionId: "", transactionDesc: "" });
+        }, false, { transactionId: "", transactionDesc: "" }, undefined, normalized, null);
         appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
         return reply;
       }
     }
 
-    // Show undo confirmation prompt
+    // Show undo confirmation prompt — set active_flow = "undo_confirm" so the
+    // next "yes" triggers the actual delete. "undo_confirm" is now a valid member
+    // of the ConversationState["active_flow"] union (fixed in types.ts).
     const reply = zuriaUndoPrompt(lastDesc, user.ownerName);
-    // Set activeFlow to undo_confirm so the next "yes" triggers the delete
     await saveWhatsAppContext(fromPhone, {
       ...finalIntent,
-      state: { ...finalIntent.state, active_flow: "undo_confirm" as ConversationState["active_flow"] },
-    }, false);
+      state: { ...finalIntent.state, active_flow: "undo_confirm" },
+    }, false, undefined, undefined, normalized);
     appendConversationHistory("whatsapp", fromPhone, text, reply, convCtx.conversationHistory);
     return reply;
   }
@@ -418,10 +539,9 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
     incrementMessageCount(user.id, effectivePlan).catch(() => {});
   }
 
-  // ── 9. Staged limit warning from previous turn ────────────────────────────
-  // If the previous turn staged a warning, prepend it to this response.
-  // This cleanly separates monetization from financial confirmations.
-  const stagedWarning = convCtx.pendingLimitNotification;
+  // ── 9. Staged limit warning ────────────────────────────────────────────────
+  // (stagedWarning was declared above, alongside `persist`, so it's available
+  // in all branches including the pending-confirmation intercept at step 4b.)
 
   // ── 10. LEDGER_QUERY_ENGINE ───────────────────────────────────────────────
   if (finalIntent.intent === "LEDGER_QUERY_ENGINE") {
@@ -488,7 +608,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
             id: createId("txn"),
             businessId: business.id,
             userId:     user.id,
-            rawText:    normalized,
+            rawText:    text,        // ← original user words, not normalized
             type:       p.type,
             amount:     p.amount,
             quantity:   p.quantity,
@@ -534,8 +654,38 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         financialContext:    "",
       });
       const reply = aiErr ?? zuriaError(business.category, bName);
-      await persist(reply);
+      await persist(reply, undefined, false, null);
       return reply;
+    }
+
+    // ── Pre-save confirmation for medium-confidence parses ──────────────────
+    // Confidence 0.40–0.64: ask user to verify before writing to Firestore.
+    // Confidence ≥ 0.65: save immediately (high confidence, no friction added).
+    if (parsed.confidence < CONFIRMATION_THRESHOLD && !isDuplicate) {
+      const confirmReq = zuriaConfirmationRequest(
+        parsed.type, parsed.amount, parsed.customerName ?? null,
+        parsed.productName ?? null, business.category,
+      );
+      const fullReply = stagedWarning ? `${stagedWarning}\n\n${confirmReq}` : confirmReq;
+
+      // Stage the parsed transaction in context; set activeFlow = pending_confirmation
+      const pending: PendingTransactionContext = {
+        type:                   parsed.type,
+        amount:                 parsed.amount,
+        confidence:             parsed.confidence,
+        customerName:           parsed.customerName ?? null,
+        customerNameNormalized: parsed.customerNameNormalized ?? null,
+        productName:            parsed.productName ?? null,
+        notes:                  parsed.notes ?? null,
+        quantity:               parsed.quantity ?? null,
+        paymentMethod:          parsed.paymentMethod ?? null,
+        normalizedText:         normalized,
+        originalText:           text,
+      };
+
+      await stagePendingTransaction("whatsapp", fromPhone, pending);
+      appendConversationHistory("whatsapp", fromPhone, text, fullReply, convCtx.conversationHistory);
+      return fullReply;
     }
 
     try {
@@ -545,7 +695,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         id:                     txnId,
         businessId:             business.id,
         userId:                 user.id,
-        rawText:                normalized,
+        rawText:                text,           // ← original user words, not normalized
         type:                   parsed.type,
         amount:                 parsed.amount,
         quantity:               parsed.quantity,
@@ -576,13 +726,15 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         financialContext:    `Today: in=${moneyIn}, out=${moneyOut}`,
       });
 
-      const confirm  = aiResp ?? zuriaConfirm(parsed, { in: moneyIn, out: moneyOut }, business.category, bName);
-      const insight  = !aiResp ? generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut }) : null;
-      const core     = [confirm, insight].filter(Boolean).join("\n\n");
+      const confirm = aiResp ?? zuriaConfirm(parsed, { in: moneyIn, out: moneyOut }, business.category, bName);
+      // generateInsight always fires — not gated on AI fallback
+      const insight = generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut });
+      const core    = [confirm, insight].filter(Boolean).join("\n\n");
       const fullReply = stagedWarning ? `${stagedWarning}\n\n${core}` : core;
 
       const txnDesc = `${parsed.type} of ${formatMoney(parsed.amount)}${parsed.productName ? ` (${parsed.productName})` : ""}`;
-      await persist(fullReply, isDuplicate ? undefined : { transactionId: txnId, transactionDesc: txnDesc });
+      // Clear any stale pendingTransaction (null) when saving a new real transaction
+      await persist(fullReply, isDuplicate ? undefined : { transactionId: txnId, transactionDesc: txnDesc }, false, null);
       return fullReply;
     } catch (err) {
       await logError("[handler] saveTransaction", err, { phone: fromPhone });
@@ -645,69 +797,76 @@ async function handleSubscribeIntent(
       ? ["pro", "enterprise"]
       : ["enterprise"];
 
-  interface PlanLink { plan: SubscriptionPlan; url: string; amountGHS: number }
+  interface PlanLink { plan: SubscriptionPlan; url: string; amountGHS: number; annual: boolean }
   const links: PlanLink[] = [];
 
+  // Generate both monthly and annual links for each upgrade plan.
+  // Annual = 2 months free. If annual price not set, use priceGHS * 10.
+  const billingVariants: Array<{ annual: boolean }> = [
+    { annual: false },
+    { annual: true },
+  ];
+
   for (const p of upgradePlans) {
-    const tier     = SUBSCRIPTION_TIERS[p];
-    const amountGHS = tier.priceGHS;
-    const reference = makeRef();
-    const callbackUrl = `${APP_URL}/subscription/callback?ref=${reference}`;
+    for (const { annual } of billingVariants) {
+      const tier      = SUBSCRIPTION_TIERS[p];
+      const amountGHS = annual ? (tier.annualPriceGHS ?? tier.priceGHS * 10) : tier.priceGHS;
+      const reference = makeRef();
+      const callbackUrl = `${APP_URL}/subscription/callback?ref=${reference}`;
 
-    try {
-      const result = await initializePayment({
-        email,
-        amountGHS,
-        reference,
-        callbackUrl,
-        metadata: { userId, phone, ownerName, plan: p, annual: false, amountGHS },
-        label: ownerName || "ZURIA Customer",
-      });
-
-      if (!result.error && result.authorizationUrl) {
-        // Persist pending payment + PAYMENT_INITIATED ledger entry atomically.
-        // The ledger entry ensures every payment initialization is traceable
-        // regardless of whether the user completes checkout.
-        const createdAt   = new Date().toISOString();
-        const paymentDoc: PaystackPayment = {
-          id:               reference,
+      try {
+        const result = await initializePayment({
+          email,
+          amountGHS,
           reference,
-          userId,
-          phone,
-          plan:             p,
-          annual:           false,
-          amountGHS,
-          status:           "pending",
-          authorizationUrl: result.authorizationUrl,
-          accessCode:       result.accessCode,
-          createdAt,
-        };
-        const initiatedLedgerId = `${reference}_PAYMENT_INITIATED`;
-        const ledgerEntry: PaymentLedgerEntry = {
-          id:                initiatedLedgerId,
-          paystackReference: reference,
-          userId,
-          plan:              p,
-          annual:            false,
-          amountGHS,
-          currency:          "GHS",
-          eventType:         "PAYMENT_INITIATED",
-          status:            "pending",
-          source:            "system",
-          idempotencyKey:    initiatedLedgerId,
-          createdAt,
-          _immutable:        true,
-        };
-        const db = getAdminDb();
-        const waBatch = db.batch();
-        waBatch.set(db.collection(collections.payments).doc(reference), paymentDoc);
-        waBatch.set(db.collection(collections.paymentEvents).doc(initiatedLedgerId), ledgerEntry);
-        waBatch.commit().catch(() => {});
+          callbackUrl,
+          metadata: { userId, phone, ownerName, plan: p, annual, amountGHS },
+          label: ownerName || "ZURIA Customer",
+        });
 
-        links.push({ plan: p, url: result.authorizationUrl, amountGHS });
+        if (!result.error && result.authorizationUrl) {
+          // Persist pending payment + PAYMENT_INITIATED ledger entry atomically.
+          const createdAt = new Date().toISOString();
+          const paymentDoc: PaystackPayment = {
+            id:               reference,
+            reference,
+            userId,
+            phone,
+            plan:             p,
+            annual,
+            amountGHS,
+            status:           "pending",
+            authorizationUrl: result.authorizationUrl,
+            accessCode:       result.accessCode,
+            createdAt,
+          };
+          const initiatedLedgerId = `${reference}_PAYMENT_INITIATED`;
+          const ledgerEntry: PaymentLedgerEntry = {
+            id:                initiatedLedgerId,
+            paystackReference: reference,
+            userId,
+            plan:              p,
+            annual,
+            amountGHS,
+            currency:          "GHS",
+            eventType:         "PAYMENT_INITIATED",
+            status:            "pending",
+            source:            "system",
+            idempotencyKey:    initiatedLedgerId,
+            createdAt,
+            _immutable:        true,
+          };
+          const db = getAdminDb();
+          const waBatch = db.batch();
+          waBatch.set(db.collection(collections.payments).doc(reference), paymentDoc);
+          waBatch.set(db.collection(collections.paymentEvents).doc(initiatedLedgerId), ledgerEntry);
+          waBatch.commit().catch(() => {});
+
+          links.push({ plan: p, url: result.authorizationUrl, amountGHS, annual });
+        }
+      } catch {
+        // Ignore individual plan/billing errors — we'll show what we can
       }
-    } catch {
-      // Ignore individual plan errors — we'll show what we can
     }
   }
 
@@ -726,25 +885,28 @@ async function handleSubscribeIntent(
   const lines = [
     `💳 *Upgrade your ZURIA plan, ${firstName}!*`,
     ``,
-    `Tap a link below to pay — it opens Paystack's secure checkout in your browser.`,
-    `You can pay with *MoMo* (any network), *bank card*, or *bank transfer*.`,
+    `Tap a link below to pay — opens Paystack's secure checkout.`,
+    `Pay with *MoMo* (any network), *bank card*, or *bank transfer*.`,
     `Your plan activates *instantly* the moment payment is confirmed. ✅`,
     ``,
   ];
 
-  links.forEach(({ plan: p, url, amountGHS }) => {
-    lines.push(
-      `*${planLabels[p]}* — GHS ${amountGHS}/month`,
-      url,
-      ``
-    );
-  });
+  // Group links by plan, showing monthly then annual
+  const plansSeen = new Set<SubscriptionPlan>();
+  for (const { plan: p, url, amountGHS, annual } of links) {
+    if (!plansSeen.has(p)) {
+      lines.push(`*${planLabels[p]}*`);
+      plansSeen.add(p);
+    }
+    if (annual) {
+      lines.push(`  📅 Annual — GHS ${amountGHS}/year _(2 months free!)_`, `  ${url}`, ``);
+    } else {
+      lines.push(`  📆 Monthly — GHS ${amountGHS}/month`, `  ${url}`, ``);
+    }
+  }
 
   lines.push(
-    `🌐 More options + annual pricing (2 months free!):`,
-    `${APP_URL}/subscription`,
-    ``,
-    `_Links expire in 30 minutes. Reply *"subscribe"* for a fresh one._`,
+    `_Links expire in 30 minutes. Reply *"subscribe"* for fresh ones._`,
     `_— ZURIA (${businessName})_`
   );
 
@@ -759,8 +921,25 @@ async function handlePaymentClaim(
   ownerName: string,
   fromPhone: string,
   businessName: string,
-  annual = false
+  annual = false,
+  currentPlan: SubscriptionPlan = "free",
 ): Promise<string> {
+  const firstName = ownerName.split(" ")[0];
+
+  // ── Guard: user is already on this plan or a higher one ─────────────────────
+  // Plan hierarchy: free < growth < pro < enterprise
+  const PLAN_RANK: Record<SubscriptionPlan, number> = { free: 0, growth: 1, pro: 2, enterprise: 3 };
+  if (PLAN_RANK[currentPlan] >= PLAN_RANK[plan]) {
+    return [
+      `✅ *${firstName}, you're already on ${currentPlan === plan ? `*${currentPlan}*` : `*${currentPlan}* (which includes everything in *${plan}*)`}!*`,
+      ``,
+      `Your plan is active — open the ZURIA app to confirm.`,
+      `Reply *"help"* to see what you can do, or *"subscribe"* to upgrade further.`,
+      ``,
+      `_— ZURIA (${businessName})_`,
+    ].join("\n");
+  }
+
   // Always derive prices from the canonical SUBSCRIPTION_TIERS source so that
   // changes to pricing need to be made in one place only (types/domain.ts).
   const tier = SUBSCRIPTION_TIERS[plan];
@@ -776,7 +955,6 @@ async function handlePaymentClaim(
   };
   const planLabel = planLabels[plan] ?? plan;
   const durationNote = annual ? " (Annual)" : "";
-  const firstName = ownerName.split(" ")[0];
   const now = new Date().toISOString();
 
   // ── Persist claim to Firestore (idempotent: one pending claim per user per plan) ──
@@ -828,15 +1006,19 @@ async function handlePaymentClaim(
   return [
     `✅ *Got it, ${firstName}!*`,
     ``,
-    `We've received your notification for:`,
+    `We've noted your *MoMo payment* notification for:`,
     `*${planLabel}${durationNote}* — ${price}`,
     ``,
-    `If you paid via Paystack, your plan activates *automatically* — open the ZURIA app to confirm.`,
-    `If it hasn't updated yet, our team will check within *1 hour*. 😊`,
+    `📋 _Reference: ${claimId}_`,
     ``,
-    `📋 _Reference: ${claimId} — keep this in case you need support._`,
+    `*What happens next:*`,
+    `Our team will verify your MoMo payment and activate your plan within *1 hour*. 😊`,
     ``,
-    `💡 _Next time, reply *"subscribe"* to get a direct Paystack link — instant activation, no waiting._`,
+    `⚡ *Already paid via the Paystack link?*`,
+    `Your plan activates *instantly* — no need to send this message.`,
+    `Open the ZURIA app to confirm it's active. If it isn't, contact support below.`,
+    ``,
+    `💡 _Tip: Reply *"subscribe"* to always get a direct Paystack link — instant activation, no waiting._`,
     ``,
     `Need help? Reply *"help"* or contact: ${SUPPORT_WA_LINK}`,
     ``,
@@ -1021,15 +1203,15 @@ async function handleUndoIntent(businessId: string, businessName: string): Promi
       || (txnData.notes as string | undefined)
       || "entry";
     const amount = (txnData.amount as number | undefined) ?? 0;
-    const txnType = (txnData.type as string | undefined) ?? "";
 
-    await lastTxn.ref.delete();
+    // Use voidTransactionWithSideEffects to reverse debt/inventory/loan side effects
+    const result = await voidTransactionWithSideEffects(lastTxn.id);
 
-    const hasDebtEffect  = txnType === "debt" || txnType === "repayment";
-    const hasStockEffect = (txnType === "sale" || txnType === "stock_purchase") && txnData.quantity;
-    const sideEffectNote = (hasDebtEffect || hasStockEffect)
-      ? `\n\n⚠️ _This was a ${hasDebtEffect ? "debt" : "stock"} entry. Check your ${hasDebtEffect ? "Debts" : "Inventory"} section to verify the balance is correct._`
-      : "";
+    const effectNotes: string[] = [];
+    if (result.hasDebtEffect)      effectNotes.push("_The related debt balance has been reversed._");
+    if (result.hasInventoryEffect) effectNotes.push("_The stock count has been corrected._");
+    if (result.hasLoanEffect)      effectNotes.push("_The loan balance has been reversed._");
+    const sideEffectNote = effectNotes.length > 0 ? `\n\n${effectNotes.join("\n")}` : "";
 
     return [
       `✅ *Deleted!*`,

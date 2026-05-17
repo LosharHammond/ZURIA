@@ -22,15 +22,27 @@ import type {
   ConversationContext,
   HistoryEntry,
   LedgerSubIntent,
+  PendingTransactionContext,
 } from "./types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Context older than this is considered stale and reset on load */
-const CONTEXT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+/**
+ * Context older than this is considered stale and reset on load.
+ * 36h covers the full Ghana trading-day pattern: a user who messages at 8pm
+ * and returns at 8am the next morning (12h gap) keeps their context intact.
+ * Undo, lastPerson, lastAmount all survive overnight.
+ */
+const CONTEXT_TTL_MS = 36 * 60 * 60 * 1000; // 36 hours
 
-/** Max turns stored in conversationHistory */
-const HISTORY_LIMIT = 5;
+/**
+ * Max turns stored in conversationHistory ring buffer.
+ * Each turn = 2 HistoryEntry records (user + zuria).
+ */
+const HISTORY_LIMIT = 6; // 6 turns = 12 messages
+
+/** Max chars per history entry — long enough to capture full responses */
+const HISTORY_MAX_CHARS = 500;
 
 /** Max ms to wait for a context save before giving up (never blocks the user) */
 const SAVE_TIMEOUT_MS = 800;
@@ -49,6 +61,8 @@ const DEFAULT_CONTEXT: ConversationContext = {
   conversationHistory:      [],
   pendingLimitNotification: null,
   subscriptionUiShownAt:    null,
+  pendingTransaction:       null,
+  lastNormalizedText:       null,
   updatedAt:                new Date().toISOString(),
 };
 
@@ -102,6 +116,8 @@ function extractContext(data: Record<string, unknown>): ConversationContext {
     conversationHistory:     (data.ctx_conversationHistory      as HistoryEntry[] | null)                               ?? [],
     pendingLimitNotification:(data.ctx_pendingLimitNotification as string | null)                                        ?? null,
     subscriptionUiShownAt:   (data.ctx_subscriptionUiShownAt   as string | null)                                        ?? null,
+    pendingTransaction:      (data.ctx_pendingTransaction       as PendingTransactionContext | null)                     ?? null,
+    lastNormalizedText:      (data.ctx_lastNormalizedText       as string | null)                                        ?? null,
     updatedAt:               (data.ctx_updatedAt                as string)                                               ?? new Date().toISOString(),
   };
 }
@@ -121,8 +137,10 @@ export async function saveWhatsAppContext(
   subscriptionUiWasShown: boolean,
   txnUpdate?: TxnContextUpdate,
   historyEntry?: { user: string; zuria: string },
+  normalizedText?: string,
+  pendingTransaction?: PendingTransactionContext | null,
 ): Promise<void> {
-  const delta = buildContextDelta(intent, subscriptionUiWasShown, txnUpdate, historyEntry);
+  const delta = buildContextDelta(intent, subscriptionUiWasShown, txnUpdate, historyEntry, normalizedText, pendingTransaction);
 
   // Best-effort with 800ms timeout — never blocks the response
   await Promise.race([
@@ -144,8 +162,10 @@ export async function saveTelegramContext(
   subscriptionUiWasShown: boolean,
   txnUpdate?: TxnContextUpdate,
   historyEntry?: { user: string; zuria: string },
+  normalizedText?: string,
+  pendingTransaction?: PendingTransactionContext | null,
 ): Promise<void> {
-  const delta = buildContextDelta(intent, subscriptionUiWasShown, txnUpdate, historyEntry);
+  const delta = buildContextDelta(intent, subscriptionUiWasShown, txnUpdate, historyEntry, normalizedText, pendingTransaction);
 
   await Promise.race([
     getAdminDb().collection(collections.telegramLinks).doc(chatId).update(delta),
@@ -217,6 +237,8 @@ function buildContextDelta(
   subscriptionUiWasShown: boolean,
   txnUpdate?: TxnContextUpdate,
   _historyEntry?: { user: string; zuria: string }, // reserved — history updated via updateHistory() separately
+  normalizedText?: string,
+  pendingTransaction?: PendingTransactionContext | null,
 ): Record<string, unknown> {
   const now = new Date().toISOString();
 
@@ -250,8 +272,19 @@ function buildContextDelta(
     delta.ctx_subscriptionUiShownAt = now;
   }
 
-  // History is updated separately via updateHistory() — not in the main delta
-  // to avoid write conflicts on rapid messages.
+  // Store the normalized text for RULE 5 duplicate-webhook detection
+  if (normalizedText !== undefined) {
+    delta.ctx_lastNormalizedText = normalizedText;
+  }
+
+  // Persist or clear pending transaction for pre-save confirmation flow
+  // undefined = don't touch the field; null = explicitly clear it; object = set it
+  if (pendingTransaction !== undefined) {
+    delta.ctx_pendingTransaction = pendingTransaction ?? null;
+  }
+
+  // History is updated separately via appendConversationHistory() — not in the
+  // main delta to avoid write conflicts on rapid sequential messages.
 
   return delta;
 }
@@ -271,8 +304,8 @@ export function appendConversationHistory(
 ): void {
   const now = new Date().toISOString();
   const newEntries: HistoryEntry[] = [
-    { role: "user",  text: userText.slice(0, 200), ts: now },
-    { role: "zuria", text: zuriaText.slice(0, 200), ts: now },
+    { role: "user",  text: userText.slice(0, HISTORY_MAX_CHARS), ts: now },
+    { role: "zuria", text: zuriaText.slice(0, HISTORY_MAX_CHARS), ts: now },
   ];
 
   const updated = [...currentHistory, ...newEntries].slice(-HISTORY_LIMIT * 2);
@@ -290,58 +323,98 @@ export function appendConversationHistory(
 
 // ─── Reset ────────────────────────────────────────────────────────────────────
 
+const CLEARED_CTX: Record<string, unknown> = {
+  ctx_lastIntent:               null,
+  ctx_activeFlow:               "none",
+  ctx_lastPerson:               null,
+  ctx_lastAmount:               null,
+  ctx_lastAsset:                null,
+  ctx_lastTransactionSubIntent: null,
+  ctx_lastTransactionId:        null,
+  ctx_lastTransactionDesc:      null,
+  ctx_conversationHistory:      [],
+  ctx_pendingLimitNotification: null,
+  ctx_subscriptionUiShownAt:    null,
+  ctx_pendingTransaction:       null,
+  ctx_lastNormalizedText:       null,
+};
+
 export function clearWhatsAppContext(phone: string): void {
-  const cleared: Record<string, unknown> = {
-    ctx_lastIntent:               null,
-    ctx_activeFlow:               "none",
-    ctx_lastPerson:               null,
-    ctx_lastAmount:               null,
-    ctx_lastAsset:                null,
-    ctx_lastTransactionSubIntent: null,
-    ctx_lastTransactionId:        null,
-    ctx_lastTransactionDesc:      null,
-    ctx_conversationHistory:      [],
-    ctx_pendingLimitNotification: null,
-    ctx_subscriptionUiShownAt:    null,
-    ctx_updatedAt:                new Date().toISOString(),
-  };
   getAdminDb()
     .collection(collections.whatsappSessions)
     .doc(phone)
-    .update(cleared)
+    .update({ ...CLEARED_CTX, ctx_updatedAt: new Date().toISOString() })
     .catch(() => {});
 }
 
 export function clearTelegramContext(chatId: string): void {
-  const cleared: Record<string, unknown> = {
-    ctx_lastIntent:               null,
-    ctx_activeFlow:               "none",
-    ctx_lastPerson:               null,
-    ctx_lastAmount:               null,
-    ctx_lastAsset:                null,
-    ctx_lastTransactionSubIntent: null,
-    ctx_lastTransactionId:        null,
-    ctx_lastTransactionDesc:      null,
-    ctx_conversationHistory:      [],
-    ctx_pendingLimitNotification: null,
-    ctx_subscriptionUiShownAt:    null,
-    ctx_updatedAt:                new Date().toISOString(),
-  };
   getAdminDb()
     .collection(collections.telegramLinks)
     .doc(chatId)
-    .update(cleared)
+    .update({ ...CLEARED_CTX, ctx_updatedAt: new Date().toISOString() })
+    .catch(() => {});
+}
+
+// ─── Pending transaction helpers ─────────────────────────────────────────────
+
+/**
+ * Atomically store a pending transaction for pre-save confirmation.
+ * Also sets active_flow to "pending_confirmation" so the next message
+ * can intercept the user's "yes" / "no" before normal routing.
+ */
+export async function stagePendingTransaction(
+  platform: "whatsapp" | "telegram",
+  id: string,
+  pending: PendingTransactionContext,
+): Promise<void> {
+  const col = platform === "whatsapp"
+    ? collections.whatsappSessions
+    : collections.telegramLinks;
+
+  await getAdminDb()
+    .collection(col)
+    .doc(id)
+    .update({
+      ctx_pendingTransaction: pending,
+      ctx_activeFlow:         "pending_confirmation",
+      ctx_updatedAt:          new Date().toISOString(),
+    })
+    .catch(() => {});
+}
+
+/**
+ * Clear the pending transaction after it has been saved or abandoned.
+ * Resets active_flow to "ledger" (not "none") so context continuity is preserved.
+ */
+export async function clearPendingTransaction(
+  platform: "whatsapp" | "telegram",
+  id: string,
+  nextFlow: "ledger" | "none" = "none",
+): Promise<void> {
+  const col = platform === "whatsapp"
+    ? collections.whatsappSessions
+    : collections.telegramLinks;
+
+  await getAdminDb()
+    .collection(col)
+    .doc(id)
+    .update({
+      ctx_pendingTransaction: null,
+      ctx_activeFlow:         nextFlow,
+      ctx_updatedAt:          new Date().toISOString(),
+    })
     .catch(() => {});
 }
 
 // ─── History helper ───────────────────────────────────────────────────────────
 
 /**
- * Build a short text summary of conversation history for AI context.
+ * Build a text summary of conversation history for AI context.
+ * Uses all stored turns (HISTORY_LIMIT * 2 entries = HISTORY_LIMIT turns).
  */
 export function historyToText(history: HistoryEntry[]): string {
   return history
-    .slice(-6)
+    .slice(-(HISTORY_LIMIT * 2))
     .map((h) => `${h.role === "user" ? "User" : "ZURIA"}: ${h.text}`)
     .join("\n");
 }

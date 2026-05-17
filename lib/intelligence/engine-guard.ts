@@ -87,12 +87,45 @@ export function enforceEngineIsolation(
     intent.entities.amount !== null &&
     intent.entities.amount > 0
   ) {
+    // Derive the most accurate ledger sub_intent from the action verb extracted
+    // by the classifier. Defaulting to "expense" was a semantic mismatch: "Ama paid 20"
+    // (action="paid", direction="in") should be "debt_payment", not "expense".
+    type LedgerSub = import("./types").LedgerSubIntent;
+    const actionToSub: Record<string, LedgerSub> = {
+      paid:       "debt_payment",
+      pay:        "debt_payment",
+      received:   "debt_payment",
+      receive:    "debt_payment",
+      collected:  "debt_payment",
+      collect:    "debt_payment",
+      sold:       "sale",
+      sell:       "sale",
+      bought:     "expense",
+      buy:        "expense",
+      spent:      "expense",
+      spend:      "expense",
+      gave:       "loan_given",
+      give:       "loan_given",
+      lent:       "loan_given",
+      lend:       "loan_given",
+      repaid:     "loan_repaid",
+      repay:      "loan_repaid",
+      withdrew:   "withdrawal",
+      withdraw:   "withdrawal",
+      invested:   "investment",
+      invest:     "investment",
+      salary:     "salary",
+    };
+    const inferredSub: LedgerSub =
+      (intent.entities.action ? actionToSub[intent.entities.action] : undefined)
+      ?? (intent.entities.direction === "in" ? "debt_payment" : "expense");
+
     return blocked(
       "RULE_2_NO_FALSE_INTENT_SWITCH",
       cloneWith(intent, {
         intent:     "LEDGER_ENGINE",
         confidence: 0.85,
-        sub_intent: "expense",
+        sub_intent: inferredSub,
         state: { ...intent.state, active_flow: "ledger", should_trigger_ui: false },
         requires_action: true,
       }),
@@ -140,16 +173,29 @@ export function enforceEngineIsolation(
   }
 
   // ── RULE 5 — DOUBLE MESSAGE HANDLING ─────────────────────────────────────
-  // If the current raw text is identical to the last raw text AND the last
-  // intent was LEDGER_ENGINE, this is a duplicate submission. Return the intent
-  // unchanged but mark it so the handler can skip the actual DB write.
+  // Detects duplicate webhook deliveries (WhatsApp retries on network failure).
+  // Compares the current normalized text against the last stored normalized text
+  // from context — this works even across serverless function restarts, unlike
+  // the old approach that passed lastRawText as null.
+  //
+  // Condition: same normalized text + last intent was LEDGER_ENGINE + last
+  // transaction was recorded within the last 30 seconds (prevents blocking
+  // intentional re-entry of the same amount, e.g., two sales of the same item).
+  const lastNorm = context?.lastNormalizedText ?? null;
+  const recentMs = 30_000; // 30 seconds
+  const lastUpdatedRecently = context?.updatedAt
+    ? Date.now() - new Date(context.updatedAt).getTime() < recentMs
+    : false;
+
   if (
     intent.intent === "LEDGER_ENGINE" &&
-    lastRawText !== null &&
-    lastRawText.trim().toLowerCase() === currentRawText.trim().toLowerCase() &&
-    context?.lastIntent === "LEDGER_ENGINE"
+    lastNorm !== null &&
+    lastNorm.trim().toLowerCase() === currentRawText.trim().toLowerCase() &&
+    context?.lastIntent === "LEDGER_ENGINE" &&
+    lastUpdatedRecently
   ) {
     // We do NOT block — just attach a dedup flag so the handler skips the write
+    // while still returning a normal confirmation (WhatsApp delivery guarantee).
     return {
       blocked: false,
       override: cloneWith(intent, {
@@ -159,6 +205,8 @@ export function enforceEngineIsolation(
       violationRule: "RULE_5_DUPLICATE_SUPPRESSED",
     };
   }
+
+  void lastRawText; // Parameter kept for API compatibility; logic now uses context
 
   return pass();
 }

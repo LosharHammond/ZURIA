@@ -287,6 +287,188 @@ export async function voidTransaction(
   return true;
 }
 
+// ─── Side-effect reversal helpers ─────────────────────────────────────────────
+
+/**
+ * Reverse all side effects that were applied when a transaction was originally saved.
+ * Called before marking a transaction as voided so that debts, inventory, and loans
+ * remain accurate after an undo.
+ *
+ * Uses Promise.allSettled so a failure in one reversal doesn't prevent the others.
+ */
+async function reverseTransactionEffects(txn: Transaction): Promise<{
+  hasDebtEffect:      boolean;
+  hasInventoryEffect: boolean;
+  hasLoanEffect:      boolean;
+}> {
+  const [debtRes, invRes, loanRes] = await Promise.allSettled([
+    reverseDebtEffect(txn),
+    reverseInventoryEffect(txn),
+    reverseLoanEffect(txn),
+  ]);
+
+  return {
+    hasDebtEffect:      debtRes.status      === "fulfilled" && debtRes.value,
+    hasInventoryEffect: invRes.status        === "fulfilled" && invRes.value,
+    hasLoanEffect:      loanRes.status       === "fulfilled" && loanRes.value,
+  };
+}
+
+async function reverseDebtEffect(txn: Transaction): Promise<boolean> {
+  if (!txn.customerName || (txn.type !== "debt" && txn.type !== "repayment")) return false;
+
+  const normalizedName = txn.customerName.trim().toLowerCase();
+  const existing = await findDebt(txn.businessId, normalizedName);
+  if (!existing) return false;
+
+  const now = new Date().toISOString();
+
+  if (txn.type === "debt") {
+    // Reverse: subtract the amount that was added when the debt was created
+    const newOriginal    = Math.max(0, existing.originalAmount    - txn.amount);
+    const newOutstanding = Math.max(0, existing.outstandingAmount - txn.amount);
+    await getAdminDb().collection(collections.debts).doc(existing.id).update({
+      originalAmount:    newOriginal,
+      outstandingAmount: newOutstanding,
+      status:            newOutstanding === 0 ? "paid" : "open",
+      lastActivityAt:    now,
+    });
+    return true;
+  }
+
+  if (txn.type === "repayment") {
+    // Reverse: add back the amount that was subtracted when the repayment was recorded.
+    // Also remove the repayment entry that referenced this transaction from history.
+    const newOutstanding = existing.outstandingAmount + txn.amount;
+    const cleanHistory   = (existing.repaymentHistory ?? []).filter(
+      (r: { transactionId?: string }) => r.transactionId !== txn.id,
+    );
+    await getAdminDb().collection(collections.debts).doc(existing.id).update({
+      outstandingAmount: newOutstanding,
+      repaymentHistory:  cleanHistory,
+      status:            "open",
+      lastActivityAt:    now,
+    });
+    return true;
+  }
+
+  return false;
+}
+
+async function reverseInventoryEffect(txn: Transaction): Promise<boolean> {
+  if (!txn.productName || txn.quantity == null || txn.quantity === 0) return false;
+  if (txn.type !== "sale" && txn.type !== "stock_purchase") return false;
+
+  const existing = await findInventory(txn.businessId, txn.productName);
+  if (!existing) return false;
+
+  // sale reversed: add quantity back. stock_purchase reversed: subtract quantity.
+  const txnQty = txn.quantity; // narrowed: not null/undefined after check above
+  const delta  = txn.type === "sale" ? txnQty : -txnQty;
+  const curQty = existing.quantity ?? 0;
+  const newQty = Math.max(0, curQty + delta);
+
+  await getAdminDb().collection(collections.inventory).doc(existing.id).update({
+    quantity:  newQty,
+    updatedAt: new Date().toISOString(),
+  });
+  return true;
+}
+
+async function reverseLoanEffect(txn: Transaction): Promise<boolean> {
+  const now = new Date().toISOString();
+
+  if (txn.type === "borrow_in" || txn.type === "borrow_out") {
+    const direction = txn.type === "borrow_in" ? "taken" : "given";
+    const existing  = await findLoan(txn.businessId, direction, txn.customerName ?? null);
+    if (!existing) return false;
+
+    const newOutstanding = Math.max(0, existing.outstandingAmount - txn.amount);
+    const newOriginal    = Math.max(0, existing.originalAmount    - txn.amount);
+    await getAdminDb().collection(collections.loans).doc(existing.id).update({
+      originalAmount:    newOriginal,
+      outstandingAmount: newOutstanding,
+      status:            newOutstanding === 0 ? "settled" : "open",
+      lastActivityAt:    now,
+    });
+    return true;
+  }
+
+  if (txn.type === "loan_repay_out" || txn.type === "loan_collect_in") {
+    const direction = txn.type === "loan_repay_out" ? "taken" : "given";
+    const existing  = await findOpenLoan(txn.businessId, direction, txn.customerName ?? null);
+    if (!existing) return false;
+
+    // Remove the repayment entry and add the amount back to outstanding
+    const newOutstanding = existing.outstandingAmount + txn.amount;
+    const cleanHistory   = (existing.repaymentHistory ?? []).filter(
+      (r: { transactionId?: string }) => r.transactionId !== txn.id,
+    );
+    await getAdminDb().collection(collections.loans).doc(existing.id).update({
+      outstandingAmount: newOutstanding,
+      repaymentHistory:  cleanHistory,
+      status:            "open",
+      lastActivityAt:    now,
+    });
+    return true;
+  }
+
+  return false;
+}
+
+// ─── Void with full side-effect reversal ─────────────────────────────────────
+
+export interface VoidResult {
+  success:            boolean;
+  txnType?:           string;
+  hasDebtEffect:      boolean;
+  hasInventoryEffect: boolean;
+  hasLoanEffect:      boolean;
+}
+
+/**
+ * Soft-delete a transaction AND reverse all side effects (debt, inventory, loan).
+ *
+ * This is the correct function to call from the undo flow. Unlike `voidTransaction()`
+ * (which only marks the transaction as deleted), this function ensures Firestore
+ * remains internally consistent: debt balances, stock counts, and loan balances
+ * are all reverted to their pre-transaction state.
+ */
+export async function voidTransactionWithSideEffects(
+  transactionId: string,
+): Promise<VoidResult> {
+  const db  = getAdminDb();
+  const ref = db.collection(collections.transactions).doc(transactionId);
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    return { success: false, hasDebtEffect: false, hasInventoryEffect: false, hasLoanEffect: false };
+  }
+
+  const txn = {
+    ...doc.data(),
+    // Normalise Firestore Timestamp → ISO string if needed
+    createdAt: doc.data()!.createdAt?.toDate?.()?.toISOString() ?? doc.data()!.createdAt,
+  } as Transaction;
+
+  // Step 1: reverse all side effects first (so we have consistent state)
+  const effects = await reverseTransactionEffects(txn);
+
+  // Step 2: soft-delete the transaction record
+  await ref.update({
+    deleted:       true,
+    deletedAt:     new Date().toISOString(),
+    deletedReason: "user_undo",
+    syncStatus:    "synced",
+  });
+
+  return {
+    success: true,
+    txnType: txn.type,
+    ...effects,
+  };
+}
+
 export async function saveTransaction(txn: Transaction, senderPhone?: string): Promise<void> {
   await getAdminDb().collection(collections.transactions).doc(txn.id).set({
     ...txn,

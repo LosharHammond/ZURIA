@@ -246,11 +246,7 @@ const CONFUSED_RESPONSES: readonly string[] = [
   `It's fine. Something like *"expense: ECG bill 80"* or *"Kofi owes 200"* works perfectly.`,
 ];
 
-const FRUSTRATED_RESPONSES: readonly string[] = [
-  `Sorry about that. Let's try again — just tell me exactly what happened and I'll get it right.`,
-  `My apologies. Say it again slowly and I'll make sure it goes in correctly.`,
-  `I hear you. Let's fix it — what should the entry say?`,
-];
+// Note: frustrated responses are generated dynamically (with name) in zuriaSmalltalk below.
 
 /**
  * Generate a ZURIA-voice smalltalk / emotional response.
@@ -300,6 +296,18 @@ export function zuriaSmalltalk(
     }
 
     case "grateful": {
+      if (netBalance !== undefined && netBalance > 0) {
+        return pick([
+          `Anytime, ${name}! 😊 You're up *${ghs(netBalance)}* today — keep it going!`,
+          `Always here for you, ${name}. 💪 *${ghs(netBalance)}* in the green today.`,
+        ] as const);
+      }
+      if (netBalance !== undefined && netBalance < 0) {
+        return pick([
+          `Anytime, ${name}. 😊 Things are down *${ghs(Math.abs(netBalance))}* today — let's make sure everything is recorded.`,
+          `Happy to help, ${name}. You're down *${ghs(Math.abs(netBalance))}* — what else happened today?`,
+        ] as const);
+      }
       return pick([
         `Anytime, ${name}! 😊 What else can I help with?`,
         `Happy to be here, ${name}. What's next?`,
@@ -309,7 +317,12 @@ export function zuriaSmalltalk(
     }
 
     case "frustrated": {
-      return pick(FRUSTRATED_RESPONSES);
+      return pick([
+        `Sorry about that, ${name}. Say it again and I'll get it right this time.`,
+        `My apologies, ${name}. Tell me exactly what happened and I'll record it correctly.`,
+        `I hear you, ${name}. Let's fix it — what should the entry say?`,
+        `That's on me, ${name}. Say it again slowly and I'll make sure it goes in right.`,
+      ] as const);
     }
 
     case "confused": {
@@ -574,6 +587,88 @@ export function zuriaUndoNothing(ownerName: string): string {
     `Nothing to undo right now, ${name}. What should I fix?`,
     `I don't see a recent entry to remove, ${name}.`,
     `No recent record found to delete, ${name}. What happened?`,
+  ] as const);
+}
+
+/**
+ * Undo confirmed with side-effect acknowledgment.
+ * Tells the user clearly whether debt/inventory/loan records were also reversed.
+ */
+export function zuriaUndoConfirmedWithEffects(
+  transactionDesc: string,
+  ownerName: string,
+  hasDebtEffect: boolean,
+  hasInventoryEffect: boolean,
+  hasLoanEffect: boolean,
+): string {
+  const name = firstName(ownerName);
+  const base = pick([
+    `✅ Done, ${name}. The *${transactionDesc}* has been removed.`,
+    `👌 Removed. The *${transactionDesc}* is gone from your records.`,
+    `✅ That entry has been deleted, ${name}. What actually happened?`,
+  ] as const);
+
+  const effects: string[] = [];
+  if (hasDebtEffect)     effects.push("_The related debt balance has been reversed._");
+  if (hasInventoryEffect) effects.push("_The stock count has been corrected._");
+  if (hasLoanEffect)     effects.push("_The loan balance has been reversed._");
+
+  return effects.length > 0
+    ? `${base}\n\n${effects.join("\n")}`
+    : base;
+}
+
+// ─── Pre-save confirmation request ───────────────────────────────────────────
+
+type ConfirmableType =
+  | "sale" | "expense" | "debt" | "repayment" | "stock_purchase"
+  | "salary" | "borrow_in" | "borrow_out" | "loan_repay_out"
+  | "loan_collect_in" | "transfer" | "investment" | "withdrawal"
+  | "refund_out" | "refund_in" | string;
+
+const CONFIRM_TYPE_LABELS: Record<string, string> = {
+  sale:            "Sale",
+  expense:         "Expense",
+  debt:            "Credit given",
+  repayment:       "Payment received",
+  stock_purchase:  "Stock purchase",
+  salary:          "Salary payment",
+  borrow_in:       "Loan received",
+  borrow_out:      "Loan given",
+  loan_repay_out:  "Loan repaid",
+  loan_collect_in: "Loan collected",
+  transfer:        "Transfer",
+  investment:      "Investment",
+  withdrawal:      "Withdrawal",
+  refund_out:      "Refund given",
+  refund_in:       "Refund received",
+};
+
+/**
+ * Pre-save confirmation prompt for low-confidence transactions.
+ * Shows the user exactly what ZURIA understood and asks for explicit "yes" before saving.
+ *
+ * Format: "Did I get that right? [Type] — GH₵[amount] (product) · person
+ *          Reply *yes* to save or *no* to try again."
+ */
+export function zuriaConfirmationRequest(
+  type: ConfirmableType,
+  amount: number,
+  customerName: string | null,
+  productName: string | null,
+  category: BusinessCategory,
+): string {
+  const typeLabel = CONFIRM_TYPE_LABELS[type] ?? humanType(type as TransactionType, category);
+  const amountStr = ghs(amount);
+  const itemPart  = productName  ? ` (${productName})`  : "";
+  const custPart  = customerName ? ` · *${customerName}*` : "";
+
+  const summary = `*${typeLabel}* — *${amountStr}*${itemPart}${custPart}`;
+
+  return pick([
+    `Did I get that right?\n${summary}\n\nReply *yes* to save, or *no* to try again.`,
+    `Just to confirm — is this correct?\n${summary}\n\nSay *yes* to record it, *no* to redo it.`,
+    `Let me check before saving:\n${summary}\n\n*Yes* to confirm, *no* to rephrase.`,
   ] as const);
 }
 
