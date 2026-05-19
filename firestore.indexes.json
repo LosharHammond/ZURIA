@@ -143,13 +143,6 @@
       ]
     },
     {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "referralCode", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "payment_claims",
       "queryScope": "COLLECTION",
       "fields": [
@@ -212,14 +205,6 @@
       "fields": [
         { "fieldPath": "phoneNumber",      "order": "ASCENDING" },
         { "fieldPath": "onboardingComplete","order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "referrals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "referrerId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     },
     {
