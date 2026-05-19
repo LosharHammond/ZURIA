@@ -12,6 +12,7 @@ const config: Config = {
   },
   transform: {
     "^.+\\.tsx?$": ["ts-jest", {
+      diagnostics: false,   // suppress type-check noise in test files
       tsconfig: {
         module: "commonjs",
         esModuleInterop: true,
@@ -33,11 +34,6 @@ const config: Config = {
   },
   // Global mocks applied before every test file
   globalSetup: "<rootDir>/__tests__/helpers/global-setup.ts",
-  globals: {
-    "ts-jest": {
-      diagnostics: false, // suppress type-check noise in test files
-    },
-  },
 };
 
 export default config;
