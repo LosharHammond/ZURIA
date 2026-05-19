@@ -4,13 +4,14 @@
  * Defines the contract for AI-powered response generation.
  * The rule-based ZURIA engine (response-engine.ts) is always the active brain.
  *
- * When OPENAI_API_KEY is set in the environment, responses are automatically
- * routed through OpenAI GPT-4o-mini using the complete ZURIA behavioral spec.
- * Zero code changes needed — just add the key.
+ * When GROQ_API_KEY is set, responses are routed through Groq (llama-3.1-8b-instant).
+ * When OPENAI_API_KEY is set (and Groq is not), responses route through OpenAI GPT-4o-mini.
+ * Zero code changes needed — just add the relevant key.
  *
  * Provider priority:
- *   1. OpenAI  (if OPENAI_API_KEY is present and non-empty)
- *   2. ZURIA rule-based  (always available — the permanent brain)
+ *   1. Groq     (if GROQ_API_KEY is present and non-empty)
+ *   2. OpenAI   (if OPENAI_API_KEY is present and non-empty)
+ *   3. ZURIA rule-based  (always available — the permanent brain)
  */
 
 // ─── ZURIA System Prompt ──────────────────────────────────────────────────────
@@ -339,18 +340,64 @@ class OpenAIZuria implements AIProvider {
   }
 }
 
+// ─── Groq Provider (activate by setting GROQ_API_KEY) ────────────────────────
+
+class GroqZuria implements AIProvider {
+  readonly name = "groq_llama_fast";
+
+  isAvailable(): boolean {
+    return typeof process !== "undefined" &&
+      !!process.env.GROQ_API_KEY &&
+      process.env.GROQ_API_KEY.length > 10;
+  }
+
+  async generate(request: AIGenerateRequest): Promise<string | null> {
+    if (!this.isAvailable()) return null;
+
+    try {
+      const { groqGenerate } = await import("@/lib/ai/groq");
+
+      const userPrompt = [
+        `Business context: ${request.businessContext}`,
+        request.financialContext ? `Financial data: ${request.financialContext}` : null,
+        request.intentContext ? `Classified intent: ${request.intentContext}` : null,
+        request.emotionalTone && request.emotionalTone !== "neutral"
+          ? `Emotional tone: ${request.emotionalTone}` : null,
+        request.conversationHistory ? `Recent conversation:\n${request.conversationHistory}` : null,
+        `User message: "${request.currentMessage}"`,
+        `Generate a brief ZURIA response. 2–4 lines max. No JSON. No internal labels.`,
+      ].filter(Boolean).join("\n");
+
+      const result = await groqGenerate(userPrompt, {
+        model: "fast",
+        maxTokens: 220,
+        temperature: 0.60,
+        systemPrompt: ZURIA_SYSTEM_PROMPT,
+      });
+
+      return result?.text ?? null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 // ─── Provider Selection ───────────────────────────────────────────────────────
 
+const _groq      = new GroqZuria();
 const _openai    = new OpenAIZuria();
 const _ruleBased = new RuleBasedZuria();
 
 /**
  * Returns the active AI provider.
- * OpenAI is used automatically when OPENAI_API_KEY is present.
+ * Groq is preferred when GROQ_API_KEY is set.
+ * OpenAI is used when OPENAI_API_KEY is set and Groq is unavailable.
  * Falls back to the rule-based ZURIA engine otherwise.
  */
 export function getActiveProvider(): AIProvider {
-  return _openai.isAvailable() ? _openai : _ruleBased;
+  if (_groq.isAvailable())   return _groq;
+  if (_openai.isAvailable()) return _openai;
+  return _ruleBased;
 }
 
-export { RuleBasedZuria, OpenAIZuria };
+export { RuleBasedZuria, OpenAIZuria, GroqZuria };

@@ -18,7 +18,15 @@ type EnvKey =
   | "CRON_SECRET"
   // Telegram integration (required when Telegram bot is active)
   | "TELEGRAM_BOT_TOKEN"
-  | "TELEGRAM_WEBHOOK_SECRET";
+  | "TELEGRAM_WEBHOOK_SECRET"
+  // AI inference — optional; app degrades gracefully without them
+  | "GROQ_API_KEY"
+  | "OPENAI_API_KEY"
+  // AI feature toggles (set to "false" to disable; default enabled)
+  | "AI_ENABLED"
+  | "AI_FAST_ENABLED"
+  | "AI_ADVANCED_ENABLED"
+  | "AI_GUARD_ENABLED";
 
 const REQUIRED_SERVER: EnvKey[] = [
   "TWILIO_ACCOUNT_SID",
@@ -64,6 +72,20 @@ export function validateServerEnv(keys: EnvKey[] = REQUIRED_SERVER): void {
  */
 export function isPaystackConfigured(): boolean {
   return !isMissing(process.env.PAYSTACK_SECRET_KEY);
+}
+
+/**
+ * Check if Groq AI is configured (optional — app degrades gracefully without it).
+ */
+export function isGroqConfigured(): boolean {
+  return !isMissing(process.env.GROQ_API_KEY);
+}
+
+/**
+ * Check if any AI provider is available.
+ */
+export function isAnyAIConfigured(): boolean {
+  return isGroqConfigured() || !isMissing(process.env.OPENAI_API_KEY);
 }
 
 /**

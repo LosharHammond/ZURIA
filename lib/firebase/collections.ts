@@ -39,4 +39,39 @@ export const collections = {
   // Reconciliation run audit trail — one doc per scheduled payment reconciliation run.
   // Stores the full report (repaired, failed, drift) for anomaly detection and audit.
   reconciliationRuns: "reconciliation_runs",
+
+  // ── AI Infrastructure ─────────────────────────────────────────────────────
+
+  // AI usage metering — one doc per Groq/OpenAI call. Used for cost governance.
+  aiUsageLogs: "ai_usage_logs",
+
+  // Parser learning — training examples collected when AI improves on parser output.
+  parserTrainingExamples: "parser_training_examples",
+
+  // Parser failure log — low-confidence or failed extraction attempts.
+  parserFailures: "parser_failures",
+
+  // User corrections — highest-quality training signal. Append-only.
+  parserCorrections: "parser_corrections",
+
+  // Auto-generated parser patterns from clustering training examples.
+  parserPatterns: "parser_patterns",
+
+  // Operational business profiles — inferred from transaction history.
+  businessProfiles: "business_profiles",
+
+  // Event log — structured operational events from the ZURIA event bus.
+  eventLog: "event_log",
+
+  // Job queue — Firestore-backed queue for async AI/reporting jobs.
+  jobQueue: "job_queue",
+
+  // Feature flags — remotely configurable AI feature toggles.
+  featureFlags: "feature_flags",
+
+  // Shadow learning results — parser vs AI comparison logs.
+  shadowLearningLogs: "shadow_learning_logs",
+
+  // Executive reports — AI-generated business intelligence reports.
+  executiveReports: "executive_reports",
 } as const;
