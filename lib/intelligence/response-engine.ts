@@ -51,11 +51,17 @@ const STRESS_SIGNALS: readonly string[] = [
   "zero sales", "no sales", "no customer", "nothing today", "nobody buy", "nobody came",
   "nothing sell", "nobody enter", "market dead", "market empty", "market slow", "slow day",
   "dead today", "customers scarce", "nothing move", "slow movement",
+  "sales slow", "sales were slow", "sales dropped", "revenue low", "revenue down",
+  "profit low", "losing money", "cash tight", "cash is tight", "cash flow tight",
+  "business hard", "business dying", "business is hard", "business is dying",
+  "debts increasing", "expenses too high", "expenses high", "costs too high",
+  "after the rain", "market no good", "sales no move", "dey lose money",
   // Ghanaian English / Pidgin stress
   "chop loss", "i chop loss", "we chop loss", "today bad", "business slow", "things slow",
   "things bad", "e no easy", "things no go well", "i dey manage", "no money", "i broke",
   "tough today", "ei today", "business no move", "e pain me", "business die",
   "hard life", "things hard", "no customer today", "wahala", "suffer",
+  "business hard this week", "business hard this month", "revenue weak", "weak paa",
 ];
 
 const POSITIVE_SIGNALS: readonly string[] = [
@@ -199,7 +205,16 @@ export function zuriaConfirm(
 
   } else if (parsed.type === "stock_purchase") {
     const item = parsed.productName ? ` (${parsed.productName})` : "";
-    lines.push(`${confirm} Stock bought — *${amount}*${item}.`);
+    if (parsed.amount === 0 && (parsed.quantity ?? 0) > 0) {
+      // Received inventory with a unit count but no price (e.g. "received 1300 pcs of gloves")
+      const qty = ` — *${parsed.quantity!.toLocaleString()} units*`;
+      lines.push(`${confirm} Stock received${qty}${item}.`);
+    } else if (parsed.amount === 0) {
+      // Stock noted without price or quantity
+      lines.push(`${confirm} Stock noted${item}. _Add a price when you know it._`);
+    } else {
+      lines.push(`${confirm} Stock bought — *${amount}*${item}.`);
+    }
 
   } else if (parsed.type === "investment") {
     lines.push(`${confirm} Investment of *${amount}* recorded.`);
@@ -393,6 +408,29 @@ export function zuriaAskClarification(field: MissingField = "general"): string {
 }
 
 /**
+ * Ask for the missing amount for a specific transaction type.
+ * Short, natural, no accounting jargon.
+ *
+ * @param typeLabel  - Human-readable description e.g. "salary payment", "loan given"
+ * @param personName - Optional: customer / employee name extracted from message
+ * @param productName - Optional: product / item name extracted from message
+ */
+export function zuriaAskAmount(
+  typeLabel: string,
+  personName?: string | null,
+  productName?: string | null,
+): string {
+  const who  = personName  ? ` for *${personName}*`  : "";
+  const what = productName ? ` (${productName})`     : "";
+  return pick([
+    `How much was the ${typeLabel}${who}${what}?`,
+    `What's the amount${who} — the ${typeLabel}${what}?`,
+    `Just send the amount${who}${what}.`,
+    `Got it. How much${who}${what}?`,
+  ] as const);
+}
+
+/**
  * "I didn't understand" fallback — includes a usage hint, never robotic.
  * Category-aware so hints feel relevant to the specific business.
  */
@@ -494,6 +532,11 @@ export type CoachingTopic =
   | "inventory"
   | "savings"
   | "record_keeping"
+  | "staff_management"
+  | "risk_fraud"
+  | "expense_control"
+  | "revenue_growth"
+  | "planning"
   | "general";
 
 const COACHING_RESPONSES: Record<CoachingTopic, readonly string[]> = {
@@ -501,19 +544,24 @@ const COACHING_RESPONSES: Record<CoachingTopic, readonly string[]> = {
     `💡 *Cash flow tip:* Every cedi you collect today is money available tomorrow. Prioritise collecting your debts before buying more stock.`,
     `💡 *Cash flow:* Know your minimum daily number — the amount you need to cover costs. Once you pass it, you're building profit.`,
     `💡 *Cash flow:* If your expenses are eating your sales, track them separately. You can't fix what you don't see.`,
+    `💡 *Tight cash?* Check three things first: debts not collected, slow-moving stock, and recurring costs you can reduce. Usually the answer is in one of those three.`,
   ],
   debt_management: [
     `💡 *Debt tip:* Set a maximum credit limit per customer. When they hit it, no more goods until they pay. This is how you protect your cash.`,
     `💡 *Credit advice:* The longer a debt sits, the harder it is to collect. Follow up with customers within a week.`,
     `💡 *Debt tip:* Record every credit sale immediately. Memory is not a ledger — ZURIA is.`,
+    `💡 *Collections:* Customers who pay on time deserve better service and maybe a small discount. Make punctual payment feel rewarding.`,
+    `💡 *Credit risk:* If total credit given is more than one week's revenue, your business is carrying too much risk. Reduce it gradually.`,
   ],
   pricing: [
     `💡 *Pricing:* Your selling price should cover: cost of goods + your time + a profit margin. If you're not tracking cost price, you may be selling at a loss without knowing.`,
     `💡 *Pricing tip:* When costs go up, your prices should adjust. Don't absorb supplier increases — pass them on carefully.`,
+    `💡 *Margin check:* Know your best-margin product and your worst. Sell more of what makes you more money per unit.`,
   ],
   inventory: [
     `💡 *Stock tip:* Know your fast sellers. Stock more of what moves, less of what sits. Slow stock ties up your cash.`,
     `💡 *Inventory:* Track what you buy and what you sell. The difference is what you have left. ZURIA can help you do this automatically.`,
+    `💡 *Reorder point:* Set a minimum quantity for your top 5 products. When you drop below it, reorder immediately — don't wait until you're out.`,
   ],
   savings: [
     `💡 *Business savings:* Set aside even 5% of daily profit before spending. Small consistent amounts build a real buffer.`,
@@ -523,10 +571,43 @@ const COACHING_RESPONSES: Record<CoachingTopic, readonly string[]> = {
     `💡 *Record keeping:* Every transaction, no matter how small — record it. The small ones add up to big surprises.`,
     `💡 *Records:* You can't grow what you don't measure. Recording sales and expenses daily takes 2 minutes and saves you from surprises at month-end.`,
   ],
+  staff_management: [
+    `💡 *Staff tip:* Set clear daily sales targets for your team. People perform better when they know what success looks like.`,
+    `💡 *Payroll discipline:* Keep staff costs below 25-30% of revenue. If payroll is climbing past that, review productivity before hiring more.`,
+    `💡 *Motivation:* Small incentives — a bonus on hitting targets, a free meal — often outperform large raises. Recognition matters.`,
+    `💡 *Staff integrity:* Cross-check daily totals against what staff reported. Unexplained shortfalls need a conversation, not assumptions.`,
+    `💡 *Hiring:* Before hiring, calculate whether the new role will generate more revenue than it costs. Every hire should pay for itself within 3 months.`,
+  ],
+  risk_fraud: [
+    `💡 *Internal control:* No single person should handle both cash and records. Separate responsibilities to reduce fraud risk.`,
+    `💡 *Fraud signal:* If daily totals don't match stock movement, investigate immediately. Small discrepancies compound fast.`,
+    `💡 *Cash handling:* Count the till at the same time every day. If the count is always "close enough", you're inviting leakage.`,
+    `💡 *Record integrity:* Any time records are edited, the reason should be documented. Unexplained changes are a red flag.`,
+    `💡 *Supplier risk:* Verify supplier invoices against what was actually delivered. Overcharging or short-delivery is common — and preventable.`,
+  ],
+  expense_control: [
+    `💡 *Expense discipline:* List every recurring cost this month. If any item hasn't directly helped your revenue, ask whether you still need it.`,
+    `💡 *Transport costs:* Consolidate deliveries where possible. Multiple small trips add up fast — one planned trip is always cheaper.`,
+    `💡 *Utility bills:* High electricity bills often come from running equipment overnight. Simple habits — switching off freezers, fans, chargers — can cut bills by 10-20%.`,
+    `💡 *Cost review:* Revisit supplier contracts every quarter. Prices move — a supplier who was cheapest 6 months ago may not be today.`,
+  ],
+  revenue_growth: [
+    `💡 *Revenue tip:* Your existing customers are your fastest growth lever. Remind them what you have, offer them something new, treat them well.`,
+    `💡 *Slow periods:* When sales are slow, it's a good time to call your best customers and ask what they need. Proactive beats passive.`,
+    `💡 *Product mix:* Track which items sell most. Promote your best-sellers — they're already proven. Don't push slow-movers at full price.`,
+    `💡 *Upselling:* Train yourself and your staff to suggest a complementary item at every sale. Even one extra item per customer adds up over a week.`,
+  ],
+  planning: [
+    `💡 *Planning:* Set a revenue target for the month and break it into weekly goals. Knowing your target makes every day's sales feel meaningful.`,
+    `💡 *Forecast:* Look at last month's sales by category. Which grew? Which shrank? That pattern usually repeats — stock accordingly.`,
+    `💡 *Business health:* A healthy business covers all costs, has growing sales, low debt, and cash in reserve. Check all four regularly.`,
+    `💡 *Expansion:* Only expand when your current operations are consistently profitable for 3+ months. Growth costs money before it makes money.`,
+  ],
   general: [
     `💡 *Business tip:* Know your three numbers daily — money in, money out, money owed to you. ZURIA keeps track of all three.`,
     `💡 *Advice:* The best businesses are not the ones that make the most money — they're the ones that *know* their money. That's what ZURIA helps you do.`,
     `💡 A good business day isn't just about high sales. It's about high *profit* — which means managing costs too.`,
+    `💡 *Consistency wins:* Record every transaction, follow up every debt, review every week. Small disciplines compound into big results.`,
   ],
 };
 

@@ -1,0 +1,130 @@
+name: Regression Guard
+
+# Runs on every push and pull-request that touches business logic.
+# Blocks merges if any previously-passing test regresses.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "lib/**"
+      - "__tests__/**"
+      - "app/**"
+      - "components/**"
+      - "hooks/**"
+      - "stores/**"
+      - "types/**"
+      - "providers/**"
+      - "scripts/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".eslintrc*"
+      - "eslint.config*"
+  pull_request:
+    paths:
+      - "lib/**"
+      - "__tests__/**"
+      - "app/**"
+      - "components/**"
+      - "hooks/**"
+      - "stores/**"
+      - "types/**"
+      - "providers/**"
+      - "scripts/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".eslintrc*"
+      - "eslint.config*"
+
+jobs:
+  # ── Job 1: Project-wide regression guard ─────────────────────────────────────
+  # Fastest comprehensive check: TS + ESLint + all 17 test suites vs baseline.
+  # Catches ANY regression — not just in the behavioral suite.
+  project-guard:
+    name: Project-Wide Guard (TS · ESLint · 17 suites)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: "Guard: project-wide regression check"
+        run: npm run project:guard
+
+  # ── Job 2: Regression guard (routing stability) ──────────────────────────────
+  # Fast guard comparing routing decisions against the locked behavioral baseline.
+  regression-guard:
+    name: Regression Guard (routing baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: "Guard: no routing regression vs. baseline"
+        run: npm run test:guard
+
+  # ── Job 3: Full behavioral regression suite ────────────────────────────────────
+  # Runs all 1000+ behavioral test cases end-to-end.
+  behavioral-regression:
+    name: Behavioral Regression (1000+ cases)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: "Spec: all 1000+ behavioral tests pass"
+        run: npm run test:regression
+
+  # ── Job 4: Type-check ──────────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck

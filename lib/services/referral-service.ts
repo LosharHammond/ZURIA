@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
@@ -69,7 +70,8 @@ export async function getReferralStats(userId: string): Promise<ReferralStats> {
   const empty: ReferralStats = { balance: 0, count: 0, code: "", monthlyCount: 0, referralUnlockExpiresAt: null };
   if (!db) return empty;
   try {
-    const snap = await getDoc(doc(db, collections.users, userId));
+    const userRef = doc(db, collections.users, userId);
+    const snap = await getDoc(userRef);
     if (!snap.exists()) return empty;
     const data = snap.data();
 
@@ -80,10 +82,24 @@ export async function getReferralStats(userId: string): Promise<ReferralStats> {
       ? ((data.referralMonthlyCount as number) ?? 0)
       : 0;
 
+    // Self-heal: if the user has no referral code (created before this feature,
+    // or a Firestore doc gap), generate one deterministically and save it back.
+    // generateReferralCode is a pure hash of userId so it always produces the
+    // same code for the same user — safe to call idempotently.
+    let code = (data.referralCode as string | undefined) ?? "";
+    if (!code) {
+      code = generateReferralCode(userId);
+      try {
+        await updateDoc(userRef, { referralCode: code });
+      } catch (writeErr) {
+        console.warn("[getReferralStats] could not save generated referralCode:", writeErr);
+      }
+    }
+
     return {
       balance: (data.referralBalance as number) ?? 0,
       count: (data.referralCount as number) ?? 0,
-      code: (data.referralCode as string) ?? "",
+      code,
       monthlyCount,
       referralUnlockExpiresAt: (data.referralUnlockExpiresAt as string | undefined) ?? null,
     };

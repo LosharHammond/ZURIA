@@ -155,11 +155,30 @@ export function enforceEngineIsolation(
   // If the message was classified as LEDGER_ENGINE but has no amount AND no
   // context carry-forward to fill it, downgrade to ERROR/ambiguous rather than
   // letting the engine record a GHS 0.00 entry.
+  //
+  // EXEMPT sub-intents: all specific action types where amount=0 is expected
+  // (stock update, received inventory) OR where the handler knows to ask
+  // "How much?" — salary, cost, borrow_in, loan_given, investment, withdrawal,
+  // refund, debt_record, debt_payment, loan_repaid, sale, expense.
+  // Only block truly unclassifiable/null sub-intents.
+  const RULE4_EXEMPT = new Set<string | null>([
+    "stock_update",    // qty-only stock entries (amount intentionally 0)
+    "salary",          // "paid salaries today" → handler asks how much
+    "expense",         // "bought fuel" → handler asks how much or AI clarifies
+    "sale",            // "sold rice" → handler asks how much or AI clarifies
+    "debt_record",     // "Kofi owes me" → handler asks how much
+    "debt_payment",    // "Ama paid her balance" → handler asks how much
+    "loan_given",      // "gave Kojo a loan" → handler asks how much
+    "loan_repaid",     // "Kojo repaid" → handler asks how much
+    "investment",      // "invested in business" → handler asks how much
+    "withdrawal",      // "withdrew from bank" → handler asks how much
+    "refund",          // "refunded customer" → handler asks how much
+  ]);
   if (
     intent.intent === "LEDGER_ENGINE" &&
     intent.entities.amount === null &&
     context?.lastAmount === null &&
-    intent.sub_intent !== "stock_update" // stock updates may have no amount
+    !RULE4_EXEMPT.has(intent.sub_intent)
   ) {
     return blocked(
       "RULE_4_FINANCIAL_ACCURACY",

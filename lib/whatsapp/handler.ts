@@ -58,6 +58,8 @@ import {
   zuriaConfirm, zuriaSmalltalk, zuriaError, generateInsight,
   zuriaUndoPrompt, zuriaUndoNothing, buildLimitWarning,
   zuriaConfirmationRequest, zuriaUndoConfirmedWithEffects,
+  zuriaAskAmount, zuriaCoach,
+  type CoachingTopic,
 } from "@/lib/intelligence/response-engine";
 import { normalizeGhanaianEnglish } from "@/lib/intelligence/ghanaian-normalizer";
 import { parseMultiIntent, fmtMultiConfirm } from "@/lib/intelligence/multi-intent-parser";
@@ -100,38 +102,104 @@ type QueryIntent =
 function detectIntent(text: string): QueryIntent | null {
   const t = text.toLowerCase().trim();
 
-  // Referral / earnings — check before "help" to avoid false match on "help earn"
+  // Referral
   if (/\b(referral|refer|my\s*link|my\s*earnings?|earn(ings?)?|refer\s*&?\s*earn|my\s*balance|cashout|cash\s*out|withdraw\s*referral)\b/.test(t)) return "referral";
 
-  // Undo / delete last entry — checked before summary/help to prevent false matches
+  // Undo / delete last entry
   if (/\b(undo|delete\s*last|cancel\s*last|remove\s*last|wrong\s*entry|wrong\s*amount|mistake|retract|i\s*made\s*a\s*mistake)\b/.test(t)) return "undo";
 
-  // Help — English + common Ghanaian phrases
+  // Help
   if (/\b(help|commands|what can|how to use|guide|start|tutorial|mboa me|boa me|bo me kwan)\b/.test(t)) return "help";
 
   // Subscribe / upgrade
   if (/\b(subscri(be|ption)|upgrade|plan|pricing|plans|hyεn|payment)\b/.test(t)) return "subscribe";
 
-  // Full dashboard — Pro/Enterprise only
+  // Full dashboard / advanced analytics
   if (/\b(full\s*dashboard|all.?time|entire|complete\s*report|all\s*report|analytics|overview\s*all)\b/.test(t)) return "full_dashboard";
+  if (/\b(advice|recommend(?:ation)?s?|tips?\s*for\b|smart\s*(?:tip|recommendation)|give\s*me\s*(?:business\s*)?advice)\b/.test(t)) return "full_dashboard";
+  if (/\b(top\s*(?:customer|client|buyer)|best[\s-]?selling|most\s*(?:sold|popular|frequent)|customer\s*rank)\b/.test(t)) return "full_dashboard";
+  if (/\b(which\s*supplier|top\s*supplier|supplier\s*(?:rank|most|analysis)|buy\s*from\s*(?:most|whom))\b/.test(t)) return "full_dashboard";
+  if (/\b(overspend|spent?\s*too\s*much|spending\s*too\s*much|we\s*spend\s*too\s*much|expense\s*(?:hurting|killing|too\s*high)|biggest\s*expense)\b/.test(t)) return "full_dashboard";
+  if (/\b(burn\s*rate|runway|cash\s*survive|days?\s*of\s*cash|run\s*out\s*of\s*cash|how\s*long\s*(?:can|will)\s*(?:cash|money))\b/.test(t)) return "full_dashboard";
+  if (/\b(business\s*score|health\s*score|my\s*score|why\s*(?:is\s*)?(?:my\s*)?score|performance\s*score)\b/.test(t)) return "full_dashboard";
+  if (/\b(suspicious|unusual\s*(?:spend|transaction)|detect\s*(?:unusual|fraud))\b/.test(t)) return "full_dashboard";
+  if (/\b(recurring\s*(?:expense|cost)|regular\s*expense|fixed\s*(?:expense|cost))\b/.test(t)) return "full_dashboard";
+  if (/\b(compare\s*(?:branch|outlet|week|month)|branch\s*(?:perform|compar)|vs\s*last\s*(?:week|month)|versus\s*last)\b/.test(t)) return "full_dashboard";
+  if (/\b(executive\s*(?:report|summary|review)|investor\s*(?:report|summary)|quarterly\s*(?:analysis|report)|ai\s*executive|generate\s*(?:ai|executive|operational|intelligence|comprehensive))\b/.test(t)) return "full_dashboard";
+  if (/\b(operational\s*health|business\s*health|efficiency|productivity)\b/.test(t)) return "full_dashboard";
+  if (/\b(declin(?:e|ing)|drop(?:ped|ping)\s*(?:suddenly|this)|why\s*(?:is|are)[\w\s]*(?:declin|drop|fall))\b/.test(t)) return "full_dashboard";
+  if (/\b(what\s*are\s*my\s*risks?|business\s*risk|vulnerability|weakness)\b/.test(t)) return "full_dashboard";
+  if (/\b(margin|markup|best\s*margin|product\s*margin)\b/.test(t)) return "full_dashboard";
+  if (/\b(which\s*days?\s*(?:perform|sell|do)\s*best|peak\s*(?:day|hour))\b/.test(t)) return "full_dashboard";
+  if (/\b(tax\s*(?:estimate|liability)|how\s*much\s*tax|estimate\s*[\w\s]*\btax\b|gra\s*(?:estimate|payment))\b/.test(t)) return "full_dashboard";
+  if (/\b(analy[sz]e?\s*(?:this|my|the|business|beverage|transport|utility|electricity|food|debt|inventory|expense[sd]?|stock|revenue|profit|performance|categor|product|branch|supplier|customer|sales?))\b/.test(t)) return "full_dashboard";
+  if (/\b(forecast|predict(?:ion)?|projection)\b/.test(t)) return "full_dashboard";
+  if (/\b(expand(?:sion)?|scale\s*up|can\s*(?:i|we)\s*afford|should\s*(?:i|we)\s*expand)\b/.test(t)) return "full_dashboard";
+  if (/\b(cash\s*collection\s*(?:rate|improve)|improve\s*cash\s*collection)\b/.test(t)) return "full_dashboard";
+  if (/\b(expenses?\s*(?:are\s*)?too\s*high|cash\s*flow\s*(?:is\s*)?(?:a\s*)?problem)\b/.test(t)) return "full_dashboard";
+  if (/\b(made?\s*(?:a\s*)?loss|making\s*loss|losing\s*money|i\s*made\s*loss)\b/.test(t)) return "full_dashboard";
+  if (/\b(explain\s*(?:my\s*)?(?:\w+\s+){0,3}business|understand\s*(?:my\s*)?(?:\w+\s+){0,2}business|business\s*performance|business\s*(?:advantage|strength|momentum|habit|risk))\b/.test(t)) return "full_dashboard";
+  if (/\b(staff\s*(?:spending|cost|too\s*much)|payroll\s*analysis)\b/.test(t)) return "full_dashboard";
+  if (/\b(should\s*(?:i|we)\s*reduce|reduce\s*(?:expense|cost|spending)|cut\s*(?:expense|cost))\b/.test(t)) return "full_dashboard";
+  if (/\b(alert\s*(?:me\s*)?when\s*(?:cash|money)|notify\s*(?:me\s*)?when\s*cash|cash\s*alert)\b/.test(t)) return "full_dashboard";
+  if (/\b(branch(?:es)?|outlet)\b/.test(t)) return "full_dashboard";
+  if (/\b(small\s*expense[sd]?\s*adding|petty\s*(?:cash\s*)?expense)\b/.test(t)) return "full_dashboard";
+  if (/\b(sales?\s*(?:drop(?:ped|s|ping)?|fell|fallen|declin(?:e|ed|ing)?|slow(?:ed|ing)?)|beverage\s*(?:sales?|revenue)|biscuit\s*sales?\s*(?:drop|fell|declin))\b/.test(t)) return "full_dashboard";
+  if (/\b(smart\s*recommendation|business\s*improvement)\b/.test(t)) return "full_dashboard";
+  if (/\b(inventory\s*turnover|stock\s*turnover|how\s*fast\s*(?:stock|inventory)|movement\s*rate|fast[\s-]?(?:moving|mover)|slow[\s-]?(?:moving|mover))\b/.test(t)) return "full_dashboard";
+  if (/\b(supplier\s*(?:reduc|increas|rais|chang).*price|price.*(?:reduc|increas|rais|lower).*(?:supplier|this|week|month)|renegotiat)\b/.test(t)) return "full_dashboard";
+  if (/\b(percentage\s*of\s*revenue|revenue.*(?:vs|versus|against|compar).*(?:expense|cost|debt)|outpac(?:e|ed|ing)|expense\s*(?:categor|group|type).*(?:fastest|growing|most)|which\s*expense\s*categor)\b/.test(t)) return "full_dashboard";
+  if (/\b(simulat|if\s*(?:sales?|expense[sd]?|cost[sd]?)\s*(?:continue|increase|decrease)|what\s*(?:would|will)\s*happen\b|what\s*if\s*(?:i|we|sales?|expense)|scenario\s*(?:plan|analys))\b/.test(t)) return "full_dashboard";
+  if (/\b(compare\s*(?:my\s*)?(?:best|worst|last)\s*(?:month|week|period)|best\s*month.*worst|worst\s*month|my\s*best\s*(?:month|period))\b/.test(t)) return "full_dashboard";
+  if (/\b((?:average|estimate[d]?|typical)\s*(?:weekly|daily|monthly)?\s*(?:operating|operational|overhead|running|fixed)\s*cost[sd]?|weekly\s*operating\s*cost|average\s*(?:cost|expense)\s*(?:per\s*week|per\s*month|weekly|monthly))\b/.test(t)) return "full_dashboard";
+  if (/\b(weekend[sd]?|which\s*days?\s*(?:generate|produce|make|create)|strongest\s*(?:sales?\s*)?day[sd]?|best\s*(?:performing\s*)?day[sd]?|why\s*do\s*(?:weekend|weekday|day))\b/.test(t)) return "full_dashboard";
+  if (/\b(cash\s*(?:tied|locked|stuck)\s*(?:up|in)|explain\s*(?:my\s*)?cash\s*flow|cash\s*flow\s*(?:risk|issue|problem|gap|clarity|position)|money\s*(?:tied|stuck)\s*up|cash\s*conversion\s*(?:rate|cycle))\b/.test(t)) return "full_dashboard";
+  if (/\b(financial\s*(?:pressure|stress|strain|health\s*check)|pressure\s*on\s*(?:the\s*)?business|calculate\s*(?:the\s*)?(?:financial\s*)?pressure)\b/.test(t)) return "full_dashboard";
+  if (/\b(operational\s*(?:habit|stress|challenge|weakness|pattern|inefficien)|hidden\s*(?:inefficien|cost|loss|expense)|hurting\s*(?:the\s*)?business|identify\s*(?:hidden|inefficien)|signs?\s*of\s*(?:operational\s*)?(?:stress|decline|failure))\b/.test(t)) return "full_dashboard";
+  if (/\b(duplicate\s*(?:entry|entries|transaction|record|inventory|expense)|detect\s*duplicate|recalculate\s*after|after\s*removing\s*duplicate)\b/.test(t)) return "full_dashboard";
+  if (/\b(customer\s*lifetime\s*value|lifetime\s*value|\bclv\b|\bltv\b|customers?\s*(?:who\s*(?:owe|buy\s*regularly)|regularly\s*(?:buy|owe))|owe\s*too\s*much)\b/.test(t)) return "full_dashboard";
+  if (/\b(personal\s*(?:money|expense[sd]?|fund[sd]?)\s*(?:for|into|in)\s*business|separate\s*(?:business\s*(?:and|from)|personal\s*expense)|used\s*personal\s*(?:money|fund))\b/.test(t)) return "full_dashboard";
+  if (/\b(business\s*intelligence|intelligence\s*(?:review|dashboard|report)|ai\s*(?:operational|intelligence|review)|full\s*(?:ai|intelligence|operational)\s*review|operational\s*intelligence)\b/.test(t)) return "full_dashboard";
+  if (/\bsales?\s*(?:increased|went\s*up|is\s*(?:up|high|good)|grew|growing|rising|improved)\b.{0,60}\bprofit\b|\bprofit\s*(?:still|feels?|seems?|looks?|is)\s*(?:low|down|less|small|reducing|dropping)\b/.test(t)) return "full_dashboard";
+  if (/\b(strongest\s*(?:business\s*)?(?:advantage|strength|asset|area)|biggest\s*(?:business\s*)?advantage|explain\s*(?:my\s*)?(?:strongest|biggest|main|core)\s*(?:\w+\s+){0,2}(?:advantage|strength|risk|weakness))\b/.test(t)) return "full_dashboard";
+  if (/\b(zuria\s*(?:notice|see|observe|find|detect)|what\s*(?:does\s*)?(?:zuria|the\s*ai)\s*(?:notice|see|think|suggest|observe)|patterns?\s*(?:about|in)\s*my\s*business)\b/.test(t)) return "full_dashboard";
+  if (/\b(detect\s*(?:risky|risk|unusual\s*pattern|signs?\s*of)|risky\s*(?:pattern|behavior|trend|business\s*pattern))\b/.test(t)) return "full_dashboard";
+  if (/\b(unstable|unpredictable|volatile)\s*(?:demand|sales?|pattern|movement)\b/.test(t)) return "full_dashboard";
+  if (/\b(staff\s*(?:activity|habit|behavior|financially\s*risky|risk)|financially\s*risky\s*(?:staff|activity|behavior))\b/.test(t)) return "full_dashboard";
+  if (/\b(sold?\s*(?:inventory|goods?|stock|items?)?\s*below\s*(?:normal|market|cost|normal\s*price)|below\s*normal\s*price|selling\s*at\s*(?:a\s*)?loss)\b/.test(t)) return "full_dashboard";
+  if (/\b(revenue\s*growth\s*(?:vs|versus|against|outpac|compared)|did\s*revenue|outpac(?:e|ed|ing)|which\s*grew\s*faster)\b/.test(t)) return "full_dashboard";
+  if (/\b(business\s*intelligence\s*dashboard|intelligence\s*dashboard|full\s*(?:business\s*)?dashboard|operational\s*(?:dashboard|intelligence\s*review))\b/.test(t)) return "full_dashboard";
 
   // Monthly report
-  if (/\b(month(ly)?(\s*report)?|this\s*month|monthly\s*(summary|review|breakdown))\b/.test(t)) return "monthly_report";
+  if (/\b(month(ly)?(\s*report)?|this\s*month|next\s*month|monthly\s*(summary|review|breakdown))\b/.test(t)) return "monthly_report";
 
-  // Weekly report — English + Pidgin
-  if (/\b(week(ly)?(\s*report)?|this\s*week|weekly\s*(summary|review|breakdown)|dis\s*week)\b/.test(t)) return "weekly_report";
+  // Weekly report
+  if (/\b(week(ly)?(\s*report)?|this\s*week|last\s*week|weekly\s*(summary|review|breakdown)|dis\s*week)\b/.test(t)) return "weekly_report";
 
-  // Daily summary — English + Twi ("sika" = money, "hwε me" = check for me) + Pidgin
-  if (/\b(balance|bal|summary|summ|report|today|how\s*much|profit|earn(ings)?|daily|overview|status|eod|end\s*of\s*day|sika|hwε\s*me|how\s*i\s*stand|how\s*e\s*dey|wetin\s*i\s*get|my\s*(cash|money)|tell\s*me)\b/.test(t)) return "summary";
+  // Daily summary
+  if (/\b(balance|bal|summary|summ|report|today|yesterday|how\s*much|profit|earn(ings)?|daily|overview|status|eod|end\s*of\s*day|sika|hwε\s*me|how\s*i\s*stand|how\s*e\s*dey|wetin\s*i\s*get|my\s*(cash|money)|tell\s*me)\b/.test(t)) return "summary";
+  if (/\b(repeat\s*(?:last|previous|same)|same\s*(?:as\s*before|again)|do\s*(?:it\s*)?again)\b/.test(t)) return "summary";
+  if (/\b(remind|send\s*(?:report\s*)?again)\b/.test(t)) return "summary";
 
-  // Debts — English + Twi ("ka ho" = they owe)
-  if (/\b(who\s*ow|owe\s*me|debts?|credit\s*list|my\s*debtors?|people\s*ow|ka\s*ho|me\s*nipa|credit)\b/.test(t)) return "debts";
+  // Debts
+  if (/\b(who\s*ow|owe\s*me|debts?|credit\s*list|my\s*debtors?|people\s*ow|ka\s*ho|me\s*nipa|credit|follow\s*up\s*debt|unpaid)\b/.test(t)) return "debts";
+  if (/\b(debt\s*aging|aging\s*(?:analysis|report)|overdue\s*(?:debt|payment|balance)|long\s*overdue)\b/.test(t)) return "debts";
+  if (/\b(risky\s*debtor|late\s*(?:payer|payments?)|slow\s*payer|delinquent|prioritize\s*debtor|delay(?:s|ed|ing)?\s*payments?|repeatedly\s*delay|show\s*customers?\s*who\s*(?:delay|repeat|late))\b/.test(t)) return "debts";
 
-  // Loans — English + Twi ("me ka" = my debt/loan)
-  if (/\b(loans?|borrow(ings?)?|lending|my\s*loans?|i\s*owe|what\s*i\s*owe|me\s*ka)\b/.test(t)) return "loans";
+  // Loans / liabilities / creditors
+  if (/\b(loans?|borrow(ings?)?|lending|my\s*loans?|i\s*owe|what\s*i\s*owe|me\s*ka|how\s*much\s*debt\s*(?:do\s*i|still))\b/.test(t)) return "loans";
+  if (/\b(liabilit(?:y|ies)|total\s*liabilit|supplier\s*(?:debt|balance|owes?|owe)|owe\s*(?:supplier|creditor|vendor)|creditor\s*(?:balance|payment|list)?)\b/.test(t)) return "loans";
+  if (/\b(demanding\s*payment|supplier\s*demanding|creditor\s*(?:call|demand|ask|want)|supplier\s*want\s*(?:money|payment))\b/.test(t)) return "loans";
+  if (/\b(debt[\s-]to[\s-]cash|debt\s*ratio|total\s*(?:owed|liabilit)|my\s*total\s*debt)\b/.test(t)) return "loans";
 
-  // Stock / inventory — English + Twi ("nneεma" = goods)
-  if (/\b(stock|inventory|goods|items|products|how\s*many|product\s*list|my\s*goods|nne[εe]ma|shelf)\b/.test(t)) return "stock";
+  // Stock / inventory
+  if (/\b(stock|inventory|goods|items|products|how\s*many|product\s*list|my\s*goods|nne[εe]ma|shelf|restock|low\s*stock|running\s*out|finish(?:ing)?\s*fast)\b/.test(t)) return "stock";
+  if (/\b(warehouse|storage\s*(?:value|report)|getting\s*empty)\b/.test(t)) return "stock";
+  if (/\b(expir(?:e|es|ing|y|ation|ed\s+stock)|best\s*before|sell\s*by|use\s*by|expiry\s*date|which\s*products?\s*expire)\b/.test(t)) return "stock";
+  if (/\b(shortage|stockout|stock[\s-]?out|out\s*of\s*stock|days?\s*(?:to\s*)?stockout|stock\s*shortage)\b/.test(t)) return "stock";
+  if (/\b(inventory\s*(?:value|worth|total)|warehouse\s*value|stock\s*(?:value|worth)|total\s*stock\s*value)\b/.test(t)) return "stock";
+  if (/\b(dead\s*stock|stagnant\s*(?:stock|inventory)|not\s*(?:moving|selling)\s*(?:stock|item|product))\b/.test(t)) return "stock";
+  if (/\b(stock\s*audit|inventory\s*audit|full\s*(?:stock|inventory)\s*(?:count|check|audit)|physical\s*count)\b/.test(t)) return "stock";
 
   return null;
 }
@@ -565,7 +633,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         queryIntent, business.id, user.ownerName, business.category,
         bName, effectivePlan, referralLink,
         (user.referralBalance as number | undefined) ?? 0,
-        monthlyReferrals, user as unknown as Record<string, unknown>
+        monthlyReferrals, user as unknown as Record<string, unknown>, text
       );
       const reply = stagedWarning ? `${stagedWarning}\n\n${result}` : result;
       await persist(reply);
@@ -645,7 +713,9 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
 
     // Single-intent ledger path
     const parsed = multiResult.transactions[0];
-    if (!parsed || parsed.amount <= 0 || parsed.confidence < 0.40) {
+
+    // No parse or confidence too low → AI clarification
+    if (!parsed || parsed.confidence < 0.40) {
       const ai = getActiveProvider();
       const aiErr = await ai.generate({
         businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
@@ -656,6 +726,54 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
       const reply = aiErr ?? zuriaError(business.category, bName);
       await persist(reply, undefined, false, null);
       return reply;
+    }
+
+    // Negative amounts (e.g., "expense -50") — data-entry slip.
+    // Silently convert to positive: the user almost certainly meant +50.
+    if (parsed.amount < 0) {
+      (parsed as { amount: number }).amount = Math.abs(parsed.amount);
+    }
+
+    // Amount is zero — route based on type
+    if (parsed.amount <= 0) {
+      // stock_purchase with a known quantity is intentionally amount=0
+      // (user received stock but hasn't set a price yet) — let it fall through
+      // to the save block so zuriaConfirm can display the qty-only confirmation.
+      const isStockWithQty = parsed.type === "stock_purchase" && (parsed.quantity ?? 0) > 0;
+
+      if (!isStockWithQty) {
+        // For specific action types, the user omitted the amount — prompt for it.
+        const AMOUNT_LABELS: Partial<Record<string, string>> = {
+          salary:       "salary payment",
+          expense:      "expense",
+          sale:         "sale",
+          debt_record:  "debt",
+          debt_payment: "payment",
+          loan_given:   "loan",
+          loan_repaid:  "loan repayment",
+          investment:   "investment",
+          withdrawal:   "withdrawal",
+          refund:       "refund",
+        };
+        const label = AMOUNT_LABELS[parsed.type];
+        if (label) {
+          const reply = zuriaAskAmount(label, parsed.customerName, parsed.productName);
+          await persist(reply, undefined, false, null);
+          return reply;
+        }
+        // Unknown type with no amount → AI clarification
+        const ai = getActiveProvider();
+        const aiErr = await ai.generate({
+          businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
+          conversationHistory: historyToText(convCtx.conversationHistory),
+          currentMessage:      text,
+          financialContext:    "",
+        });
+        const reply = aiErr ?? zuriaError(business.category, bName);
+        await persist(reply, undefined, false, null);
+        return reply;
+      }
+      // isStockWithQty — fall through to the save block with amount=0
     }
 
     // ── Pre-save confirmation for medium-confidence parses ──────────────────
@@ -1038,7 +1156,8 @@ async function handleQuery(
   referralLink?: string,
   referralBalance = 0,
   monthlyReferrals = 0,
-  user?: Record<string, unknown>
+  user?: Record<string, unknown>,
+  rawText = "",
 ): Promise<string> {
   // ── Tier-gating for advanced reports ──────────────────────────────────────
   // Free + Growth: weekly report (free gets same basic weekly — it's in the spec)
@@ -1058,7 +1177,47 @@ async function handleQuery(
   }
 
   if (intent === "full_dashboard") {
-    if (!canFull) return gateMsg("full dashboard", "ZURIA Pro", "pro", businessName);
+    if (!canFull) {
+      // Growth/Free users get an AI-powered advisory + coaching tip + soft Pro upsell
+      // instead of a hard gate. They still receive real business insight — just not
+      // the full AI dashboard (forecasts, customer rankings, risk alerts, etc.).
+      try {
+        const [weekTxns, openDebts] = await Promise.all([
+          getWeekTransactions(businessId),
+          getOpenDebts(businessId),
+        ]);
+        const weekIn  = weekTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
+        const weekOut = weekTxns.filter((t) => MONEY_OUT_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
+        const openDebtTotal = openDebts.reduce((acc, d) => acc + (d.outstandingAmount > 0 ? d.outstandingAmount : 0), 0);
+
+        const financialContext = [
+          `This week: revenue GHS ${weekIn.toFixed(2)}, expenses GHS ${weekOut.toFixed(2)}, net GHS ${(weekIn - weekOut).toFixed(2)}.`,
+          openDebtTotal > 0 ? `Open debts owed to you: GHS ${openDebtTotal.toFixed(2)}.` : "",
+        ].filter(Boolean).join(" ");
+
+        const topic = detectCoachingTopic(rawText);
+        const coachTip = zuriaCoach(topic);
+
+        const ai = getActiveProvider();
+        const aiReply = await ai.generate({
+          businessContext:     `${ownerName}, ${plan} plan, ${category} business`,
+          conversationHistory: "",
+          currentMessage:      rawText || `Give me business advice for my ${category} business`,
+          financialContext,
+        });
+
+        const parts: string[] = [];
+        if (aiReply) parts.push(aiReply);
+        if (coachTip) parts.push(`\n💡 *Quick coaching tip:*\n${coachTip}`);
+        parts.push(
+          `\n🔒 _For your full AI dashboard — forecasts, customer rankings, risk alerts, and more — upgrade to *ZURIA Pro*. Reply *"subscribe"* to see plans._`,
+        );
+        return parts.join("\n");
+      } catch {
+        // Fallback to gate message if advisory generation fails
+        return gateMsg("full dashboard", "ZURIA Pro", "pro", businessName);
+      }
+    }
     const txns = await getAllTransactions(businessId, 2000);
     return fmtFullDashboard(txns, ownerName, category, businessName, plan);
   }
@@ -1232,6 +1391,27 @@ async function handleUndoIntent(businessId: string, businessName: string): Promi
       `_— ZURIA (${businessName})_`,
     ].join("\n");
   }
+}
+
+// ─── Coaching topic detector ──────────────────────────────────────────────────
+
+/**
+ * Infer the most relevant coaching topic from the user's raw query text.
+ * Used when serving advisory responses to Growth/Free users who ask
+ * full_dashboard questions — selects the right zuriaCoach() tip category.
+ */
+function detectCoachingTopic(text: string): CoachingTopic {
+  const t = text.toLowerCase();
+  if (/cash\s*flow|liquidity|tight|cash\s*leakage|money\s*stuck|tied\s*up/.test(t))      return "cash_flow";
+  if (/debt|owe|credit|collect|outstanding|debtor|disappear/.test(t))                    return "debt_management";
+  if (/price|margin|profit|markup|pricing|undercharge/.test(t))                          return "pricing";
+  if (/stock|inventory|restock|reorder|warehouse|expir|running\s*out/.test(t))           return "inventory";
+  if (/staff|salary|payroll|worker|employee|hire|resign|absent|morale/.test(t))          return "staff_management";
+  if (/fraud|steal|alter|suspicious|leakage|unauthorized|someone\s*took/.test(t))        return "risk_fraud";
+  if (/expense|cost|transport|utility|bill|spending|overhead|running\s*cost/.test(t))    return "expense_control";
+  if (/revenue|sales.*drop|customer.*slow|grow|expand|acquisition|marketing/.test(t))    return "revenue_growth";
+  if (/forecast|predict|plan|next\s*month|target|budget|seasonal/.test(t))              return "planning";
+  return "general";
 }
 
 // Gating message when a lower tier tries an advanced report

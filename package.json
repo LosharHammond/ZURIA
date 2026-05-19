@@ -7,7 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "jest --no-coverage",
+    "test:regression": "jest 16-behavioral-regression --no-coverage",
+    "test:guard": "jest regression-guard --no-coverage",
+    "test:all": "jest --no-coverage",
+    "project:guard": "node scripts/project-guard.mjs",
+    "project:update-baseline": "node scripts/update-project-baseline.mjs",
+    "regression:update-baseline": "node scripts/update-baseline.mjs",
+    "regression:install-hooks": "node -e \"require('os').platform()==='win32' ? require('child_process').execSync('powershell -ExecutionPolicy Bypass -File scripts/install-hooks.ps1',{stdio:'inherit'}) : require('child_process').execSync('bash scripts/install-hooks.sh',{stdio:'inherit'})\"",
+    "prepare": "node -e \"try{require('child_process').execSync(require('os').platform()==='win32'?'powershell -ExecutionPolicy Bypass -File scripts/install-hooks.ps1':'bash scripts/install-hooks.sh',{stdio:'inherit'})}catch(e){console.warn('Hook install skipped (no git):',e.message)}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -30,14 +39,19 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^10.1.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.0.0",
+    "jest": "^30.4.2",
+    "jest-mock-extended": "^4.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.7.0"
   }
 }

@@ -110,6 +110,14 @@ const RULES: NormRule[] = [
 
   // ── Expenses ──────────────────────────────────────────────────────────────
   {
+    label: "X cost N → expense X N (utility/resource cost framing)",
+    // Matches: "water cost 50", "electricity cost 200", "fuel cost 80"
+    // The parser sees "water" as a sellable product; reframe as expense so it
+    // routes correctly. Only applies to known utility/overhead words.
+    pattern: /\b(water|electricity|ecg|fuel|gas|rent|transport|airtime|internet|data)\s+cost\b/gi,
+    replacement: "expense $1",
+  },
+  {
     label: "chop → spent (informal expense)",
     pattern: /\bi\s+chop\b/gi,
     replacement: "I spent",
@@ -133,6 +141,27 @@ const RULES: NormRule[] = [
     label: "pay ECG/water/rent → expense for ECG/water/rent",
     pattern: /\bpay\s+(ECG|water|rent|electricity|phone|transport|fuel|food)\b/gi,
     replacement: "expense $1",
+  },
+
+  // ── Akan Twi payment/debt verbs ───────────────────────────────────────────
+  {
+    // "bɔɔ" uses ɔ (U+0254) which is not a JS \w char, so \b does not work.
+    // Use a lookahead/lookbehind on whitespace/start-of-string instead.
+    label: "bɔɔ → paid (Akan Twi for 'paid/settled a debt')",
+    pattern: /(^|[\s(])(bɔɔ|bo[oɔ])([\s),.]|$)/gi,
+    replacement: "$1paid$3",
+  },
+  {
+    label: "na how much → how much (Pidgin emphasis particle strip)",
+    pattern: /\bna\s+(how\s+much)\b/gi,
+    replacement: "$1",
+  },
+  {
+    label: "[ProperName] pay N → [ProperName] paid N (present→past for payment statements)",
+    // Only fires when a capitalised name (≥3 chars) directly precedes 'pay' + amount,
+    // indicating a completed transaction, not a command or query.
+    pattern: /\b([A-Z][a-z]{2,})\s+pay\s+(\d[\d.,]*)/g,
+    replacement: "$1 paid $2",
   },
 
   // ── Sales ─────────────────────────────────────────────────────────────────
@@ -176,6 +205,82 @@ const RULES: NormRule[] = [
     replacement: "transferred to",
   },
 
+  // ── Stock intake: "I have N [unit] of X" → "received N [unit] of X" ─────
+  // Covers common ways users report stock on hand.
+  {
+    label: "I have N [unit] of X → received N [unit] of X (stock intake)",
+    pattern: /\bi\s+have\s+(\d+)\s*(bags?|pcs?|pieces?|cartons?|crates?|packs?|bottles?|units?|boxes?|tins?|rolls?|sachets?|dozens?|items?|pairs?|sets?|bundles?|trays?|kits?|jars?|cans?)\b/gi,
+    replacement: "received $1 $2",
+  },
+
+  // ── Debt management operations ────────────────────────────────────────────
+  {
+    label: "Mark X debt as cleared → X paid debt (debt_payment signal)",
+    // Produce "X paid debt" directly (not "X clear debt") so the classifier
+    // sees it as a ledger entry, not a query, even in a single-pass normalizer.
+    pattern: /\bmark\s+(\w+)\s+(?:debt|balance|bill|account)\s+as\s+cleared?\b/gi,
+    replacement: "$1 paid debt",
+  },
+  {
+    label: "clear X full/all debt → X paid full debt",
+    pattern: /\bclear\s+(\w+)(?:'s)?\s+(?:full\s+|all\s+)?(?:debt|balance|bill)\b/gi,
+    replacement: "$1 paid full debt",
+  },
+  {
+    label: "Reduce X debt by N → X paid N",
+    pattern: /\breduce\s+(\w+)(?:'s)?\s+(?:debt|balance|bill)\s+by\s+(\d[\d.]*)\b/gi,
+    replacement: "$1 paid $2",
+  },
+  {
+    label: "X no pay me / X no gree pay → X hasn't paid me",
+    pattern: /\b(\w+)\s+no\s+(?:gree\s+)?pay\s+(?:me|us)?\b/gi,
+    replacement: "$1 hasn't paid me",
+  },
+  {
+    label: "X refuse(d) to pay → X refusing to pay (debt follow-up)",
+    pattern: /\b(\w+)\s+refuse[sd]?\s+to\s+pay\b/gi,
+    replacement: "$1 refusing to pay",
+  },
+
+  // ── Discount / reduction ──────────────────────────────────────────────────
+  {
+    label: "gave discount N → expense discount N",
+    pattern: /\b(?:i\s+)?gave\s+(?:a\s+)?discount(?:\s+of)?\s+(\d[\d.]*)\b/gi,
+    replacement: "expense discount $1",
+  },
+
+  // ── Pidgin / colloquial query normalisation ───────────────────────────────
+  {
+    label: "wan check / wan see → want to check (query intent)",
+    pattern: /\bi?\s*wan\s+(?:check|see)\s+(?:my\s+)?(?:money|balance|account|profit|cash|record|report)\b/gi,
+    replacement: "I want to check my balance",
+  },
+  {
+    label: "my cash don finish / money don finish → my cash is finished",
+    pattern: /\b(my\s+)?(?:cash|money)\s+don\s+finish\b/gi,
+    replacement: "my cash is finished",
+  },
+  {
+    label: "don finish (standalone) → is finished",
+    pattern: /\bdon\s+finish\b/gi,
+    replacement: "is finished",
+  },
+  {
+    label: "wetin i get → what I have",
+    pattern: /\bwetin\s+(?:i|we)\s+(?:get|have)\b/gi,
+    replacement: "what I have",
+  },
+  {
+    label: "how e dey → how is it",
+    pattern: /\bhow\s+e\s+dey\b/gi,
+    replacement: "how is it",
+  },
+  {
+    label: "i wan → I want to",
+    pattern: /\bi\s+wan\b/gi,
+    replacement: "I want to",
+  },
+
   // ── Conjunction splitting markers ─────────────────────────────────────────
   // These are handled by the multi-intent parser, but normalizing
   // "plus" and "also" to "and" makes the split pattern simpler.
@@ -188,6 +293,15 @@ const RULES: NormRule[] = [
     label: "then → and (sequential connector)",
     pattern: /\bthen\s+(sold|bought|paid|spent|received|gave)\b/gi,
     replacement: "and $1",
+  },
+  // ── Implicit conjunction: "[number] [financial verb]" without "and" ───────
+  // Handles "sold rice 100 bought fuel 20 paid worker 30" →
+  //         "sold rice 100 and bought fuel 20 and paid worker 30"
+  // Only inserts "and" when a financial action verb immediately follows a number.
+  {
+    label: "N [financial-verb] → N and [financial-verb] (implicit multi-intent)",
+    pattern: /(\d+)\s+(sold|bought|paid|spent|received|gave|lent|withdrew|invested|sell|buy|pay|spend|give|lend|withdraw|invest)\b/gi,
+    replacement: "$1 and $2",
   },
 ];
 

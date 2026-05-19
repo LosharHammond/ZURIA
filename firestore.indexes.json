@@ -253,6 +253,22 @@
         { "fieldPath": "userId",              "order": "ASCENDING" },
         { "fieldPath": "paystackReference",   "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "webhook_queue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "nextRetryAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payment_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventType", "order": "ASCENDING" },
+        { "fieldPath": "source",    "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

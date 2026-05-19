@@ -483,7 +483,7 @@ const GH_NAMES_LIST: string[] = [
   "afua","afia","efua","araba","mansa","maame","serwaa","asantewaa","pomaa","pokua",
   "fosuaa","boakyewaa","amoakowaa","awurama","kweku","kwabena","kobina","kwadwo","kwasi","paa",
   "nana","papa","abenaa","abeena","akuaba","akumaa","adjoa","adjoah","adwubi","afariwaa",
-  "afrakoma","akofa","fafa","pomaa","akosua","efuah",
+  "afrakoma","akofa","fafa","pomaa","akosua","efuah","fiifi","fifi",
   // Akan surnames
   "mensah","boateng","asante","adjei","osei","amoah","owusu","frimpong","darko","antwi",
   "tetteh","quaye","nartey","laryea","ankrah","odartey","nkrumah","appiah","acheampong","asomaning",
@@ -953,6 +953,34 @@ export function parseTransaction(input: string): ParsedTransaction {
   const raw = input.trim().slice(0, MAX_INPUT_LENGTH);
   if (!raw) return emptyParsed();
 
+  // ── Pre-parse: "I have N [product]" → stock level update ──────────────────
+  // e.g. "I have 3 monitors", "we have 50 bags of rice"
+  // This is a pure inventory count update — no monetary amount applies.
+  // Must appear at start of message and contain no financial action words.
+  const stockLevelPreMatch = /^(?:i|we)\s+have\s+(\d+)\s+(.+)/i.exec(raw.trim());
+  if (
+    stockLevelPreMatch &&
+    !/\b(sold|sell|selling|buy|bought|paid|expense|income|received|owe|owed|debt|loan|borrow|lend|transfer|salary|give|gave|for sale|to sell)\b/i.test(raw)
+  ) {
+    const qty = Number(stockLevelPreMatch[1]);
+    const productRaw = stockLevelPreMatch[2].trim().replace(/[.,!?]+$/, "");
+    return {
+      type: "stock_purchase",
+      amount: 0,
+      quantity: qty,
+      productName: productRaw,
+      customerName: null,
+      customerNameNormalized: null,
+      category: "Inventory",
+      paymentMethod: "unknown",
+      notes: raw,
+      confidence: 0.72,
+      currency: "GHS, Cedis",
+      syncStatus: "pending",
+      parserSignals: ["pre-parse:stock-level-update"],
+    };
+  }
+
   const norm = preprocess(raw);
 
   // Detect foreign currency before GHS extraction
@@ -979,6 +1007,81 @@ export function parseTransaction(input: string): ParsedTransaction {
   const finalSignals = isForeignCurrencyEntry
     ? [...signals, `foreign-currency:${foreignCurrency}`]
     : signals;
+
+  // ── Post-classification: "bought/received N [unit] product" where N is quantity not price ──
+  // When stock_purchase wins and there's no GHS/cedi currency marker, the
+  // extracted amount is likely a quantity count, not a price.
+  // Handles two patterns:
+  //   a) "bought|buy|purchased N product"  (e.g. "I bought 5 monitors")
+  //   b) "received|collected N [unit] product" (e.g. "received 1300 pcs of gloves")
+  // Correct: amount=0, quantity=N so the classifier routes to stock_update.
+  if (type === "stock_purchase" && !hasCediMarker && amount > 0) {
+    // Pattern (a): bought/buy/purchased verb leads the quantity
+    const boughtQtyM = /\b(?:bought|buy|purchase[d]?)\s+(\d+)\s+\w/i.exec(raw);
+    if (boughtQtyM && Number(boughtQtyM[1]) === amount) {
+      return {
+        type,
+        amount: 0,
+        quantity: quantity ?? amount,
+        productName,
+        customerName: null,
+        customerNameNormalized: null,
+        category: "Inventory",
+        paymentMethod,
+        notes: raw,
+        confidence: 0.62,
+        currency: "GHS, Cedis",
+        syncStatus: "pending",
+        parserSignals: [...finalSignals, "qty-correction:bought-N-no-price"],
+      };
+    }
+
+    // Pattern (b): received/collected N [unit] product — number is a piece-count, not a price
+    const receivedUnitQtyM = /\b(?:received|collected|got|delivered|supplied)\s+(\d+)\s*(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|boxes?|tins?|rolls?|sachets?|dozens?|items?|pairs?|sets?|bundles?|trays?|kits?|jars?|cans?)\b/i.exec(raw);
+    if (receivedUnitQtyM && Number(receivedUnitQtyM[1]) === amount) {
+      return {
+        type,
+        amount: 0,
+        quantity: quantity ?? amount,
+        productName,
+        customerName: null,
+        customerNameNormalized: null,
+        category: "Inventory",
+        paymentMethod,
+        notes: raw,
+        confidence: 0.65,
+        currency: "GHS, Cedis",
+        syncStatus: "pending",
+        parserSignals: [...finalSignals, "qty-correction:received-N-unit-no-price"],
+      };
+    }
+  }
+
+  // ── Post-classification: "N [unit] broke/spoiled/lost" → stock loss ────────
+  // "3 bottles broke today" → expense, amount=3 (parsed as price), but 3 is
+  // actually a quantity and there is no monetary amount. Correct to qty=3, amount=0
+  // so the classifier can route it as a stock-loss expense entry.
+  if (type === "expense" && !hasCediMarker && amount > 0) {
+    const stockLossPattern = /\b(\d+)\s*(?:bottles?|crates?|bags?|boxes?|packs?|pieces?|items?|cartons?|dozens?|units?|trays?|rolls?|sachets?|tins?|jars?|glasses?|loaves?)\s+(?:broke|broken|spoiled|rotten|damaged|stolen|stole|lost|expired|wasted|missing|crushed|cracked|smashed)\b/i;
+    const lossMatch = stockLossPattern.exec(raw);
+    if (lossMatch && Number(lossMatch[1]) === amount) {
+      return {
+        type,
+        amount: 0,
+        quantity: amount,
+        productName,
+        customerName: null,
+        customerNameNormalized: null,
+        category: "Stock Loss",
+        paymentMethod,
+        notes: raw,
+        confidence: Math.max(0.60, confidence),
+        currency: "GHS, Cedis",
+        syncStatus: "pending",
+        parserSignals: [...finalSignals, "qty-correction:stock-loss"],
+      };
+    }
+  }
 
   return {
     type,
@@ -1023,8 +1126,13 @@ function preprocess(raw: string): string {
     }
   }
   text = words.filter(Boolean).join(" ");
-  // Normalize punctuation
-  text = text.replace(/[.,!?;:]+/g, " ").replace(/\s+/g, " ").trim();
+  // Normalize punctuation — preserve decimal points between digits so that
+  // "12.5" is not mangled to "12 5". Replace the decimal dot with a sentinel
+  // character before stripping all other punctuation, then restore it.
+  text = text.replace(/(\d)\.(\d)/g, "$1\x00$2")  // protect: "12.5" → "12\x005"
+             .replace(/[.,!?;:]+/g, " ")            // strip other punctuation
+             .replace(/\x00/g, ".")                 // restore: "12\x005" → "12.5"
+             .replace(/\s+/g, " ").trim();
   return text;
 }
 
@@ -1034,7 +1142,9 @@ function extractAmount(text: string): number {
   // preprocess() replaces GHS / ₵ / cedis with the sentinel "gscur", so we
   // match that token here. This guarantees "sold 3 bags rice for GHS 500"
   // returns 500, not 3 (the quantity).
-  const currencyFirst = text.match(/\bgscur\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/);
+  // The longer \d+ alternative is tried first so "gscur 1000" returns 1000,
+  // not 100 (which \d{1,3} would match before the remaining "0").
+  const currencyFirst = text.match(/\bgscur\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)/);
   if (currencyFirst) return Number(currencyFirst[1].replace(/,/g, ""));
 
   // ── 1b. Pesewa amounts: "50 pesewas" → 0.50, "250 pesewas" → 2.50 ──────────
@@ -1045,6 +1155,62 @@ function extractAmount(text: string): number {
   // ── 1c. "half" / "a half" / "half cedi" → 0.50; "quarter" → 0.25 ───────────
   if (/\b(half a cedi|half cedi|gscur\s*half|half\s+gscur)\b/i.test(text)) return 0.50;
   if (/\b(quarter cedi|quarter gscur|gscur\s*quarter)\b/i.test(text)) return 0.25;
+
+  // ── 2a. Multiplication expressions: "N x M", "N × M", "(N*M)" ──────────────
+  // e.g. "Inventory (3936 x 27)" → 106,272; "3 bags x 50 each" → 150
+  const multExpr = text.match(/\(?(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\)?/i);
+  if (multExpr) {
+    const product = Number(multExpr[1]) * Number(multExpr[2]);
+    if (product > 0) return product;
+  }
+
+  // ── 2b. Unit-price: "N [units] ... cost/at/each M" → N × M ──────────────────
+  // e.g. "3936 packs of water which cost 27 each" → 3936 × 27 = 106,272
+  const unitPriceM = text.match(
+    /\b(\d+)\s*(?:pcs?|pieces?|packs?|bags?|cartons?|crates?|units?|boxes?|bottles?|tins?|dozens?|items?|rolls?|sachets?)\b[^.!?]{0,60}\b(?:(?:which\s+)?cost(?:s|ing)?|at|each|per|price[d]?(?:\s+at)?)\s+(\d+(?:\.\d+)?)\b/i
+  );
+  if (unitPriceM) {
+    const qty = Number(unitPriceM[1]);
+    const unitPrice = Number(unitPriceM[2]);
+    if (qty > 0 && unitPrice > 0) return qty * unitPrice;
+  }
+
+  // ── 2c. Total amount: "for 850 total" / "total was 850" / "total of 850" ────
+  // Handles "I bought 5 cartons and 3 crates for 850 total" → 850, not 5.
+  const forTotal = text.match(/\bfor\s+(\d[\d,]*(?:\.\d{1,2})?)\s+(?:in\s+)?total\b/i);
+  if (forTotal) return Number(forTotal[1].replace(/,/g, ""));
+  const totalFirst = text.match(/\btotal\s+(?:was|is|of|:)?\s*(\d[\d,]*(?:\.\d{1,2})?)\b/i);
+  if (totalFirst) return Number(totalFirst[1].replace(/,/g, ""));
+  const nInTotal = text.match(/\b(\d[\d,]*(?:\.\d{1,2})?)\s+in\s+total\b/i);
+  if (nInTotal) return Number(nInTotal[1].replace(/,/g, ""));
+
+  // ── 2d. "gave me N" → prioritise actual received amount over earlier numbers ─
+  // "Kofi paid part of the 300 debt, he gave me 120 cash today" → 120 not 300.
+  const gaveMeN = text.match(/\bgave?\s+me\s+(\d[\d,]*(?:\.\d{1,2})?)\b/i);
+  if (gaveMeN) return Number(gaveMeN[1].replace(/,/g, ""));
+
+  // ── 2e. "for N" / "at N" total price — the number after "for"/"at" is the
+  // sale or purchase price when the message contains a quantity + unit word
+  // before the "for". Guard: do NOT fire when "for N [unit]" is itself a
+  // quantity expression (e.g. "for 5 bags" = 5 bags as payment-in-kind).
+  const forPriceM = text.match(
+    /\bfor\s+(\d[\d,]*(?:\.\d{1,2})?)\b(?!\s*(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|boxes?|tins?|rolls?|sachets?|dozens?|items?|pairs?|sets?|bundles?|kits?|cans?|customers?|people|persons?))/i
+  );
+  if (forPriceM) return Number(forPriceM[1].replace(/,/g, ""));
+
+  // ── 2f. "on credit [to Name] N" — trailing number is the credited amount ──
+  // "customer got 5 bags on credit 250", "sold 10 items on credit to Fiifi 400"
+  const creditTrailingM = text.match(
+    /\bon\s+credit(?:\s+(?:to|for)\s+\w+(?:\s+\w+)?)?\s+(\d[\d,]*(?:\.\d{1,2})?)\s*$/i
+  );
+  if (creditTrailingM) return Number(creditTrailingM[1].replace(/,/g, ""));
+
+  // ── 2g. "sold/expense/bought N [unit] M" — trailing M after unit is the price ──
+  // "expense 6 items 300", "sold 25 pieces 500" — last number is the GHS price.
+  const unitSepPriceM = text.match(
+    /\b(?:sold|sell|expense|spent|bought|buy|got|purchased?)\s+\d[\d,]*\s+(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|boxes?|tins?|rolls?|sachets?|dozens?|items?|pairs?|bundles?|kits?)\s+(\d[\d,]*(?:\.\d{1,2})?)\s*$/i
+  );
+  if (unitSepPriceM) return Number(unitSepPriceM[1].replace(/,/g, ""));
 
   // ── 2. k / m suffixes: 1.5k, 2m ────────────────────────────────────────────
   const kilo = text.match(/\b(\d+(?:\.\d+)?)\s*k\b/i);
@@ -1248,6 +1414,7 @@ function runSaleVotes(norm: string, raw: string, add: VoteMap["add"]) {
   if (/\breceipt\b/.test(norm)) add(t, 5, "receipt");
   if (/\b(customer paid|customer bought|customer collected|customer took)\b/.test(norm)) add(t, 10, "customer action");
   if (/\b(income|revenue|earned|made money|got money)\b/.test(norm)) add(t, 6, "income keyword");
+  if (/\b(we\s+made|i\s+made|made\s+(?:gscur|\d)|today.?s?\s+revenue|revenue\s+from\s+\w|earnings?\s+from)\b/.test(norm)) add(t, 7, "made/revenue from");
   if (/\bsell(?:ing)?\s+\w+/.test(norm)) add(t, 7, "selling product");
   if (/\bsold\s+\w+\s+\d+/.test(norm)) add(t, 12, "sold product+amount");
   if (/\b(dispatched|delivered|invoiced|billed)\b/.test(norm)) add(t, 6, "dispatched/billed");
@@ -1264,6 +1431,8 @@ function runSaleVotes(norm: string, raw: string, add: VoteMap["add"]) {
   if (/\b(dem buy|dem bought|they buy|they bought)\b/.test(norm)) add(t, 8, "pidgin:they bought");
   if (/\b(recorded sale|added sale|new sale)\b/.test(norm)) add(t, 8, "recorded sale phrase");
   if (/\b(sale today|yesterday sale|week sales?)\b/.test(norm)) add(t, 7, "time-bound sale");
+  if (/\b(sales?\s*reached|revenue\s*reached|momo\s*sales?|mobile\s*money\s*sales?)\b/.test(norm)) add(t, 8, "sales reached amount");
+  if (/\b(customer\s*(?:transferred|sent|paid\s*via\s*momo|transferred\s*via|mobile\s*transfer))\b/.test(norm)) add(t, 9, "customer transfer payment");
   if (/\b(got paid|they paid for|she paid for|he paid for)\b/.test(norm)) add(t, 7, "got paid for item");
   if (/\b(client paid|client bought)\b/.test(norm)) add(t, 8, "client sale");
   if (/\b(sold out|finished selling|cleared goods)\b/.test(norm)) add(t, 7, "sold out");
@@ -1315,7 +1484,14 @@ function runExpenseVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(bank charge|bank fee|bank deduction|commission paid)\b/.test(norm) && !/\b(loan|borrow)\b/.test(norm)) add(t, 7, "bank charges");
   if (/\b(donation|charity|contribution|welfare)\b/.test(norm)) add(t, 6, "donation");
   if (/\b(pay for|bought for)\b/.test(norm) && !/\b(worker|staff|salary|wage)\b/.test(norm) && !/\b(stock|goods|wholesale)\b/.test(norm)) add(t, 4, "paid for something");
-  if (/\bpaid\b/.test(norm) && !GH_NAMES_PATTERN.test(norm) && !/\b(rent|salary|wages|tax|levy|ecg|loan|back|stock)\b/.test(norm)) add(t, 3, "paid generic");
+  // "paid generic" — but not when a non-pronoun name precedes "paid" at sentence start
+  // (that's a repayment, e.g. "jona paid 34"). Also not when GH name present.
+  if (
+    /\bpaid\b/.test(norm) &&
+    !GH_NAMES_PATTERN.test(norm) &&
+    !/\b(rent|salary|wages|tax|levy|ecg|loan|back|stock)\b/.test(norm) &&
+    !/^(?:(?!(?:i|we|me|us|my|our|you|they|he|she|it)\s)[a-z][a-z']{1,20}\s+paid\b)/i.test(norm)
+  ) add(t, 3, "paid generic");
   if (/\b(bought\s+\w+)\b/.test(norm) && !/\b(stock|goods|restock|wholesale|carton|crate)\b/.test(norm)) add(t, 4, "bought non-stock");
   if (/\b(i spend|i pay|i spent)\b/.test(norm)) add(t, 8, "pidgin:i spent");
   if (/\b(dem charge|they charge|charged me)\b/.test(norm)) add(t, 7, "charged");
@@ -1342,6 +1518,16 @@ function runExpenseVotes(norm: string, _raw: string, add: VoteMap["add"]) {
   if (/\b(parking fee|parking charge|car park)\b/.test(norm)) add(t, 5, "parking");
   if (/\b(cold room|cold store|freezer hire|storage fee|warehouse rent)\b/.test(norm)) add(t, 7, "storage cost");
   if (/\b(cocoa farmer|farmer expense|farm expense|agric expense|crop expense)\b/.test(norm)) add(t, 6, "farm expense");
+  // ── Stock loss / damage / wastage (quantity-based, no monetary amount) ────
+  if (/\b(broke|broken|smashed|cracked|crushed)\b/.test(norm) && /\b(bottle[sd]?|crate[sd]?|bag[sd]?|glass(?:es)?|item[sd]?|goods?|stock|piece[sd]?|pack[sd]?|carton[sd]?)\b/.test(norm)) add(t, 12, "stock breakage");
+  if (/\b(spoiled|rotten|bad\s+goods?|went?\s+bad|inventory\s+spoil(?:ed|age)?|goods?\s+(?:are\s+)?spoil(?:ed|ing)?)\b/.test(norm)) add(t, 12, "spoiled stock");
+  if (/\b(expired?\s+(?:stock|goods?|items?|product[sd]?|inventory))\b/.test(norm)) add(t, 12, "expired stock");
+  if (/\b(stolen|stole|theft|robbery|someone\s+stole|robbed)\b/.test(norm) && /\b(stock|goods?|inventory|items?|money)\b/.test(norm)) add(t, 11, "theft/stolen");
+  if (/\b(we\s+lost|i\s+lost|lost\s+\d+|lost\s+(?:stock|inventory|goods?|items?|product[sd]?))\b/.test(norm)) add(t, 10, "stock lost");
+  if (/\b(inventory\s+loss|stock\s+loss|goods?\s+lost|items?\s+lost|record\s+(?:damage|loss|breakage))\b/.test(norm)) add(t, 12, "stock loss recorded");
+  if (/\b(missing\s+inventory|missing\s+stock|inventory\s+missing|shortage\s+detected)\b/.test(norm)) add(t, 10, "missing inventory");
+  if (/\b(damaged\s+(?:goods?|stock|items?|product[sd]?|inventory))\b/.test(norm)) add(t, 11, "damaged goods");
+  if (/\b(wasted\s+(?:goods?|stock|items?)|wastage)\b/.test(norm)) add(t, 9, "wasted goods");
 }
 
 // ── DEBT (27 signals) ─────────────────────────────────────────────────────────
@@ -1396,8 +1582,18 @@ function runRepaymentVotes(norm: string, raw: string, add: VoteMap["add"]) {
   if (/\b(settled|cleared|offset|finished paying|completed payment)\b/.test(norm)) add(t, 11, "settled/cleared");
   if (/\brepaid\b/.test(norm) && !/\b(loan repaid|repaid loan|bank)\b/.test(norm)) add(t, 10, "repaid");
   if (/\bpaid me\b/.test(norm)) add(t, 13, "paid me");
-  const namePaidPattern = /^([a-z][a-z'\s-]{1,25})\s+paid\b/i;
-  if (namePaidPattern.test(raw) && GH_NAMES_PATTERN.test(raw)) add(t, 11, "name-paid pattern");
+  // "[Name] paid [amount]" — name at start of message, not a pronoun.
+  // Removed GH_NAMES_PATTERN requirement: non-Ghanaian names (e.g. "jona") would
+  // fail that check and fall through to the expense heuristic incorrectly.
+  const namePaidPattern = /^([a-z][a-z']{1,20})\s+paid\b/i;
+  const namePaidMatch = namePaidPattern.exec(raw);
+  if (namePaidMatch) {
+    const PRONOUNS = new Set(["i", "we", "me", "us", "my", "our", "you", "they", "he", "she", "it"]);
+    const candidate = namePaidMatch[1].toLowerCase().trim();
+    if (!PRONOUNS.has(candidate)) add(t, 14, "name-paid pattern");
+  }
+  // Generic "[name] paid [amount]" anywhere in sentence (not starting with a pronoun)
+  if (/\b(?!(?:i|we|me|us|you)\s+)([a-z]{2,20})\s+paid\s+(\d+(?:\.\d+)?)\b/i.test(norm)) add(t, 10, "name paid amount generic");
   if (/\b(debt payment|debt cleared|old balance|past balance)\b/.test(norm)) add(t, 9, "debt cleared phrase");
   if (/\b(brought money|came to pay|paid today|came and paid)\b/.test(norm)) add(t, 8, "came to pay");
   if (/\b(cleared balance|cleared debt|balance cleared)\b/.test(norm)) add(t, 10, "balance cleared");
@@ -1434,6 +1630,11 @@ function runRepaymentVotes(norm: string, raw: string, add: VoteMap["add"]) {
   if (/\b(e remember|dem remember|finally came|eventually came)\b/.test(norm) && /\b(pay|paid|money)\b/.test(norm)) add(t, 6, "finally paid");
   if (/\b(susu day|susu collect|my susu turn|susu win|won susu)\b/.test(norm)) add(t, 8, "susu collection");
   if (/\b(NHIS|insurance claim paid|claim received|payout received)\b/.test(norm)) add(t, 7, "insurance payout");
+  // ── Collected from debtor / debt recovery ─────────────────────────────────
+  if (/\b(collected\s+from|from\s+debtor|debtor\s+paid|received\s+from\s+debtor|collected\s+debt)\b/.test(norm)) add(t, 13, "collected from debtor");
+  if (/\bi\s+collected\b/.test(norm) && /\b(debt|debtor|owe|balance|credit)\b/.test(norm)) add(t, 11, "i collected debt");
+  if (/\b(debt\s+recovered|recovered\s+debt|old\s+debt\s+paid|debt\s+from\s+old)\b/.test(norm)) add(t, 11, "debt recovered");
+  if (/\b(creditor\s+paid\s+me|owed\s+me\s+and\s+paid|they\s+owe(?:d)?\s+me\s+and)\b/.test(norm)) add(t, 10, "creditor paid me");
 }
 
 // ── STOCK PURCHASE (27 signals) ───────────────────────────────────────────────
@@ -1482,6 +1683,41 @@ function runStockPurchaseVotes(norm: string, _raw: string, add: VoteMap["add"]) 
   if (/\b(depot|wholesale depot|distribution center|warehouse)\b/.test(norm) && /\b(bought|buy|purchase|collected|got)\b/.test(norm)) add(t, 8, "depot purchase");
   if (/\b(market woman|market man|trader|hawker)\b/.test(norm) && /\b(bought|buy|from)\b/.test(norm)) add(t, 6, "bought from trader");
   if (/\b(cold room stock|frozen goods|frozen stock|frozen food)\b/.test(norm) && /\b(bought|buy|purchase)\b/.test(norm)) add(t, 7, "frozen stock purchase");
+
+  // ── "bought/buy N [product]" without a GHS/cedi price marker ─────────────
+  // "I bought 5 monitors" → the 5 is likely quantity, not a price.
+  // Strong signal for stock_purchase so it beats the expense fallback.
+  if (/\bbought\s+\d+\s+\w+\b/.test(norm) && !norm.includes("gscur")) add(t, 12, "bought N product no price");
+  if (/\bbuy\s+\d+\s+\w+\b/.test(norm) && !norm.includes("gscur")) add(t, 9, "buy N product no price");
+
+  // ── Stock LEVEL / inventory update: "I have N [product]" ─────────────────
+  // "I have 3 monitors" / "I have 50 bags" / "we have 10 chairs left"
+  // This is a stock-count update, not a sale or purchase.
+  if (/^(?:i|we)\s+have\s+\d+\b/i.test(norm)) add(t, 16, "i-have-N stock level");
+  if (/\b(have\s+\d+\s+\w+\s+(?:left|remaining|in\s*stock|in\s*store))\b/.test(norm)) add(t, 14, "have N left in stock");
+  if (/\b(update\s*stock|set\s*stock|stock\s*level|stock\s*count|inventory\s*update|current\s*stock)\b/.test(norm)) add(t, 14, "stock level update keyword");
+  if (/\b(now\s+have|currently\s+have|we\s+now\s+have)\b/.test(norm) && /\b\d+\b/.test(norm)) add(t, 12, "now have N");
+  if (/\b(stock\s+is\s+now|balance\s+is\s+now|qty\s+is|quantity\s+is)\b/.test(norm) && /\b\d+\b/.test(norm)) add(t, 12, "stock is now N");
+
+  // ── Explicit "inventory" keyword as a ledger entry ────────────────────────
+  // "Inventory (3936 x 27)", "Add inventory purchase 800", "Received stock 200"
+  if (/^inventory\b/i.test(norm) && /\b\d+\b/.test(norm)) add(t, 13, "inventory-as-entry");
+  if (/\b(add\s+inventory|inventory\s+purchase|purchase\s+inventory)\b/.test(norm)) add(t, 12, "add inventory");
+  if (/\b(received\s+stock|stock\s+received|stock\s+arrived|goods\s+received)\b/.test(norm)) add(t, 11, "stock received");
+  // ── "add stock / add to stock / adding stock" ─────────────────────────────
+  if (/\badd(?:ed|ing)?\s+(?:\d+\s+)?(?:\w+\s+)?(?:to\s+)?stock\b/i.test(norm) && !/\binventory\s+purchase/.test(norm)) add(t, 13, "add to stock");
+  if (/\badd(?:ing)?\s+(?:\d+\s+)?(?:to\s+)?inventory\b/i.test(norm) && !/\binventory\s+purchase/.test(norm)) add(t, 12, "add to inventory");
+  if (/\bstock\s+added\b/.test(norm)) add(t, 11, "stock added");
+  // ── "bought Nx product" — x-notation quantity ─────────────────────────────
+  if (/\bbought\s+\d+[x×]\s*\w+\b/i.test(norm) && !norm.includes("gscur")) add(t, 13, "bought Nx product");
+  if (/\bbuy\s+\d+[x×]\s*\w+\b/i.test(norm) && !norm.includes("gscur")) add(t, 10, "buy Nx product");
+  // ── "remaining stock of X is N" / "stock of X is N" ─────────────────────
+  if (/\b(?:remaining\s+stock|stock\s+of\s+\w+\s+is)\b/.test(norm) && /\b\d+\b/.test(norm)) add(t, 13, "remaining stock is N");
+  if (/\bstock\s+(?:of|for|at)\b.+\bis\s+\d+\b/.test(norm)) add(t, 12, "stock of X is N");
+  // ── Partial delivery ──────────────────────────────────────────────────────
+  if (/\b(partial\s+(?:stock|inventory|delivery|order)|delivered\s+(?:less|partial)|less\s+than\s+(?:expected|ordered))\b/.test(norm)) add(t, 9, "partial delivery");
+  // ── Restocked (without price) ─────────────────────────────────────────────
+  if (/\brestocked?\b/.test(norm) && !norm.includes("gscur")) add(t, 10, "restocked no price");
 }
 
 // ── COST (29 signals) ─────────────────────────────────────────────────────────
@@ -1950,17 +2186,36 @@ function runTwiPidginVotes(norm: string, _raw: string, add: VoteMap["add"]) {
 }
 
 // ─── 12. ENTITY EXTRACTION ───────────────────────────────────────────────────
+// Single-word tokens that should never be treated as a person's name
+const _COUNTERPARTY_STOP = new Set([
+  "customer","client","he","she","they","i","we","the","a","an","my","your",
+  "his","her","our","their","sold","sell","bought","buy","gave","paid","got",
+  "received","sent","loaned","lent","spent","took","someone","anyone","nobody",
+]);
+
 function extractCounterparty(raw: string, norm: string, type: TransactionType): string | null {
   switch (type) {
     case "debt": {
+      // The prefix before "credit/owes/borrowed" is often a verb phrase ("sold on"),
+      // not a name. Only accept it if it's a single short word that is not a verb.
       const m = raw.match(/^(.+?)\s+(?:owes?|owe|credit|borrowed|borrowed from me|give on credit)\b/i);
-      return compactName(m?.[1]) || extractNameAfterPrep(norm, "to");
+      const cand = compactName(m?.[1]);
+      const isPlausibleName = cand && !cand.includes(" ") && !_COUNTERPARTY_STOP.has(cand.toLowerCase());
+      return (isPlausibleName ? cand : null)
+        || extractNameAfterPrep(norm, "to")
+        || extractGhanaianName(raw)
+        || extractNameAfterPrep(norm, "from");
     }
     case "repayment": {
-      const m = raw.match(/^(.+?)\s+paid\b/i);
+      // Extend payment verbs to include "repaid" and "sent" (common in Ghanaian usage).
+      // Remove the GH_NAMES_PATTERN gate — if the regex matches a single-word non-verb
+      // token at the start, trust it as a name without requiring it to be in the list.
+      const m = raw.match(/^(.+?)\s+(?:paid|repaid|sent|remitted)\b/i);
       const name = compactName(m?.[1]);
-      if (name && GH_NAMES_PATTERN.test(name)) return name;
-      return extractGhanaianName(raw) || extractNameAfterPrep(norm, "from");
+      const isPlausibleName = name && !name.includes(" ") && !_COUNTERPARTY_STOP.has(name.toLowerCase());
+      return (isPlausibleName ? name : null)
+        || extractGhanaianName(raw)
+        || extractNameAfterPrep(norm, "from");
     }
     case "borrow_in":
     case "loan_repay_out":
@@ -1981,7 +2236,12 @@ function extractCounterparty(raw: string, norm: string, type: TransactionType): 
     case "refund_out":
       return extractGhanaianName(raw) || extractNameAfterPrep(norm, "to");
     default:
-      return extractNameAfterPrep(norm, "from") || extractNameAfterPrep(norm, "to") || null;
+      // For any other type (sale, income, expense, etc.) try to extract a Ghanaian name
+      // that appears in the message — common when the type is misclassified or ambiguous.
+      return extractGhanaianName(raw)
+        || extractNameAfterPrep(norm, "from")
+        || extractNameAfterPrep(norm, "to")
+        || null;
   }
 }
 

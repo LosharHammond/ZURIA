@@ -40,11 +40,31 @@ const VERB_PATTERN = FINANCIAL_VERBS.join("|");
 /**
  * Conjunction patterns that may link multiple financial events.
  * Only split when the conjunction is followed by a financial verb.
+ *
+ * Also handles "but still owes N" / "but owes N" — common Ghanaian phrasing
+ * for a compound "paid X, debt balance Y" message. We split on "but" only
+ * when it is immediately followed by "still owes", "owes", or "still ow"
+ * so we never incorrectly split unrelated "but" clauses.
  */
 const SPLIT_RE = new RegExp(
   `\\s+(?:and|plus|also|then|,\\s*(?:and)?|;)\\s+(?=${VERB_PATTERN})`,
   "gi",
 );
+
+/**
+ * Detects "paid X ... but still owes Y" compound patterns and returns two
+ * raw segments so the caller can parse each independently.
+ * Returns null if the message does not match this shape.
+ */
+function splitPaidOwes(raw: string): [string, string] | null {
+  // Pattern: "... paid N ... but (still) owes M ..."
+  const m = /^(.+?)\bbut\s+(?:still\s+)?(?:ow(?:es?|e[sd]?)\b.+)$/i.exec(raw.trim());
+  if (!m) return null;
+  const firstPart  = (m[1] ?? "").trim();
+  const secondPart = raw.slice(firstPart.length).replace(/^\s*but\s*/i, "").trim();
+  if (!firstPart || !secondPart) return null;
+  return [firstPart, secondPart];
+}
 
 /** Minimum confidence for a segment to be included in results */
 const MIN_CONFIDENCE = 0.40;
@@ -69,6 +89,26 @@ export interface MultiIntentResult {
  * @param rawText - The user's original message (already Ghanaian-normalized)
  */
 export function parseMultiIntent(rawText: string): MultiIntentResult {
+  // ── Step 0: Handle "paid X but still owes Y" compound messages ────────────
+  // These cannot be split by SPLIT_RE because "but" is not in the conjunction
+  // list (too ambiguous in general). We detect this specific shape explicitly.
+  const oweSplit = splitPaidOwes(rawText);
+  if (oweSplit) {
+    const [seg1, seg2] = oweSplit;
+    const p1 = parseTransaction(seg1!);
+    const p2 = parseTransaction(seg2!);
+    const valid = [
+      ...(p1.confidence >= MIN_CONFIDENCE && p1.amount > 0 ? [p1] : []),
+      ...(p2.confidence >= MIN_CONFIDENCE               ? [p2] : []),
+    ];
+    if (valid.length === 2) {
+      return { isMultiIntent: true, transactions: valid, segments: [seg1!, seg2!] };
+    }
+    if (valid.length === 1) {
+      return { isMultiIntent: false, transactions: valid, segments: [rawText] };
+    }
+  }
+
   // ── Step 1: Attempt to split into segments ─────────────────────────────────
   const segments = rawText.split(SPLIT_RE).map((s) => s.trim()).filter(Boolean);
 

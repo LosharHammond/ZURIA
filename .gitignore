@@ -13,3 +13,10 @@ firestore-debug.log
 ngrok.exe
 ngrok
 *.exe
+
+# Test / CI temp files
+.jest-results.json
+.project-guard-jest.json
+coverage/
+__tests__/tmp-*.ts
+__tests__/tmp-*.js

@@ -31,6 +31,8 @@ const REQUIRED_SERVER: EnvKey[] = [
   "AUTH_SESSION_SECRET",
   // Must be set in production — cron routes reject all requests without it
   "CRON_SECRET",
+  // Must be set in production — webhook signature verification fails without it
+  "PAYSTACK_SECRET_KEY",
 ];
 
 const PLACEHOLDERS = ["paste_your_key_here", "from Firebase", "sk_live_paste"];

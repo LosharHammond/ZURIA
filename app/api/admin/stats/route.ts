@@ -12,38 +12,80 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = getAdminDb();
+
+    // ── Aggregate counts ──────────────────────────────────────────────────────
     const [usersSnap, bizSnap, txnSnap] = await Promise.all([
       db.collection(collections.users).count().get(),
       db.collection(collections.businesses).count().get(),
       db.collection(collections.transactions).count().get(),
     ]);
 
-    const [recentUsers, recentTxns, pendingWithdrawals, recentErrors] = await Promise.all([
-      db.collection(collections.users).orderBy("createdAt", "desc").limit(20).get(),
-      db.collection(collections.transactions).orderBy("createdAt", "desc").limit(30).get(),
-      db.collection(collections.withdrawals).where("status", "==", "pending").orderBy("createdAt", "desc").get(),
-      db.collection(collections.errors).orderBy("createdAt", "desc").limit(50).get(),
+    // ── Plan breakdown — 4 parallel count queries ─────────────────────────────
+    const [freePlanSnap, growthPlanSnap, proPlanSnap, enterprisePlanSnap] = await Promise.all([
+      db.collection(collections.users).where("subscriptionPlan", "==", "free").count().get(),
+      db.collection(collections.users).where("subscriptionPlan", "==", "growth").count().get(),
+      db.collection(collections.users).where("subscriptionPlan", "==", "pro").count().get(),
+      db.collection(collections.users).where("subscriptionPlan", "==", "enterprise").count().get(),
     ]);
 
+    // ── Main data fetches ─────────────────────────────────────────────────────
+    const [recentUsers, recentTxns, pendingWithdrawals, processingWithdrawals, pendingClaims, recentErrors] =
+      await Promise.all([
+        db.collection(collections.users).orderBy("createdAt", "desc").limit(30).get(),
+        db.collection(collections.transactions).orderBy("createdAt", "desc").limit(30).get(),
+        db.collection(collections.withdrawals).where("status", "==", "pending").orderBy("createdAt", "desc").get(),
+        db.collection(collections.withdrawals).where("status", "==", "processing").orderBy("createdAt", "desc").get(),
+        db.collection(collections.paymentClaims).where("status", "==", "pending").orderBy("claimedAt", "desc").get(),
+        db.collection(collections.errors).orderBy("createdAt", "desc").limit(50).get(),
+      ]);
+
+    // ── Revenue — count verified (paid) activation events ────────────────────
+    // Only counts real paid activations (source !== "admin") to avoid counting
+    // complimentary grants as revenue.
+    let revenueGHS = 0;
+    let revenueCount = 0;
+    try {
+      const revenueSnap = await db
+        .collection(collections.paymentEvents)
+        .where("eventType", "==", "SUBSCRIPTION_ACTIVATED")
+        .where("source", "!=", "admin")
+        .get();
+      for (const doc of revenueSnap.docs) {
+        const d = doc.data();
+        revenueGHS += (d.amountGHS as number) ?? 0;
+        revenueCount++;
+      }
+    } catch {
+      // composite index may not exist yet — skip revenue stats gracefully
+    }
+
+    // ── Shape users ───────────────────────────────────────────────────────────
     const users = recentUsers.docs.map((d) => {
       const data = d.data();
-      // Mask phone numbers in admin responses to protect PII
       const rawPhone = (data.phoneNumber as string) ?? "";
-      const maskedPhone = rawPhone.length > 6
-        ? `${rawPhone.slice(0, rawPhone.length - 6)}****${rawPhone.slice(-2)}`
-        : "****";
+      const maskedPhone =
+        rawPhone.length > 6
+          ? `${rawPhone.slice(0, rawPhone.length - 6)}****${rawPhone.slice(-2)}`
+          : "****";
       return {
         id: d.id,
         ownerName: data.ownerName ?? "—",
         phoneNumber: maskedPhone,
+        rawPhone,           // full phone for WhatsApp notify actions
         onboardingComplete: data.onboardingComplete ?? false,
         businessId: data.businessId ?? null,
         preferredLanguage: data.preferredLanguage ?? "english",
-        subscriptionPlan: data.subscriptionPlan ?? "free",
+        subscriptionPlan: (data.subscriptionPlan as string) ?? "free",
+        subscriptionExpiresAt: (data.subscriptionExpiresAt as string | null) ?? null,
+        referralCode: (data.referralCode as string | null) ?? null,
+        referralBalance: (data.referralBalance as number) ?? 0,
+        referralCount: (data.referralCount as number) ?? 0,
+        whatsappMessageCount: (data.whatsappMessageCount as number) ?? 0,
         createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt ?? null,
       };
     });
 
+    // ── Shape transactions ────────────────────────────────────────────────────
     const transactions = recentTxns.docs.map((d) => {
       const data = d.data();
       return {
@@ -52,13 +94,38 @@ export async function GET(req: NextRequest) {
         type: data.type,
         amount: data.amount,
         rawText: data.rawText ?? "",
+        customerName: data.customerName ?? null,
+        productName: data.productName ?? null,
         source: data.source ?? "manual",
+        confidence: data.confidence ?? null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt ?? null,
       };
     });
 
-    const withdrawals = pendingWithdrawals.docs.map((d) => d.data());
+    // ── Shape withdrawals ─────────────────────────────────────────────────────
+    const allWithdrawals = [
+      ...pendingWithdrawals.docs.map((d) => d.data()),
+      ...processingWithdrawals.docs.map((d) => d.data()),
+    ];
 
+    // ── Shape payment claims ──────────────────────────────────────────────────
+    const paymentClaims = pendingClaims.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        userId: data.userId ?? "",
+        ownerName: data.ownerName ?? "—",
+        phone: data.phone ?? "",
+        plan: data.plan ?? "growth",
+        annual: data.annual ?? false,
+        amount: data.amount ?? 0,
+        status: data.status ?? "pending",
+        businessName: data.businessName ?? "",
+        claimedAt: data.claimedAt ?? null,
+      };
+    });
+
+    // ── Shape errors ──────────────────────────────────────────────────────────
     const errors = recentErrors.docs.map((d) => {
       const data = d.data();
       return {
@@ -76,14 +143,22 @@ export async function GET(req: NextRequest) {
         users: usersSnap.data().count,
         businesses: bizSnap.data().count,
         transactions: txnSnap.data().count,
+        revenueGHS,
+        revenueCount,
+      },
+      planBreakdown: {
+        free: freePlanSnap.data().count,
+        growth: growthPlanSnap.data().count,
+        pro: proPlanSnap.data().count,
+        enterprise: enterprisePlanSnap.data().count,
       },
       users,
       transactions,
-      withdrawals,
+      withdrawals: allWithdrawals,
+      paymentClaims,
       errors,
     });
   } catch (err) {
-    // Log full error server-side but never expose internal details to the client
     console.error("[admin/stats]", err instanceof Error ? err.message : String(err));
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

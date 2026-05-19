@@ -1,0 +1,6006 @@
+{
+  "generatedAt": "2026-05-19T13:36:31.856Z",
+  "totalLocked": 1000,
+  "results": [
+    {
+      "id": "FIN-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-053",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-056",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-061",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-062",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-063",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-064",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-065",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-070",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-071",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-072",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-073",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-074",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-075",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-078",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-081",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-082",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-083",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-084",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-085",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-086",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-087",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-088",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-089",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-090",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-091",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-092",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-093",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-094",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-095",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-096",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-097",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-098",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-099",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-100",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-101",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-102",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-103",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-104",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-105",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-106",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-107",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-108",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-109",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-110",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-111",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-112",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-113",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-114",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-115",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "withdrawal",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-116",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "investment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-117",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "investment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-118",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-119",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "investment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-120",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-121",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "refund",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-122",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-123",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-124",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "refund",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-125",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "refund",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-126",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-127",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-128",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-129",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-130",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-131",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-132",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-133",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-134",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-135",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-136",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-137",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-138",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-139",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-140",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-141",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-142",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-143",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-144",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-145",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-146",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-147",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-148",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-149",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FIN-150",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-053",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-056",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-061",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-062",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-063",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-064",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-065",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-070",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-071",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-072",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-073",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-074",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-075",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-078",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-081",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-082",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-083",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-084",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-085",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-086",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-087",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-088",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-089",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-090",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-091",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-092",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-093",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-094",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-095",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-096",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-097",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-098",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-099",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "DEB-100",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-051",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-052",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-053",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-054",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-055",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-056",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-057",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-058",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-059",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-060",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-061",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-062",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-063",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-064",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-065",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-066",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-067",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-068",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-069",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-070",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-071",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-072",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-073",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-074",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-075",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-078",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-081",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-082",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-083",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-084",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-085",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-086",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-087",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-088",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-089",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-090",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-091",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-092",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-093",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-094",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-095",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-096",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-097",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-098",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-099",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "INV-100",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-045",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-048",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "monthly_report",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-053",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-056",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-061",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-062",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-063",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-064",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-065",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_repaid",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-070",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-071",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-072",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-073",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-074",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-075",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-078",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "EMO-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-026",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-027",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-028",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-029",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-030",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-031",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-032",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-033",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-034",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-035",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-036",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-037",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-038",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-039",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-040",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-053",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-056",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-061",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-062",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-063",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-064",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-065",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-066",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-067",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-068",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-069",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-070",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-071",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-072",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "weekly_report",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-073",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-074",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-075",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-078",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-081",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-082",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-083",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-084",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-085",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-086",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-087",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-088",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-089",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-090",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-091",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-092",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-093",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-094",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-095",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-096",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-097",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-098",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-099",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-100",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-101",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-102",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-103",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-104",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-105",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-106",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-107",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-108",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-109",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "GHA-110",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-053",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-056",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-061",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-062",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-063",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-064",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-065",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-070",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-071",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-072",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-073",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-074",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-075",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-078",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-081",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-082",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-083",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-084",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-085",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-086",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-087",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-088",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-089",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-090",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-091",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-092",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-093",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-094",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-095",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-096",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-097",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-098",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-099",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "MUL-100",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-004",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-008",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-014",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-018",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-019",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-046",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-048",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-050",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-053",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-056",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-061",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-062",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-063",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-064",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-065",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-070",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-071",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-072",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-073",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-074",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-075",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-076",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-077",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-078",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-079",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-080",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-081",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-082",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-083",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-084",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-085",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-086",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-087",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-088",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-089",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-090",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-091",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-092",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-093",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-094",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-095",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-096",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-097",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-098",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-099",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "AMB-100",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-002",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-003",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-004",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-010",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-011",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-012",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-014",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-015",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-016",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-020",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-051",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-052",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-053",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-054",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-055",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-056",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-057",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-058",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-059",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-060",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-061",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-062",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-063",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-064",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-065",
+      "intent": "UNDO",
+      "subIntent": "undo",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-066",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-067",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-068",
+      "intent": "HELP_ENGINE",
+      "subIntent": "commands_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-069",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-070",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-071",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "weekly_report",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-072",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-073",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-074",
+      "intent": "SMALLTALK",
+      "subIntent": "greeting",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-075",
+      "intent": "HELP_ENGINE",
+      "subIntent": "commands_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-076",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "monthly_report",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-077",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "referral_status",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-078",
+      "intent": "AUTH_ENGINE",
+      "subIntent": "lock",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-079",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "CTX-080",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-001",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-002",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-003",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-004",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-005",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-006",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-007",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-008",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-009",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-010",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-011",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-012",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-013",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-014",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-015",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-016",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-017",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-018",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-019",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-020",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-021",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-024",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-025",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-026",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-027",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-028",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-029",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-030",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-031",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-032",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-033",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-034",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-035",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-036",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-037",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-038",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-039",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-040",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-041",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-042",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-043",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-044",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-045",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-046",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-047",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-048",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "loan_given",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-049",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-050",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-051",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-052",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-053",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-054",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-055",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": true
+    },
+    {
+      "id": "FRD-056",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-057",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-058",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-059",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-060",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-061",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-062",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-063",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-064",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-065",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-070",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-071",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-072",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-073",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-074",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-075",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-076",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "referral_status",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-077",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-078",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-079",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "FRD-080",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-001",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-002",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-003",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-004",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-005",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-006",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-007",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-008",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-009",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-010",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-011",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-012",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "weekly_report",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-013",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-014",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "stock_level",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-015",
+      "intent": "SMALLTALK",
+      "subIntent": "greeting",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-016",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-017",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-018",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-019",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-020",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-021",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "referral_status",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-022",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-023",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-024",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "monthly_report",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-025",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-026",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-027",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-028",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-029",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-030",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-031",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-032",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-033",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-034",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-035",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-036",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-037",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-038",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-039",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-040",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-041",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-042",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-043",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-044",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-045",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-046",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-047",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-048",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-049",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-050",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-051",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-052",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-053",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-054",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-055",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-056",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-057",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-058",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-059",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-060",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-061",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-062",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-063",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-064",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-065",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "payment_claim",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-066",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-067",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-068",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-069",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_record",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-070",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "debt_payment",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-071",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "stock_update",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-072",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "salary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-073",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-074",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-075",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-076",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-077",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-078",
+      "intent": "ERROR",
+      "subIntent": "ambiguous",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-079",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "expense",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-080",
+      "intent": "LEDGER_ENGINE",
+      "subIntent": "sale",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-081",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-082",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-083",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-084",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-085",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-086",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-087",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-088",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-089",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-090",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "full_dashboard",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-091",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-092",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-093",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-094",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-095",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-096",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-097",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-098",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-099",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    },
+    {
+      "id": "SUB-100",
+      "intent": "SUBSCRIPTION_ENGINE",
+      "subIntent": "upgrade_request",
+      "isDuplicate": false
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "_comment": "ZURIA project-wide health baseline. Updated by: npm run project:update-baseline",
+  "_note": "The guard enforces: TS errors ≤ baseline, ESLint errors ≤ baseline, per-suite passing ≥ baseline. Failing counts here are KNOWN pre-existing issues — locked so they cannot get worse.",
+  "generatedAt": "2026-05-19",
+  "typeScriptErrors": 0,
+  "eslintErrors": 0,
+  "suites": {
+    "unit/01-transaction-parser.test.ts": {
+      "passing": 31,
+      "failing": 16,
+      "total": 47,
+      "status": "failed"
+    },
+    "unit/02-ghanaian-normalizer.test.ts": {
+      "passing": 38,
+      "failing": 1,
+      "total": 39,
+      "status": "failed"
+    },
+    "unit/03-intent-classifier.test.ts": {
+      "passing": 114,
+      "failing": 11,
+      "total": 125,
+      "status": "failed"
+    },
+    "unit/04-engine-guard.test.ts": {
+      "passing": 41,
+      "failing": 0,
+      "total": 41,
+      "status": "passed"
+    },
+    "unit/05-fraud-scorer.test.ts": {
+      "passing": 45,
+      "failing": 1,
+      "total": 46,
+      "status": "failed"
+    },
+    "unit/06-multi-intent-parser.test.ts": {
+      "passing": 40,
+      "failing": 1,
+      "total": 41,
+      "status": "failed"
+    },
+    "integration/07-webhook-processor.test.ts": {
+      "passing": 29,
+      "failing": 4,
+      "total": 33,
+      "status": "failed"
+    },
+    "integration/08-payment-reconciler.test.ts": {
+      "passing": 20,
+      "failing": 2,
+      "total": 22,
+      "status": "failed"
+    },
+    "adversarial/09-duplicate-webhook-storm.test.ts": {
+      "passing": 15,
+      "failing": 0,
+      "total": 15,
+      "status": "passed"
+    },
+    "adversarial/10-concurrency-race.test.ts": {
+      "passing": 9,
+      "failing": 1,
+      "total": 10,
+      "status": "failed"
+    },
+    "adversarial/11-ledger-integrity.test.ts": {
+      "passing": 22,
+      "failing": 0,
+      "total": 22,
+      "status": "passed"
+    },
+    "adversarial/12-fraud-attack-simulation.test.ts": {
+      "passing": 32,
+      "failing": 0,
+      "total": 32,
+      "status": "passed"
+    },
+    "adversarial/13-intent-misclassification.test.ts": {
+      "passing": 70,
+      "failing": 5,
+      "total": 75,
+      "status": "failed"
+    },
+    "adversarial/14-firestore-conflict.test.ts": {
+      "passing": 16,
+      "failing": 0,
+      "total": 16,
+      "status": "passed"
+    },
+    "adversarial/15-replay-attack.test.ts": {
+      "passing": 24,
+      "failing": 0,
+      "total": 24,
+      "status": "passed"
+    },
+    "regression/regression-guard.test.ts": {
+      "passing": 3,
+      "failing": 0,
+      "total": 3,
+      "status": "passed"
+    },
+    "regression/16-behavioral-regression.test.ts": {
+      "passing": 1161,
+      "failing": 0,
+      "total": 1161,
+      "status": "passed"
+    }
+  },
+  "totalPassing": 1710,
+  "totalFailing": 42,
+  "totalTests": 1752
+}
