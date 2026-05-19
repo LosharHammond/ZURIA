@@ -29,13 +29,16 @@ export async function GET(req: NextRequest) {
     ]);
 
     // ── Main data fetches ─────────────────────────────────────────────────────
+    // Note: where() + orderBy() on different fields needs a composite index.
+    // To avoid a hard dependency on Firestore index deployment, we fetch with
+    // where() only and sort in JS (admin pages have ≤50 docs — cost is negligible).
     const [recentUsers, recentTxns, pendingWithdrawals, processingWithdrawals, pendingClaims, recentErrors] =
       await Promise.all([
         db.collection(collections.users).orderBy("createdAt", "desc").limit(30).get(),
         db.collection(collections.transactions).orderBy("createdAt", "desc").limit(30).get(),
-        db.collection(collections.withdrawals).where("status", "==", "pending").orderBy("createdAt", "desc").get(),
-        db.collection(collections.withdrawals).where("status", "==", "processing").orderBy("createdAt", "desc").get(),
-        db.collection(collections.paymentClaims).where("status", "==", "pending").orderBy("claimedAt", "desc").get(),
+        db.collection(collections.withdrawals).where("status", "==", "pending").get(),
+        db.collection(collections.withdrawals).where("status", "==", "processing").get(),
+        db.collection(collections.paymentClaims).where("status", "==", "pending").get(),
         db.collection(collections.errors).orderBy("createdAt", "desc").limit(50).get(),
       ]);
 
@@ -102,28 +105,40 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // ── Shape withdrawals ─────────────────────────────────────────────────────
+    // ── Shape withdrawals (sorted newest-first in JS) ─────────────────────────
     const allWithdrawals = [
       ...pendingWithdrawals.docs.map((d) => d.data()),
       ...processingWithdrawals.docs.map((d) => d.data()),
-    ];
-
-    // ── Shape payment claims ──────────────────────────────────────────────────
-    const paymentClaims = pendingClaims.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        userId: data.userId ?? "",
-        ownerName: data.ownerName ?? "—",
-        phone: data.phone ?? "",
-        plan: data.plan ?? "growth",
-        annual: data.annual ?? false,
-        amount: data.amount ?? 0,
-        status: data.status ?? "pending",
-        businessName: data.businessName ?? "",
-        claimedAt: data.claimedAt ?? null,
-      };
+    ].sort((a, b) => {
+      const aTs = a.createdAt?.toMillis?.() ?? 0;
+      const bTs = b.createdAt?.toMillis?.() ?? 0;
+      return bTs - aTs;
     });
+
+    // ── Shape payment claims (sorted newest-first in JS) ──────────────────────
+    const paymentClaims = pendingClaims.docs
+      .map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          userId: data.userId ?? "",
+          ownerName: data.ownerName ?? "—",
+          phone: data.phone ?? "",
+          plan: data.plan ?? "growth",
+          annual: data.annual ?? false,
+          amount: data.amount ?? 0,
+          status: data.status ?? "pending",
+          businessName: data.businessName ?? "",
+          claimedAt: data.claimedAt ?? null,
+        };
+      })
+      .sort((a, b) => {
+        const aTs = typeof a.claimedAt === "string" ? new Date(a.claimedAt).getTime()
+                  : (a.claimedAt as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
+        const bTs = typeof b.claimedAt === "string" ? new Date(b.claimedAt).getTime()
+                  : (b.claimedAt as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
+        return bTs - aTs;
+      });
 
     // ── Shape errors ──────────────────────────────────────────────────────────
     const errors = recentErrors.docs.map((d) => {
