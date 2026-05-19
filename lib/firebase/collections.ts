@@ -74,4 +74,33 @@ export const collections = {
 
   // Executive reports — AI-generated business intelligence reports.
   executiveReports: "executive_reports",
+
+  // ── Business Intelligence Engine ──────────────────────────────────────────
+
+  // Full BI reports — fingerprint, archetype, trends, seasonal, rhythm.
+  businessIntelligence: "business_intelligence",
+
+  // Financial risk scores — per-business risk + lending eligibility.
+  riskScores: "risk_scores",
+
+  // Business timeline — chronological operational events.
+  businessTimeline: "business_timeline",
+
+  // AI evaluation records — hallucination tracking, parser vs AI quality.
+  aiEvals: "ai_evals",
+
+  // AI request logs — per-inference request/response structured logging.
+  aiRequestLogs: "ai_request_logs",
+
+  // Parser benchmark logs — precision/recall tracking per extraction.
+  parserBenchmarkLogs: "parser_benchmark_logs",
+
+  // Double-entry ledger journal entries.
+  journalEntries: "journal_entries",
+
+  // Memory store — tiered memory entries with decay.
+  memoryStore: "memory_store",
+
+  // Notification deduplication keys — prevents duplicate notification sends.
+  notificationDedup: "notification_dedup",
 } as const;
