@@ -84,20 +84,28 @@ export async function dispatchJob(job: QueueJob): Promise<void> {
     }
 
     case "recalculate_risk": {
-      console.log(
-        "[worker] risk recalculation triggered",
-        { jobId: job.id, userId: job.userId, payload },
-      );
-      // Full implementation deferred — risk scoring engine TBD
+      // Lazy import to avoid loading heavy dependencies on cold-start
+      const { getOrRefreshRiskScore } = await import("@/lib/risk");
+      const businessId = String(payload.businessId ?? "");
+      const userId = String(payload.userId ?? job.userId);
+      await getOrRefreshRiskScore(userId, businessId, {
+        transactions: [],
+        debts: [],
+        avgDailyRevenue: 0,
+        avgDailyExpenses: 0,
+        cashFlowPattern: "stable",
+        activeDebtCount: 0,
+        totalDebtOutstanding: 0,
+      });
       break;
     }
 
     case "refresh_timeline": {
-      console.log(
-        "[worker] timeline refresh triggered",
-        { jobId: job.id, userId: job.userId, payload },
-      );
-      // Full implementation deferred — timeline refresh engine TBD
+      const { refreshTimeline } = await import("@/lib/timeline");
+      const businessId = String(payload.businessId ?? "");
+      const userId = String(payload.userId ?? job.userId);
+      const avgDailyRevenue = Number(payload.avgDailyRevenue ?? 0);
+      await refreshTimeline(userId, businessId, [], [], avgDailyRevenue);
       break;
     }
 
@@ -125,11 +133,10 @@ export async function dispatchJob(job: QueueJob): Promise<void> {
     }
 
     case "refresh_business_intelligence": {
-      console.log(
-        "[worker] business intelligence refresh triggered",
-        { jobId: job.id, userId: job.userId, payload },
-      );
-      // Full implementation deferred — BI refresh engine TBD
+      const { getOrRefreshIntelligence } = await import("@/lib/business-intelligence");
+      const businessId = String(payload.businessId ?? "");
+      const userId = String(payload.userId ?? job.userId);
+      await getOrRefreshIntelligence(userId, businessId);
       break;
     }
 
@@ -142,11 +149,9 @@ export async function dispatchJob(job: QueueJob): Promise<void> {
     }
 
     case "run_reconciliation": {
-      console.log(
-        "[worker] reconciliation triggered",
-        { jobId: job.id, userId: job.userId, payload },
-      );
-      // Full implementation deferred — reconciliation engine TBD
+      const { runReconciliation } = await import("@/lib/finance/ledger");
+      const businessId = String(payload.businessId ?? "");
+      await runReconciliation(businessId);
       break;
     }
 

@@ -66,7 +66,7 @@ export interface PipelineOutput {
 export async function runAIPipeline(input: PipelineInput): Promise<PipelineOutput> {
   const {
     userId, businessId, rawText, normalizedText,
-    parsedTransaction, aiRequest, isCriticalTransaction = false,
+    parsedTransaction, aiRequest, isCriticalTransaction: _isCriticalTransaction = false,
     platform = "whatsapp", ruleBasedResponse,
   } = input;
 

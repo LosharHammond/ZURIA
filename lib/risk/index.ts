@@ -49,7 +49,6 @@ export interface RiskFlag {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const REVENUE_TYPES = ["sale", "repayment"] as const;
-const EXPENSE_TYPES = ["expense", "cost", "salary", "tax"] as const;
 
 function toDateKey(isoTs: string): string {
   return isoTs.slice(0, 10);
@@ -63,10 +62,6 @@ function uniqueDaysWithActivity(transactions: Transaction[], types: string[]): S
     }
   }
   return days;
-}
-
-function sumByTypes(txns: Transaction[], types: readonly string[]): number {
-  return txns.reduce((acc, t) => (types.includes(t.type) ? acc + t.amount : acc), 0);
 }
 
 function daysAgo(n: number): string {

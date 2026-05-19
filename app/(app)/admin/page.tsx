@@ -4,12 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Users, Store, ReceiptText, RefreshCw, Smartphone, Globe,
   ArrowDownToLine, Check, X, AlertTriangle, Info, TrendingUp,
-  CreditCard, BadgeCheck, Clock, ChevronRight, Crown, Zap,
-  ShieldCheck, Activity, DollarSign, FileText,
+  CreditCard, BadgeCheck, ChevronRight, Crown, Zap,
+  ShieldCheck, Activity, DollarSign,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/stores/app-store";
 import { useAuth } from "@/providers/auth-provider";
 import { formatMoney } from "@/lib/utils";

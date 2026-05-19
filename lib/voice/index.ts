@@ -76,10 +76,6 @@ const VOICE_PATTERN_RE = [
   /[a-z]{2,}\s+\d+\s+[a-z]/i,          // "sold rice 200 yesterday"
 ];
 
-// ─── Amount Patterns ──────────────────────────────────────────────────────────
-
-const AMOUNT_RE = /(?:gh[c₵]|cedis?|ghc)?\s*(\d[\d,]*(?:\.\d{1,2})?)\s*(?:gh[c₵]|cedis?|ghc)?/gi;
-
 // ─── Product Trigger Words ────────────────────────────────────────────────────
 
 const PRODUCT_TRIGGERS = [
