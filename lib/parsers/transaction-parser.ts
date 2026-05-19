@@ -1000,6 +1000,17 @@ export function parseTransaction(input: string): ParsedTransaction {
   let confidence = computeConfidence({ amount, type, productName, customerName, paymentMethod, score, signals });
   // Penalise confidence when the amount is likely in a foreign currency
   if (isForeignCurrencyEntry) confidence = Math.max(0.10, parseFloat((confidence - 0.25).toFixed(2)));
+  // Cap confidence when amount came from word-number notation (no digit in raw text)
+  if (confidence > 0.74 && amount > 0 && !/\d/.test(raw)) {
+    confidence = 0.74;
+  }
+
+  // Cap confidence for "sold N product" where N is small (likely qty, not price)
+  // e.g. "sold 5 phones" — 5 could be 5 units, not GHS 5. Force below auto-save.
+  const soldSmallQtyM = /^sold\s+(\d+)\s+\w+$/i.exec(raw.trim());
+  if (soldSmallQtyM && Number(soldSmallQtyM[1]) === amount && amount <= 20 && !hasCediMarker && confidence >= 0.65) {
+    confidence = 0.62;
+  }
 
   // When a foreign currency was detected, note it in parserSignals so the UI
   // can warn the user ("this might be in USD, not GHS"). The domain type keeps
@@ -1015,28 +1026,31 @@ export function parseTransaction(input: string): ParsedTransaction {
   //   a) "bought|buy|purchased N product"  (e.g. "I bought 5 monitors")
   //   b) "received|collected N [unit] product" (e.g. "received 1300 pcs of gloves")
   // Correct: amount=0, quantity=N so the classifier routes to stock_update.
-  if (type === "stock_purchase" && !hasCediMarker && amount > 0) {
-    // Pattern (a): bought/buy/purchased verb leads the quantity
-    const boughtQtyM = /\b(?:bought|buy|purchase[d]?)\s+(\d+)\s+\w/i.exec(raw);
-    if (boughtQtyM && Number(boughtQtyM[1]) === amount) {
-      return {
-        type,
-        amount: 0,
-        quantity: quantity ?? amount,
-        productName,
-        customerName: null,
-        customerNameNormalized: null,
-        category: "Inventory",
-        paymentMethod,
-        notes: raw,
-        confidence: 0.62,
-        currency: "GHS, Cedis",
-        syncStatus: "pending",
-        parserSignals: [...finalSignals, "qty-correction:bought-N-no-price"],
-      };
+  if (!hasCediMarker && amount > 0) {
+    // Pattern (a): bought/buy/purchased verb leads the quantity (stock_purchase only)
+    if (type === "stock_purchase") {
+      const boughtQtyM = /\b(?:bought|buy|purchase[d]?)\s+(\d+)\s+\w/i.exec(raw);
+      if (boughtQtyM && Number(boughtQtyM[1]) === amount) {
+        return {
+          type,
+          amount: 0,
+          quantity: quantity ?? amount,
+          productName,
+          customerName: null,
+          customerNameNormalized: null,
+          category: "Inventory",
+          paymentMethod,
+          notes: raw,
+          confidence: 0.62,
+          currency: "GHS, Cedis",
+          syncStatus: "pending",
+          parserSignals: [...finalSignals, "qty-correction:bought-N-no-price"],
+        };
+      }
     }
 
-    // Pattern (b): received/collected N [unit] product — number is a piece-count, not a price
+    // Pattern (b): received/collected N [unit] product — fires for ANY type
+    // Number is a piece-count, not a price (e.g. "received 50 bags of rice")
     const receivedUnitQtyM = /\b(?:received|collected|got|delivered|supplied)\s+(\d+)\s*(?:pcs?|pieces?|bags?|cartons?|crates?|packs?|bottles?|units?|boxes?|tins?|rolls?|sachets?|dozens?|items?|pairs?|sets?|bundles?|trays?|kits?|jars?|cans?)\b/i.exec(raw);
     if (receivedUnitQtyM && Number(receivedUnitQtyM[1]) === amount) {
       return {
@@ -2510,6 +2524,11 @@ function computeConfidence(input: {
   // Penalise: amount=0 with no product or customer is almost certainly wrong
   if (input.amount === 0 && !input.productName && !input.customerName) c -= 0.10;
 
+  // Penalise: amount=0 for financial transaction types (user said "Ama paid" but no number)
+  // This prevents high-confidence records when the amount is genuinely missing.
+  const FINANCIAL_TYPES = new Set(["sale", "debt_payment", "repayment", "income", "cost", "expense", "debt_record"]);
+  if (input.amount === 0 && FINANCIAL_TYPES.has(input.type)) c -= 0.12;
+
   // Penalise: score ≤ 0 means the type is a last-resort guess
   if (input.score <= 0) c -= 0.08;
 
@@ -2528,7 +2547,7 @@ function emptyParsed(): ParsedTransaction {
     category: "Unknown",
     paymentMethod: "unknown",
     notes: "",
-    confidence: 0.10,
+    confidence: 0,
     currency: "GHS, Cedis",
     syncStatus: "pending",
     parserSignals: [],

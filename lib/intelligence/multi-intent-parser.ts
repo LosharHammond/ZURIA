@@ -47,7 +47,7 @@ const VERB_PATTERN = FINANCIAL_VERBS.join("|");
  * so we never incorrectly split unrelated "but" clauses.
  */
 const SPLIT_RE = new RegExp(
-  `\\s+(?:and|plus|also|then|,\\s*(?:and)?|;)\\s+(?=${VERB_PATTERN})`,
+  `\\s*(?:and|plus|also|then|,\\s*(?:and)?|;)\\s+(?=${VERB_PATTERN})`,
   "gi",
 );
 

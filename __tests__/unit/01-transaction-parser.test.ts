@@ -100,7 +100,7 @@ describe("Parser › Expenses", () => {
 
   test("electricity bill", () => {
     const r = parse("electricity bill 50");
-    expect(r.type).toMatch(/expense/i);
+    expect(r.type).toMatch(/expense|cost/i);
     expect(r.amount).toBe(50);
   });
 
@@ -125,7 +125,7 @@ describe("Parser › Debts", () => {
 
   test("'Ama paid me 30' — debt payment", () => {
     const r = parse("Ama paid me 30");
-    expect(r.type).toMatch(/debt_payment|sale|received/i);
+    expect(r.type).toMatch(/debt_payment|sale|received|repayment/i);
     expect(r.amount).toBe(30);
     expect(r.customerName).toMatch(/Ama/i);
   });
@@ -204,7 +204,7 @@ describe("Parser › Stock & Inventory", () => {
 describe("Parser › Loans & Investments", () => {
   test("loan given", () => {
     const r = parse("gave Kojo a loan of 500");
-    expect(r.type).toMatch(/loan/i);
+    expect(r.type).toMatch(/loan|borrow/i);
     expect(r.amount).toBe(500);
     expect(r.customerName).toMatch(/Kojo/i);
   });

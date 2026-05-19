@@ -97,7 +97,7 @@ class MockCollectionRef {
     const prefix = `${this.col}/`;
     const docs = [...this.store.entries()]
       .filter(([k]) => k.startsWith(prefix) && !k.slice(prefix.length).includes("/"))
-      .map(([k, v]) => new MockDocSnap(k.split("/").pop()!, k, v));
+      .map(([k, v]) => new MockDocSnap(k.split("/").pop()!, k, v, this.store));
     return { docs, size: docs.length, empty: docs.length === 0 };
   }
 }
@@ -114,7 +114,7 @@ class MockDocRef implements DocRef {
 
   async get(): Promise<MockDocSnap> {
     const data = this.store.get(this.path);
-    return new MockDocSnap(this.id, this.path, data);
+    return new MockDocSnap(this.id, this.path, data, this.store);
   }
 
   async set(data: DocData, options?: { merge?: boolean }) {
@@ -147,10 +147,24 @@ class MockDocSnap {
     public id: string,
     public path: string,
     private _data: DocData | undefined,
+    private store?: Map<string, DocData>,
   ) {}
 
   get exists() { return this._data !== undefined; }
-  get ref() { return { path: this.path, id: this.id, update: async (_d: DocData) => {} }; }
+
+  get ref() {
+    const self = this;
+    return {
+      path: self.path,
+      id:   self.id,
+      update: async (d: DocData) => {
+        if (self.store) {
+          const existing = self.store.get(self.path) ?? {};
+          self.store.set(self.path, { ...existing, ...applyFieldValues(existing, d) });
+        }
+      },
+    };
+  }
 
   data(): DocData | undefined { return this._data ? { ...this._data } : undefined; }
 }
@@ -188,7 +202,7 @@ class MockQuery {
     }
 
     const sliced = docs.slice(0, this._limit);
-    const snaps = sliced.map((d) => new MockDocSnap(d.id, d.path, d.data));
+    const snaps = sliced.map((d) => new MockDocSnap(d.id, d.path, d.data, this.store));
     return { docs: snaps, size: snaps.length, empty: snaps.length === 0 };
   }
 }
@@ -202,7 +216,7 @@ export class MockTransaction {
 
   async get(ref: MockDocRef) {
     const data = this.store.get(ref.path);
-    return new MockDocSnap(ref.id, ref.path, data);
+    return new MockDocSnap(ref.id, ref.path, data, this.store);
   }
 
   set(ref: MockDocRef, data: DocData) {
@@ -271,7 +285,11 @@ function applyFieldValues(existing: DocData, update: DocData): DocData {
   const result: DocData = {};
   for (const [k, v] of Object.entries(update)) {
     if (v && typeof v === "object" && "_type" in v && (v as { _type: string })._type === "increment") {
+      // Mock FieldValue.increment format: { _type: "increment", n }
       result[k] = ((existing[k] as number) ?? 0) + ((v as unknown as { n: number }).n);
+    } else if (v && typeof v === "object" && "operand" in v && typeof (v as { operand: unknown }).operand === "number") {
+      // Firebase Admin SDK FieldValue.increment format: { operand: n }
+      result[k] = ((existing[k] as number) ?? 0) + (v as { operand: number }).operand;
     } else {
       result[k] = v;
     }

@@ -233,7 +233,7 @@ const RULES: NormRule[] = [
   },
   {
     label: "X no pay me / X no gree pay → X hasn't paid me",
-    pattern: /\b(\w+)\s+no\s+(?:gree\s+)?pay\s+(?:me|us)?\b/gi,
+    pattern: /\b(\w+)\s+no\s+(?:gree\s+)?pay(?:\s+(?:me|us))?\b/gi,
     replacement: "$1 hasn't paid me",
   },
   {

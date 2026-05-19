@@ -103,7 +103,7 @@ const HELP_RE = /\b(help|commands?|what\s*can\s*(?:i|you)|how\s*(?:to\s*use|do\s
 // NOTE: "wrong" without a suffix (entry/amount/number) is intentionally NOT matched
 // standalone — "going wrong", "nothing wrong" etc. should NOT trigger UNDO. Only
 // "wrong entry", "wrong amount", "wrong number" are explicit correction signals.
-const UNDO_RE = /\b(undo(?:\s+\w+)?|wrong\s+(?:entry|amount|number)|cancel(?:\s+(?:that|last|it))?|remove\s*(?:that|last|it)|delete\s*(?:that|last|it(?:\s+all)?)|retract|mistake|i\s*made\s*a\s*mistake|no\s*wait|wait\s*no|that(?:'s|\s+was|\s+is)\s*wrong|i\s*(?:meant|mean)\s*\d|ei\s*wrong|ahh?\s*wait|no\s*no\s*no?)\b/i;
+const UNDO_RE = /\b(undo(?:\s+\w+)?|reverse(?:\s+\w+)?|wrong\s+(?:entry|amount|number)|cancel(?:\s+(?:that|last|it))?|remove\s*(?:that|last|it)|delete\s*(?:that|last|it(?:\s+all)?)|retract|mistake|i\s*made\s*a\s*mistake|no\s*wait|wait\s*no|that(?:'s|\s+was|\s+is)\s*wrong|i\s*(?:meant|mean)\s*\d|ei\s*wrong|ahh?\s*wait|no\s*no\s*no?)\b/i;
 
 // SMALLTALK — greetings and noise
 const GREETING_RE  = /^(hi|hello|hey|good\s*(morning|afternoon|evening|night)|howdy|yo|sup|hiya|morning|evening|afternoon|ghana|maakye|ete\s*sen|wo\s*ho\s*te\s*s[εe]n|mema\s*wo\s*akye|akwaaba|salaam|salam)\b/i;
@@ -113,7 +113,7 @@ const EMOJI_ONLY_RE = /^[\p{Emoji}\s]+$/u;
 // LEDGER_QUERY_ENGINE — structured query patterns (undo removed — now its own intent)
 const QUERY_PATTERNS: Array<{ re: RegExp; sub: QuerySubIntent }> = [
   // ── Referral (most specific — check first) ────────────────────────────────
-  { re: /\b(referral|refer|my\s*link|my\s*earnings?|earn(ings?)?|refer\s*&?\s*earn|cashout|cash\s*out|withdraw\s*referral)\b/i, sub: "referral_status" },
+  { re: /\b(referral|refer|my\s*link|my\s*earnings?|earnings?|refer\s*&?\s*earn|cashout|cash\s*out|withdraw\s*referral)\b/i, sub: "referral_status" },
 
   // ── Full dashboard / advanced analytics (Pro+) ────────────────────────────
   { re: /\b(full\s*dashboard|all.?time|entire|complete\s*report|all\s*report|analytics|overview\s*all)\b/i, sub: "full_dashboard" },
@@ -264,11 +264,11 @@ const QUERY_PATTERNS: Array<{ re: RegExp; sub: QuerySubIntent }> = [
   { re: /\b(inventory\s*turnover|stock\s*turnover|how\s*fast\s*(?:stock|inventory)|movement\s*rate|fast[\s-]?(?:moving|mover)|slow[\s-]?(?:moving|mover))\b/i, sub: "full_dashboard" },
 
   // ── Debt list ─────────────────────────────────────────────────────────────
-  { re: /\b(who\s+owes?\b|owes?\s+me\b|debts?|credit\s*list|my\s*debtors?|people\s+owe\b|ka\s*ho|me\s*nipa|follow\s*up\s*debt|unpaid)\b/i, sub: "debt_list" },
+  { re: /\b(who\s+owes?\b|owes?\s+me\b|debts?|credit\s*list|(?:my\s+|all\s+)?debtors?|people\s+owe\b|ka\s*ho|me\s*nipa|follow\s*up\s*debt|unpaid)\b/i, sub: "debt_list" },
   { re: /\b(debt\s*aging|aging\s*(?:analysis|report)|overdue\s*(?:debt|payment|balance)|long\s*overdue)\b/i, sub: "debt_list" },
   { re: /\b(risky\s*debtor|late\s*(?:payer|payment[sd]?)|slow\s*payer|delinquent|prioritize\s*debtor|delay(?:s|ed|ing)?\s*payments?|repeatedly\s*delay|show\s*customers?\s*who\s*(?:delay|repeat|late))\b/i, sub: "debt_list" },
   // ── Customer payment promise / "still hasn't paid" (debt_list) ───────────
-  { re: /\b(customer\s*(?:say|said|promise[sd]?|told\s*me)\s*(?:he|she|they|will|go|gonna)?\s*(?:will\s*)?pay|promise[sd]?\s*to\s*(?:pay|clear|settle)|he\s*(?:said|go|will)\s*pay\s*(?:tomorrow|later|soon|friday|monday|next\s*week)|customer\s*(?:go|will|gonna)\s*pay)\b/i, sub: "debt_list" },
+  { re: /\b(customer\s*(?:say|said|promise[sd]?|told\s*me)\s*(?:(?:he|she|they|will|go|gonna|to)\s+)*pay|promise[sd]?\s*to\s*(?:pay|clear|settle)|he\s*(?:said|go|will)\s*pay\s*(?:tomorrow|later|soon|friday|monday|next\s*week)|customer\s*(?:go|will|gonna)\s*pay)\b/i, sub: "debt_list" },
   { re: /\b(still\s*hasn'?t\s*paid|hasn'?t\s*paid\b|haven'?t\s*paid\s*(?:yet|balance|debt)?|not\s*(?:paid|cleared)\s*(?:yet|balance|debt|her|his|their)?|still\s*(?:owing|owe[sd]?)\s*(?:balance|me|us)?|same\s*customer\s*(?:still|owing)|customer\s*(?:balance|still\s*ow))\b/i, sub: "debt_list" },
   // ── Customer disappeared / debt risk (debt_list) ─────────────────────────
   { re: /\b(customer\s*disappear|disappear(?:ed)?\s*without\s*(?:pay|paying)|run\s*away\s*(?:without\s*pay(?:ing)?)?|customer\s*(?:ran|run)\s*away|won'?t\s*pay|refusing\s*to\s*pay)\b/i, sub: "debt_list" },
@@ -486,6 +486,16 @@ export function classifyMessage(
   const textLow  = text.toLowerCase();
   const suppressed = isSubscriptionSuppressed(context);
 
+  // ── Empty / whitespace-only input → always ERROR with confidence=0 ────────
+  if (!text) {
+    return {
+      intent: "ERROR", confidence: 0, sub_intent: "ambiguous",
+      entities: { ...EMPTY_ENTITIES },
+      state: { active_flow: "none", should_trigger_ui: false, subscription_ui_suppressed: suppressed },
+      requires_action: false,
+    };
+  }
+
   // ── Helper: build a complete ClassifiedIntent ─────────────────────────────
   function make(
     intent:      IntentType,
@@ -553,11 +563,14 @@ export function classifyMessage(
 
   const claimMatch = text.match(PAYMENT_CLAIM_RE);
   if (claimMatch) {
-    // Digit guard: "paid pro amount 150" has a GHS amount after the plan name →
-    // it's a financial entry, not a subscription payment confirmation. Skip claim.
+    // Non-subscription-word guard: "paid pro amount" or "paid growth money back" has
+    // descriptive words after the plan name → it's a financial entry, not a payment claim.
+    // "paid growth 50" (just a number after) IS a valid payment claim (amount paid for plan).
+    // "paid enterprise annual" — "annual" is a subscription modifier, still a claim.
     const afterMatch = text.slice((claimMatch.index ?? 0) + claimMatch[0].length);
-    const hasAmountAfter = /\d/.test(afterMatch);
-    if (!hasAmountAfter) {
+    const cleanAfter = afterMatch.replace(/\b(annual|plan|subscription|fee)\b/gi, "").trim();
+    const hasNonSubWords = /[a-zA-Z]/.test(cleanAfter); // non-subscription words → financial entry
+    if (!hasNonSubWords) {
       // Extract plan name from first capture group (may be null for fee-only patterns)
       const planName = claimMatch[1] ? claimMatch[1].toLowerCase() : null;
       return make(
@@ -658,7 +671,7 @@ export function classifyMessage(
   const parsed = parseTransaction(text);
 
   // Detect query phrasing once — reused in the no-amount paths below.
-  const QUERY_START_RE = /^\s*(?:who|what|which|how|show|give|list|tell|find|check|see|display|generate|send|calculate|predict|forecast|compare|why|when|where|any|will|can|could|would|should|did|does|do|is|are|was|were)\b/i;
+  const QUERY_START_RE = /^\s*(?:who|what|which|how|show|give|list|tell|find|check|see|display|generate|send|calculate|predict|forecast|compare|why|when|where|any|will|can|could|would|should|did|does|do|is|are|was|were|track)\b/i;
   const isQueryPhrased = text.trim().endsWith("?") || QUERY_START_RE.test(text);
 
   // ── Stock-level update: amount=0 but quantity present ────────────────────
@@ -753,6 +766,26 @@ export function classifyMessage(
     return make("LEDGER_ENGINE", 0.55, "sale", { ...EMPTY_ENTITIES, amount: 0 }, "ledger");
   }
 
+  // ── Bare number: route via context — avoids ghost transactions ───────────
+  // "50" alone, with no verb or context, must NOT be recorded as a sale.
+  // In ledger flow: use context person/asset for continuity.
+  // Outside ledger flow: ERROR (ambiguous).
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    if (isInLedgerFlow(context)) {
+      return make(
+        "LEDGER_ENGINE", 0.65, (context?.lastTransactionSubIntent as LedgerSubIntent | null) ?? "sale",
+        {
+          ...EMPTY_ENTITIES,
+          amount: parseFloat(text),
+          person: context?.lastPerson ?? null,
+          asset:  context?.lastAsset  ?? null,
+        },
+        "ledger",
+      );
+    }
+    return make("ERROR", 0.60, "ambiguous", EMPTY_ENTITIES, "none", false, false);
+  }
+
   // ── Amount present → definite financial transaction ─────────────────────
   // Evaluated first: a message with a real GHS amount is always a ledger entry
   // regardless of any subscription keywords it may contain.
@@ -805,6 +838,18 @@ export function classifyMessage(
       const sub = (TX_TYPE_TO_SUB[parsed.type] ?? "sale") as LedgerSubIntent;
       return make("LEDGER_ENGINE", parsed.confidence, sub, entities, "ledger");
     }
+    // Guard: if the parser identified a financial transaction type with reasonable
+    // confidence AND the text contains a financial verb (e.g. "customer paid pro amount"
+    // → debt_payment + verb "paid"), treat as a financial entry that coincidentally
+    // contains a plan keyword, not a subscription query.
+    // "growth plan monthly fee" has no payment verb → falls through to SUBSCRIPTION_ENGINE.
+    const FINANCIAL_TYPE_SET = new Set(["sale", "debt_payment", "repayment", "income", "expense", "cost", "salary", "debt_record"]);
+    const HAS_FINANCIAL_VERB_RE = /\b(paid|pay|sold|sell|bought|buy|received?|spent|send|sent|gave|transferred?|withdrew|collected|settled|earned?)\b/i;
+    if (parsed.confidence >= LEDGER_CONFIDENCE_THRESHOLD && FINANCIAL_TYPE_SET.has(parsed.type) && HAS_FINANCIAL_VERB_RE.test(text)) {
+      const entities = ledgerEntities(text);
+      const sub = (TX_TYPE_TO_SUB[parsed.type] ?? "expense") as LedgerSubIntent;
+      return make("LEDGER_ENGINE", Math.min(parsed.confidence, 0.60), sub, { ...entities, amount: null }, "ledger");
+    }
     return make(
       "SUBSCRIPTION_ENGINE", 0.93, "upgrade_request",
       { ...EMPTY_ENTITIES, ...subscriptionEntities(text) },
@@ -820,25 +865,30 @@ export function classifyMessage(
     return make("LEDGER_QUERY_ENGINE", 0.88, "stock_level", EMPTY_ENTITIES, "query");
   }
 
+  // ── Clear buy/expense verb + item only, no amount → ask for amount ────────
+  // "bought fuel", "purchased rice", "paid rent", "paid for school fees"
+  // These have a confident action verb but no GHS amount given.
+  // The confidence penalty for expense+amount=0 can drop below threshold, so
+  // intercept here before the generic missing-amount path.
+  const CLEAR_BUY_RE = /^(?:bought|purchased?|paid(?:\s+for)?)\s+[a-zA-Z]+(?:\s+[a-zA-Z]+){0,2}$/i;
+  if (!isQueryPhrased && CLEAR_BUY_RE.test(text.trim()) && parsed.amount === 0) {
+    const sub = (TX_TYPE_TO_SUB[parsed.type] ?? "expense") as LedgerSubIntent;
+    return make("LEDGER_ENGINE", 0.55, sub, { ...ledgerEntities(text), amount: null }, "ledger");
+  }
+
   // ── High-confidence transaction with missing amount → prompt for amount ───
   // e.g. "Staff salary paid today", "Office rent paid", "Customer paid via MoMo"
   // The vote score strongly identifies the type, but no amount was given.
   // Route to LEDGER_ENGINE so the handler can ask "How much was [type]?"
   //
-  // Excluded: only "transfer" (genuinely ambiguous — could be an internal move
-  // or a query like "show transfers"). "sale" and "expense" are intentionally
-  // ALLOWED: "Record sale rice" / "I sold 5 phones" / "bought fuel" all have
-  // clear action intent and the handler will ask for the amount via zuriaAskAmount.
   // Safety net: (a) !isQueryPhrased prevents "What are my sales?" from firing,
   //             (b) the confidence threshold blocks vague inputs,
-  //             (c) PURE_QUERY_RE prevents "my total revenue" / "my running balance"
-  //                 from being mis-routed here — those are queries, not entries.
+  //             (c) PURE_QUERY_RE prevents observational queries from being
+  //                 misrouted here — those should fall through to QUERY_PATTERNS.
   const GENERIC_TYPES = new Set(["transfer"]);
   // Terms that are unambiguously query/status vocabulary — let them fall through to
   // QUERY_PATTERNS even when isQueryPhrased=false and parser confidence is high.
-  // Extended with negation/refusal debt queries, report/analytics terms — these would
-  // otherwise be caught by the missing-amount path before reaching QUERY_PATTERNS.
-  const PURE_QUERY_RE = /\b(revenue|my\s+running\s+balance|my\s+total\s+(?:revenue|income|profit)|total\s+(?:sales?|expenses?|revenue|income|profit)|earnings?\s*(?:report|today|this)?\b|my\s+records?\b|abeg|hasn'?t\s+paid\b|haven'?t\s+paid\b|refusing\s+to\s+pay\b|report\b|stock\s+level\b|performance\s+analysis\b|advanced\s+reports?\b|export\s+data\b|business\s+anal(?:ysis|ytics?)\b)\b/i;
+  const PURE_QUERY_RE = /\b(revenue|my\s+running\s+balance|my\s+total\s+(?:revenue|income|profit)|total\s+(?:sales?|expenses?|revenue|income|profit)|earnings?\s*(?:report|today|this)?\b|my\s+records?\b|abeg|hasn'?t\s+paid\b|haven'?t\s+paid\b|refusing\s+to\s+pay\b|report\b|stock\s+level\b|performance\s+analysis\b|advanced\s+reports?\b|export\s+data\b|business\s+anal(?:ysis|ytics?)\b|i\s+think\s+(?:someone|somebody)|made?\s*(?:a\s*)?loss\b|sales?\s*(?:were|are|was|is|have\s+been)\s*(?:slow|bad|down|low)|someone\s+stole|stole\s+money|business\s+(?:slow|hard|bad)|customer\s+promised\s+to\s+pay|i\s+made\s+loss)\b/i;
   if (
     !isQueryPhrased &&
     !PURE_QUERY_RE.test(text) &&
@@ -859,7 +909,7 @@ export function classifyMessage(
   // are not mis-routed to summary/query when the user is confirming a staged entry.
   // "yes save it", "confirmed", "go ahead", "save it", "record it" all mean
   // "save the pending transaction" when activeFlow === "pending_confirmation".
-  const BROAD_CONFIRM_RE = /\b(confirm(?:ed)?|correct|go\s+ahead|proceed|save(?:\s+it|\s+now|\s+please)?|record(?:\s+it|\s+now)?|do\s+it|please(?:\s+save|\s+record)?)\b/i;
+  const BROAD_CONFIRM_RE = /\b(confirm(?:ed)?|correct|go\s+ahead|proceed|save(?:\s+it|\s+now|\s+please)?|record(?:\s+it|\s+now)?|do\s+it|please(?:\s+save|\s+record)?|right\b|that'?s\s+right|that\s+is\s+right)\b/i;
   if (context?.activeFlow === "pending_confirmation" &&
       (AFFIRM_RE.test(text) || BROAD_CONFIRM_RE.test(text))) {
     return make(

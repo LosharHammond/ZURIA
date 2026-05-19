@@ -267,7 +267,7 @@ describe("Concurrency › Mixed Event Storm", () => {
     seedUser(mockDb, USER_SUB);
     seedPayment(mockDb, REF_SUB, USER_SUB, 30);
 
-    mockDb.seed(`users/${USER_WD}`, { referralBalance: 50, updatedAt: new Date().toISOString() });
+    mockDb.seed(`users/${USER_WD}`, { referralBalance: 0, updatedAt: new Date().toISOString() });
     mockDb.seed(`withdrawals/${WD_ID}`, {
       status: "pending",
       userId: USER_WD,

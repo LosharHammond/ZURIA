@@ -46,7 +46,7 @@ export interface FraudScore {
 }
 
 // Score thresholds
-const RISK_THRESHOLDS = { LOW: 0, MEDIUM: 30, HIGH: 60, BLOCKED: 85 };
+const RISK_THRESHOLDS = { LOW: 0, MEDIUM: 20, HIGH: 60, BLOCKED: 85 };
 
 // Signal weights
 const SIGNAL_WEIGHTS: Record<FraudSignalType, number> = {
@@ -54,7 +54,7 @@ const SIGNAL_WEIGHTS: Record<FraudSignalType, number> = {
   RAPID_REFERRAL_FARMING:    25,
   DUPLICATE_REFERRAL_CLAIM:  20,
   RAPID_WITHDRAWAL:          15,
-  REPEATED_PAYMENT_FAIL:     20,
+  REPEATED_PAYMENT_FAIL:     30,
   ABNORMAL_SIGNUP_VELOCITY:  10,
 };
 

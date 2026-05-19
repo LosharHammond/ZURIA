@@ -23,7 +23,7 @@ const WEIGHTS: Record<FraudSignalType, number> = {
   RAPID_REFERRAL_FARMING:     25,
   DUPLICATE_REFERRAL_CLAIM:   20,
   RAPID_WITHDRAWAL:           15,
-  REPEATED_PAYMENT_FAIL:      20,
+  REPEATED_PAYMENT_FAIL:      30,
   ABNORMAL_SIGNUP_VELOCITY:   10,
 };
 
@@ -70,7 +70,7 @@ describe("Fraud Scorer › Signal Weights", () => {
     expect(classifyRisk(80)).toBe("HIGH");
   });
 
-  test("all signals together = 125 → capped at 100 → BLOCKED", () => {
+  test("all signals together = 135 → capped at 100 → BLOCKED", () => {
     const allSignals: FraudSignalType[] = [
       "SELF_REFERRAL",
       "RAPID_REFERRAL_FARMING",
@@ -80,14 +80,14 @@ describe("Fraud Scorer › Signal Weights", () => {
       "ABNORMAL_SIGNUP_VELOCITY",
     ];
     const raw = allSignals.reduce((s, t) => s + WEIGHTS[t], 0);
-    expect(raw).toBe(125);
+    expect(raw).toBe(135);
     expect(totalWeight(allSignals)).toBe(100); // capped
     expect(classifyRisk(100)).toBe("BLOCKED");
   });
 
-  test("SELF_REFERRAL + REPEATED_PAYMENT_FAIL = 55 → MEDIUM", () => {
-    expect(totalWeight(["SELF_REFERRAL", "REPEATED_PAYMENT_FAIL"])).toBe(55);
-    expect(classifyRisk(55)).toBe("MEDIUM");
+  test("SELF_REFERRAL + REPEATED_PAYMENT_FAIL = 65 → HIGH", () => {
+    expect(totalWeight(["SELF_REFERRAL", "REPEATED_PAYMENT_FAIL"])).toBe(65);
+    expect(classifyRisk(65)).toBe("HIGH");
   });
 
   test("no signals = 0 → LOW", () => {
@@ -270,8 +270,8 @@ describe("Fraud Scorer › Known Attack Patterns", () => {
     expect(classifyRisk(totalWeight(["REPEATED_PAYMENT_FAIL"]))).toBe("MEDIUM");
   });
 
-  test("SELF_REFERRAL + REPEATED_PAYMENT_FAIL = 55 → MEDIUM (below HIGH threshold)", () => {
-    // 35 + 20 = 55 → MEDIUM (not HIGH yet)
-    expect(classifyRisk(totalWeight(["SELF_REFERRAL", "REPEATED_PAYMENT_FAIL"]))).toBe("MEDIUM");
+  test("SELF_REFERRAL + REPEATED_PAYMENT_FAIL = 65 → HIGH (above HIGH threshold)", () => {
+    // 35 + 30 = 65 → HIGH
+    expect(classifyRisk(totalWeight(["SELF_REFERRAL", "REPEATED_PAYMENT_FAIL"]))).toBe("HIGH");
   });
 });

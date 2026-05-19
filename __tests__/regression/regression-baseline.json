@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-19T13:36:31.856Z",
+  "generatedAt": "2026-05-19T18:16:08.446Z",
   "totalLocked": 1000,
   "results": [
     {
@@ -2332,8 +2332,8 @@
     },
     {
       "id": "EMO-039",
-      "intent": "LEDGER_ENGINE",
-      "subIntent": "sale",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
       "isDuplicate": false
     },
     {
@@ -2374,8 +2374,8 @@
     },
     {
       "id": "EMO-046",
-      "intent": "LEDGER_ENGINE",
-      "subIntent": "expense",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "debt_list",
       "isDuplicate": false
     },
     {
@@ -3892,8 +3892,8 @@
     },
     {
       "id": "AMB-009",
-      "intent": "LEDGER_ENGINE",
-      "subIntent": "sale",
+      "intent": "LEDGER_QUERY_ENGINE",
+      "subIntent": "summary",
       "isDuplicate": false
     },
     {
