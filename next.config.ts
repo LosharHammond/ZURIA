@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const securityHeaders = [
   // Prevent clickjacking
@@ -11,7 +12,20 @@ const securityHeaders = [
   // Referrer policy — don't leak full URL to third-party
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Permissions policy — disable camera, mic, etc.
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), getelocation=(), interest-cohort=()" },
+  // Content Security Policy — prevents XSS via script injection
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.sentry-cdn.com https://browser.sentry-cdn.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.sentry.io https://*.firebaseio.com https://*.googleapis.com https://api.groq.com wss://*.firebaseio.com",
+      "frame-ancestors 'none'",
+    ].join("; "),
+  },
   // HSTS — force HTTPS for 1 year (only for production)
   ...(process.env.NODE_ENV === "production"
     ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" }]
@@ -58,7 +72,6 @@ const nextConfig: NextConfig = {
   compress: true,
 
   // Tree-shake icon libraries and Firebase so only imported symbols are bundled.
-  // Significantly reduces First Load JS for pages that use lucide-react.
   experimental: {
     optimizePackageImports: [
       "lucide-react",
@@ -73,4 +86,30 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["firebase-admin"],
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Sentry organization and project (set in .env or CI)
+  org:     process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Auth token for uploading source maps (set in CI/Vercel env — never in .env.local)
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Suppress verbose Sentry build output
+  silent: !process.env.CI,
+
+  // Automatically instrument routes for performance tracing
+  autoInstrumentServerFunctions: true,
+  autoInstrumentMiddleware: true,
+
+  // Don't widen ESLint rules
+  disableLogger: true,
+
+  // Upload source maps only in CI / production builds
+  sourcemaps: {
+    disable: process.env.NODE_ENV !== "production",
+  },
+
+  // Tunnel Sentry requests through our own domain to avoid ad-blockers
+  tunnelRoute: "/monitoring",
+
+});
