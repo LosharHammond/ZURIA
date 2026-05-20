@@ -400,4 +400,13 @@ export function getActiveProvider(): AIProvider {
   return _ruleBased;
 }
 
+/**
+ * Returns true when at least one AI provider (Groq or OpenAI) is configured.
+ * When false, the system operates in LIMITED INTELLIGENCE MODE — rule-based
+ * only. Callers can show a lightweight notice to inform the user.
+ */
+export function isAIProviderAvailable(): boolean {
+  return _groq.isAvailable() || _openai.isAvailable();
+}
+
 export { RuleBasedZuria, OpenAIZuria, GroqZuria };

@@ -25,6 +25,10 @@
 import type { BusinessCategory, ParsedTransaction, TransactionType } from "@/types/domain";
 import { MONEY_IN_TYPES, MONEY_OUT_TYPES } from "@/types/domain";
 import { formatMoney } from "@/lib/utils";
+import {
+  detectIndustryVertical,
+  generateIndustryWarnings,
+} from "@/lib/industry";
 
 // ─── Core helpers ─────────────────────────────────────────────────────────────
 
@@ -474,6 +478,10 @@ export interface DailySnapshot {
   topDebtTotal?: number;
   stockWarnings?: string[];   // product names running low
   transactionCount?: number;
+  /** Optional business category — enables vertical-specific intelligence */
+  businessCategory?: BusinessCategory;
+  /** Total outstanding customer debt — used for vertical KPI warnings */
+  totalDebt?: number;
 }
 
 /**
@@ -486,9 +494,10 @@ export interface DailySnapshot {
  *  3. Stock warning
  *  4. Sales milestone
  *  5. Stronger than yesterday
+ *  6. Vertical-specific industry warning (pharmacy expiry, salon demand, etc.)
  */
 export function generateInsight(snap: DailySnapshot): string | null {
-  const { dailyIn, dailyOut, previousDayNet, topDebtCount, topDebtTotal, stockWarnings } = snap;
+  const { dailyIn, dailyOut, previousDayNet, topDebtCount, topDebtTotal, stockWarnings, businessCategory, totalDebt } = snap;
   const net = dailyIn - dailyOut;
 
   // 1. Expense alarm
@@ -518,6 +527,31 @@ export function generateInsight(snap: DailySnapshot): string | null {
   // 5. Significantly stronger than yesterday
   if (previousDayNet !== undefined && previousDayNet > 0 && net > previousDayNet * 1.5 && net > 100) {
     return `📈 Today is tracking stronger than yesterday. Nice momentum.`;
+  }
+
+  // 6. Vertical-specific industry warning — only when business category is known
+  if (businessCategory && dailyIn > 0) {
+    try {
+      const vertical     = detectIndustryVertical(businessCategory, []);
+      const expenseRatio = dailyOut > 0 && dailyIn > 0 ? dailyOut / dailyIn : 0;
+      const debtRatio    = (totalDebt ?? 0) > 0 && dailyIn > 0 ? (totalDebt ?? 0) / dailyIn : 0;
+      const warnings     = generateIndustryWarnings(vertical, {
+        expenseRatio,
+        debtRatio,
+        avgDailyRevenue: dailyIn,
+        totalDebt:       totalDebt ?? 0,
+      });
+      // Surface the most critical warning (severity: critical > warning > info)
+      const order = ["critical", "warning", "info"] as const;
+      const top = warnings.sort(
+        (a, b) => order.indexOf(a.severity) - order.indexOf(b.severity),
+      )[0];
+      if (top && top.severity === "critical") {
+        return `🏭 _${top.message}_`;
+      }
+    } catch {
+      // Vertical detection errors must never crash insight generation
+    }
   }
 
   return null;

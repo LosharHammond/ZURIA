@@ -8,6 +8,7 @@ import {
   fmtMonthlyReport,
   fmtReferralStatus,
   fmtStock,
+  fmtLimitedIntelligenceMode,
   fmtSubscribePlans,
   fmtSubscriptionRequired,
   fmtSystemError,
@@ -63,8 +64,14 @@ import {
 } from "@/lib/intelligence/response-engine";
 import { normalizeGhanaianEnglish } from "@/lib/intelligence/ghanaian-normalizer";
 import { parseMultiIntent, fmtMultiConfirm } from "@/lib/intelligence/multi-intent-parser";
-import { getActiveProvider } from "@/lib/intelligence/ai-provider";
+import { getActiveProvider, isAIProviderAvailable } from "@/lib/intelligence/ai-provider";
 import { voidTransactionWithSideEffects } from "@/lib/whatsapp/session";
+import {
+  detectEmotionalState,
+  buildOperationalReassurance,
+  shouldAddEmotionalLayer,
+  enrichResponseWithEmotion,
+} from "@/lib/emotional-intelligence";
 
 // Admin number for subscription payment notifications
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
@@ -72,13 +79,10 @@ const FREE_DAILY_LIMIT      = 15;   // free tier: 15 entries per day
 const GROWTH_MONTHLY_LIMIT  = 500;  // growth tier: 500 entries per month
 const _MONTHLY_UNLOCK_TARGET = 30;   // referrals this month needed to unlock Growth (used in UI display)
 
-/**
- * Transactions with confidence below this threshold trigger a pre-save confirmation
- * prompt ("Did I get that right?") instead of being saved immediately.
- * Threshold of 0.65 covers medium-confidence parses while letting high-confidence
- * entries (typical well-formed messages) flow through without friction.
- */
-const CONFIRMATION_THRESHOLD = 0.65;
+// Spec-mandated 4-tier confidence thresholds are now read from lib/confidence
+// (TIER_THRESHOLDS: AUTO=0.90, AI_ENHANCE=0.75, HUMAN=0.50, REJECT=0.00).
+// The ensemble confidence engine (computeEnsembleConfidence) is called inline
+// in the LEDGER_ENGINE path and sets ensemble.requiresHuman / ensemble.shouldReject.
 
 /** Sum the amount field of an array of Transactions */
 const sum = (txns: { amount: number }[]): number =>
@@ -374,6 +378,12 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
 
   const convCtx    = await loadWhatsAppContext(fromPhone);
   const normalized = normalizeGhanaianEnglish(text);
+
+  // ── Emotional Intelligence — detect stress/panic/frustration early ────────
+  // Runs on original text (pre-normalization preserves emotional signals best).
+  // Result is passed to AI generator and used to enrich confirmations.
+  const emotionalSignal = detectEmotionalState(text);
+
   const classified = classifyMessage(normalized, convCtx);
   // Pass the stored last normalized text so RULE 5 can detect duplicate webhook deliveries.
   const isolation  = enforceEngineIsolation(classified, convCtx, convCtx.lastNormalizedText, normalized);
@@ -465,7 +475,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
           business.category,
           bName,
         );
-        const insight   = generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut });
+        const insight   = generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut, businessCategory: business.category });
         const core      = [confirm, insight].filter(Boolean).join("\n\n");
         const fullReply = stagedWarning ? `${stagedWarning}\n\n${core}` : core;
 
@@ -515,6 +525,8 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
       conversationHistory: historyToText(convCtx.conversationHistory),
       currentMessage:      text,
       financialContext:    "",
+      // Pass emotional tone so AI calibrates warmth appropriately
+      emotionalTone:       emotionalSignal.state !== "neutral" ? emotionalSignal.state : undefined,
     });
     const reply = aiReply ?? zuriaSmalltalk(text, user.ownerName);
     await persist(reply);
@@ -722,14 +734,44 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
     // Single-intent ledger path
     const parsed = multiResult.transactions[0];
 
-    // No parse or confidence too low → AI clarification
-    if (!parsed || parsed.confidence < 0.40) {
+    // No parse → AI clarification immediately
+    if (!parsed) {
       const ai = getActiveProvider();
       const aiErr = await ai.generate({
         businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
         conversationHistory: historyToText(convCtx.conversationHistory),
         currentMessage:      text,
         financialContext:    "",
+        emotionalTone:       emotionalSignal.state !== "neutral" ? emotionalSignal.state : undefined,
+      });
+      const reply = aiErr ?? zuriaError(business.category, bName);
+      await persist(reply, undefined, false, null);
+      return reply;
+    }
+
+    // ── Spec-mandated 4-tier Confidence Engine ────────────────────────────────
+    // Compute ensemble confidence from parser output + multi-signal scoring.
+    // Tiers: DETERMINISTIC_AUTO (≥90%), AI_ENHANCEMENT (75–89%),
+    //        HUMAN_CLARIFICATION (50–74%), REJECT_UNSAFE (<50%)
+    const { computeEnsembleConfidence } = await import("@/lib/confidence");
+    const ensemble = computeEnsembleConfidence({
+      parserConfidence: parsed.confidence,
+      amount:           parsed.amount,
+      rawText:          text,
+      transactionType:  parsed.type,
+      customerName:     parsed.customerName ?? null,
+      productName:      parsed.productName ?? null,
+    });
+
+    // REJECT_UNSAFE (<50%): do not save, ask AI to clarify
+    if (ensemble.shouldReject) {
+      const ai = getActiveProvider();
+      const aiErr = await ai.generate({
+        businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
+        conversationHistory: historyToText(convCtx.conversationHistory),
+        currentMessage:      text,
+        financialContext:    "",
+        emotionalTone:       emotionalSignal.state !== "neutral" ? emotionalSignal.state : undefined,
       });
       const reply = aiErr ?? zuriaError(business.category, bName);
       await persist(reply, undefined, false, null);
@@ -784,10 +826,10 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
       // isStockWithQty — fall through to the save block with amount=0
     }
 
-    // ── Pre-save confirmation for medium-confidence parses ──────────────────
-    // Confidence 0.40–0.64: ask user to verify before writing to Firestore.
-    // Confidence ≥ 0.65: save immediately (high confidence, no friction added).
-    if (parsed.confidence < CONFIRMATION_THRESHOLD && !isDuplicate) {
+    // ── Pre-save confirmation for HUMAN_CLARIFICATION tier (50–74%) ──────────
+    // Spec: 50–74% ensemble confidence → ask user to confirm before writing.
+    // AI_ENHANCEMENT (75–89%) and DETERMINISTIC_AUTO (≥90%) proceed to save.
+    if (ensemble.requiresHuman && !isDuplicate) {
       const confirmReq = zuriaConfirmationRequest(
         parsed.type, parsed.amount, parsed.customerName ?? null,
         parsed.productName ?? null, business.category,
@@ -850,12 +892,29 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         conversationHistory: historyToText(convCtx.conversationHistory),
         currentMessage:      text,
         financialContext:    `Today: in=${moneyIn}, out=${moneyOut}`,
+        // Emotional tone so AI calibrates warmth in the confirmation
+        emotionalTone:       emotionalSignal.state !== "neutral" ? emotionalSignal.state : undefined,
       });
 
       const confirm = aiResp ?? zuriaConfirm(parsed, { in: moneyIn, out: moneyOut }, business.category, bName);
       // generateInsight always fires — not gated on AI fallback
-      const insight = generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut });
-      const core    = [confirm, insight].filter(Boolean).join("\n\n");
+      const insight = generateInsight({ dailyIn: moneyIn, dailyOut: moneyOut, businessCategory: business.category });
+      // Append LIMITED INTELLIGENCE MODE notice if no AI provider is available
+      const limitedModeNotice = (!aiResp && !isAIProviderAvailable()) ? fmtLimitedIntelligenceMode() : "";
+      let core = [confirm, insight, limitedModeNotice].filter(Boolean).join("\n\n");
+
+      // Emotional Intelligence: prepend business-grounded reassurance when user
+      // signals stress / panic / frustration — uses today's known metrics.
+      if (shouldAddEmotionalLayer(emotionalSignal.state)) {
+        const reassurance = buildOperationalReassurance(emotionalSignal.state, {
+          avgDailyRevenue: moneyIn,          // today's money-in as proxy
+          totalDebt:       0,                // debt not loaded on this path — conservative default
+          cashFlowPattern: moneyIn > moneyOut ? "growing" : moneyIn < moneyOut ? "declining" : "stable",
+          riskLevel:       "low",            // conservative — no full risk score on this path
+        });
+        core = enrichResponseWithEmotion(core, emotionalSignal.state, reassurance);
+      }
+
       const fullReply = stagedWarning ? `${stagedWarning}\n\n${core}` : core;
 
       const txnDesc = `${parsed.type} of ${formatMoney(parsed.amount)}${parsed.productName ? ` (${parsed.productName})` : ""}`;

@@ -443,6 +443,20 @@ export function fmtSystemError(): string {
   ].join("\n");
 }
 
+// ─── LIMITED INTELLIGENCE MODE notice ────────────────────────────────────────
+// Appended to responses when no AI provider is configured / reachable.
+// The rule-based engine still works fully — this is informational only.
+
+export function fmtLimitedIntelligenceMode(): string {
+  return [
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "🔧 _ZURIA is operating in Limited Intelligence Mode right now._",
+    "_Basic features (recording, reports, balance) still work perfectly._",
+    "_Full AI insights will resume shortly. 🙏_",
+  ].join("\n");
+}
+
 // ─── Subscription plans overview (user typed "subscribe" / "upgrade") ────────
 
 export function fmtSubscribePlans(
