@@ -487,6 +487,33 @@
         { "fieldPath": "userId",    "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+
+    {
+      "collectionGroup": "billing_dead_letters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",   "order": "ASCENDING" },
+        { "fieldPath": "failedAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "webhook_queue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",     "order": "ASCENDING" },
+        { "fieldPath": "receivedAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "reconciliation_runs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type",   "order": "ASCENDING" },
+        { "fieldPath": "ranAt",  "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
