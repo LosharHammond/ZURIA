@@ -64,7 +64,7 @@ import {
 } from "@/lib/intelligence/response-engine";
 import { normalizeGhanaianEnglish } from "@/lib/intelligence/ghanaian-normalizer";
 import { parseMultiIntent, fmtMultiConfirm } from "@/lib/intelligence/multi-intent-parser";
-import { getActiveProvider, isAIProviderAvailable } from "@/lib/intelligence/ai-provider";
+import { getActiveProvider, getGovernedProvider, isAIProviderAvailable } from "@/lib/intelligence/ai-provider";
 import { voidTransactionWithSideEffects } from "@/lib/whatsapp/session";
 import {
   detectEmotionalState,
@@ -905,7 +905,9 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
       const moneyIn   = todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
       const moneyOut  = todayTxns.filter((t) => MONEY_OUT_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
 
-      const ai = getActiveProvider();
+      // Cost-governed provider: respects per-plan daily AI budget.
+      // Falls back to rule-based if budget exhausted (never blocks the user).
+      const ai = await getGovernedProvider(user.id, effectivePlan);
       const aiResp = await ai.generate({
         businessContext:     `${user.ownerName}, ${effectivePlan} plan, ${business.category}`,
         conversationHistory: historyToText(convCtx.conversationHistory),

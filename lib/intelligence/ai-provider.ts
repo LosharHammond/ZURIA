@@ -409,4 +409,36 @@ export function isAIProviderAvailable(): boolean {
   return _groq.isAvailable() || _openai.isAvailable();
 }
 
+/**
+ * Returns the provider appropriate for the given user, checking the AI cost
+ * governor budget before allowing AI usage.
+ *
+ * If the user's daily AI budget is exhausted, falls back to the rule-based
+ * engine (never throws, never blocks the user from getting a response).
+ *
+ * Pass userId and plan from the request context.
+ * Safe to call on every request — budget check is fast (single Firestore read,
+ * fails-open so AI is not blocked on Firestore errors).
+ */
+export async function getGovernedProvider(
+  userId: string,
+  plan: import("@/types/domain").SubscriptionPlan,
+): Promise<AIProvider> {
+  if (!isAIProviderAvailable()) return _ruleBased;
+
+  try {
+    const { checkAIBudget } = await import("@/lib/ai/cost-governor");
+    const { allowed } = await checkAIBudget(userId, plan);
+    if (!allowed) {
+      // Budget exhausted — rule-based engine handles this request.
+      // The user still gets a working response; AI enhancement is suppressed.
+      return _ruleBased;
+    }
+  } catch {
+    // Budget check failure → fail-open (allow AI)
+  }
+
+  return getActiveProvider();
+}
+
 export { RuleBasedZuria, OpenAIZuria, GroqZuria };
