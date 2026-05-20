@@ -47,11 +47,12 @@ export async function POST(req: Request) {
   }
 
   // Rate limit per phone (shared across both stages)
-  const { allowed } = rateLimit(`login:${phone}`, 8, 60 * 60 * 1000);
-  if (!allowed) {
+  const rl = rateLimit(`login:${phone}`, 8, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    const retryAfterSec = rl.retryAfterMs ? Math.ceil(rl.retryAfterMs / 1000) : 3600;
     return NextResponse.json(
       { error: "Too many attempts. Please wait an hour and try again." },
-      { status: 429 }
+      { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
     );
   }
 

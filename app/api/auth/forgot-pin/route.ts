@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
-import { hashPin } from "@/lib/security/pin";
+import { hashPin, isWeakPin } from "@/lib/security/pin";
 import { normalisePhone, E164_REGEX } from "@/lib/utils/phone";
 import { createLogger } from "@/lib/observability/logger";
 const logger = createLogger("auth:forgot-pin");
@@ -50,15 +51,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "PIN must be exactly 4 digits" }, { status: 400 });
   }
 
+  if (isWeakPin(newPin)) {
+    return NextResponse.json(
+      { error: "That PIN is too easy to guess. Choose a random 4-digit combination." },
+      { status: 422 }
+    );
+  }
+
   // Strict rate limit — 3 attempts per phone per hour.
   // NOTE: This uses an in-memory limiter. In multi-instance/serverless deployments
   // each instance enforces limits independently. For stronger protection, replace
   // rateLimit() with a Redis-backed solution (see lib/rate-limit.ts).
-  const { allowed } = rateLimit(`forgot-pin:${phone}`, 3, 60 * 60 * 1000);
-  if (!allowed) {
+  const rl = rateLimit(`forgot-pin:${phone}`, 3, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    const retryAfterSec = rl.retryAfterMs ? Math.ceil(rl.retryAfterMs / 1000) : 3600;
     return NextResponse.json(
       { error: "Too many reset attempts. Please wait an hour and try again." },
-      { status: 429 }
+      { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
     );
   }
 
@@ -114,8 +123,12 @@ export async function POST(req: Request) {
 
     // Identity confirmed — update the PIN
     await db.collection(collections.users).doc(uid).update({
-      whatsappPin: hashPin(newPin),
-      updatedAt:   new Date().toISOString(),
+      whatsappPin:      hashPin(newPin),
+      updatedAt:        new Date().toISOString(),
+      serverUpdatedAt:  FieldValue.serverTimestamp(),
+      // pinChangedAt lets future session-invalidation logic know when the last
+      // PIN change occurred. Sessions created before this timestamp are suspect.
+      pinChangedAt:     FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({ ok: true });

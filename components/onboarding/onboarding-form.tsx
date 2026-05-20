@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { KeyRound, ChevronLeft, RefreshCw } from "lucide-react";
+import { KeyRound, ChevronLeft, RefreshCw, AlertTriangle } from "lucide-react";
 import { signInWithCustomToken } from "firebase/auth";
 import { BUSINESS_CATEGORIES, LANGUAGES } from "@/constants/business";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,13 @@ import type { AppUser, Business } from "@/types/domain";
 
 // ─── Validation ────────────────────────────────────────────────────────────────
 
+// Mirror of the server-side weak PIN list in lib/security/pin.ts
+const WEAK_PINS = new Set([
+  "0000","1111","2222","3333","4444","5555","6666","7777","8888","9999",
+  "1234","4321","0123","9876","1212","2121","1122","2211","1313","3131",
+  "2580","0852","2468","1357","1470","7410","0007","6969","1000","0001",
+]);
+
 const schema = z.object({
   phone: z
     .string()
@@ -27,7 +34,10 @@ const schema = z.object({
   category:          z.enum(["provision", "food", "salon", "barber", "cosmetics", "pharmacy", "restaurant", "spare-parts", "hardware", "momo", "other"]),
   location:          z.string().min(2, "Enter your town or area").max(100),
   preferredLanguage: z.enum(["english", "twi", "ga", "ewe", "hausa", "fante"]),
-  whatsappPin:       z.string().regex(/^\d{4}$/, "PIN must be exactly 4 numbers"),
+  whatsappPin:       z.string().regex(/^\d{4}$/, "PIN must be exactly 4 numbers").refine(
+    (p) => !WEAK_PINS.has(p),
+    "That PIN is too easy to guess. Use a random 4-digit combination."
+  ),
   whatsappPinConfirm: z.string(),
 }).refine((d) => d.whatsappPin === d.whatsappPinConfirm, {
   message: "PINs do not match",
@@ -170,8 +180,10 @@ export function OnboardingForm() {
     }
   }
 
-  const isSubmitting = form.formState.isSubmitting;
-  const rootError    = form.formState.errors.root?.message;
+  const isSubmitting  = form.formState.isSubmitting;
+  const rootError     = form.formState.errors.root?.message;
+  const watchedPin    = useWatch({ control: form.control, name: "whatsappPin" });
+  const isPinWeak     = watchedPin?.length === 4 && WEAK_PINS.has(watchedPin);
 
   return (
     <GlassCard className="mx-auto max-w-lg">
@@ -267,6 +279,14 @@ export function OnboardingForm() {
               />
             </Field>
           </div>
+          {isPinWeak && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+              <p className="text-xs text-amber-400">
+                That PIN is too easy to guess. Choose something random — not a sequence or repeated digit.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Root-level error with retry CTA */}

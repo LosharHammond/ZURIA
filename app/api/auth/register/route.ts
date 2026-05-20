@@ -22,7 +22,7 @@ import { getAdminDb, getAdminAuth } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
 import { createId } from "@/lib/utils";
-import { hashPin } from "@/lib/security/pin";
+import { hashPin, isWeakPin } from "@/lib/security/pin";
 import { createLogger } from "@/lib/observability/logger";
 const logger = createLogger("auth:register");
 
@@ -86,11 +86,20 @@ export async function POST(req: Request) {
   const { phone, ownerName, businessName, category, location, preferredLanguage, pin, referralCode } = parsed.data;
 
   // Rate-limit: max 5 registration attempts per phone per hour
-  const { allowed } = rateLimit(`register:${phone}`, 5, 60 * 60 * 1000);
-  if (!allowed) {
+  const rl = rateLimit(`register:${phone}`, 5, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    const retryAfterSec = rl.retryAfterMs ? Math.ceil(rl.retryAfterMs / 1000) : 3600;
     return NextResponse.json(
       { error: "Too many registration attempts. Please wait an hour and try again." },
-      { status: 429 }
+      { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
+    );
+  }
+
+  // Reject trivially guessable PINs before touching Firestore
+  if (isWeakPin(parsed.data.pin)) {
+    return NextResponse.json(
+      { error: "That PIN is too easy to guess. Try a random 4-digit combination that isn't a sequence or repeated digit." },
+      { status: 422 }
     );
   }
 

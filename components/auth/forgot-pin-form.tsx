@@ -3,10 +3,17 @@
 import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Phone, ShieldCheck, Store } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Phone, ShieldCheck, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+
+// Mirror of server-side list in lib/security/pin.ts
+const WEAK_PINS = new Set([
+  "0000","1111","2222","3333","4444","5555","6666","7777","8888","9999",
+  "1234","4321","0123","9876","1212","2121","1122","2211","1313","3131",
+  "2580","0852","2468","1357","1470","7410","0007","6969","1000","0001",
+]);
 
 type Step = "enter_phone" | "verify_business" | "success";
 
@@ -18,6 +25,8 @@ export function ForgotPinForm() {
   const [confirmPin, setConfirmPin] = useState("");
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isPinWeak = newPin.length === 4 && WEAK_PINS.has(newPin);
 
   function normalise(raw: string) {
     const digits = raw.replace(/\D/g, "");
@@ -50,6 +59,10 @@ export function ForgotPinForm() {
     }
     if (!/^\d{4}$/.test(newPin)) {
       setError("PIN must be exactly 4 digits.");
+      return;
+    }
+    if (WEAK_PINS.has(newPin)) {
+      setError("That PIN is too easy to guess. Choose a random 4-digit combination.");
       return;
     }
     if (newPin !== confirmPin) {
@@ -191,6 +204,13 @@ export function ForgotPinForm() {
               className="tracking-[0.5em] text-center text-xl"
             />
           </div>
+
+          {isPinWeak && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+              <p className="text-xs text-amber-400">Too easy to guess — choose something random.</p>
+            </div>
+          )}
 
           {/* Confirm PIN */}
           <div>
