@@ -20,6 +20,9 @@
 import { dequeue, completeJob, failJob, enqueue, type QueueJob } from "@/lib/queues";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("worker");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,10 +161,7 @@ export async function dispatchJob(job: QueueJob): Promise<void> {
     default: {
       // Exhaustiveness guard — unknown job types are logged and completed
       const exhaustiveCheck: never = type;
-      console.warn(
-        "[worker] unknown job type — marking complete",
-        { jobId: job.id, type: exhaustiveCheck },
-      );
+      logger.warn("Unknown job type — marking complete", { jobId: job.id, type: exhaustiveCheck });
       break;
     }
   }

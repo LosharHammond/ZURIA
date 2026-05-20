@@ -28,7 +28,10 @@ import { sendText } from "@/lib/whatsapp/client";
 import { fmtWelcome } from "@/lib/whatsapp/formatter";
 import { collections } from "@/lib/firebase/collections";
 import { APP_URL } from "@/lib/config";
+import { createLogger } from "@/lib/observability/logger";
 import type { Transaction } from "@/types/domain";
+
+const logger = createLogger("welcome");
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
   // ── 2. Send welcome WhatsApp + credit referrer in parallel ─────────────────
   const tasks: Promise<unknown>[] = [
     sendText(`whatsapp:${phone}`, fmtWelcome(ownerName, businessName, category ?? "provision"))
-      .catch((err) => console.error("[welcome] Failed to send welcome message:", err)),
+      .catch((err) => logger.warn("Failed to send welcome message", { error: String(err) })),
   ];
 
   if (referredByCode) {
@@ -96,7 +99,7 @@ export async function POST(req: NextRequest) {
     // The inner creditReferrer guard (referrerId === refereeId) is a second layer.
     const ownCode = (userData.referralCode as string | null) ?? null;
     if (ownCode && referredByCode === ownCode) {
-      console.warn(`[welcome] Self-referral blocked (own code) — uid=${refereeId}`);
+      logger.warn("Self-referral blocked", { userId: refereeId });
       // Emit a fraud signal for monitoring (best-effort, non-blocking)
       db.collection(collections.fraudSignals).add({
         type:        "SELF_REFERRAL",
@@ -110,7 +113,7 @@ export async function POST(req: NextRequest) {
     } else {
       tasks.push(
         creditReferrer(db, referredByCode, refereeId, phone, (userData.businessId as string | null) ?? null)
-          .catch((err) => console.error("[welcome] Referral credit failed:", err))
+          .catch((err) => logger.error("Referral credit failed", { error: String(err) }))
       );
     }
   }
@@ -137,7 +140,7 @@ async function creditReferrer(
     .limit(1)
     .get();
   if (snap.empty) {
-    console.warn(`[welcome/creditReferrer] Unknown referral code: ${referralCode}`);
+    logger.warn("Unknown referral code", { referralCode });
     return;
   }
 
@@ -148,7 +151,7 @@ async function creditReferrer(
   // Prevent self-referral (belt-and-suspenders — register already prevents this
   // by not storing self-referredByCode, but guard again here for safety).
   if (referrerId === refereeId || referrerData.phoneNumber === refereePhone) {
-    console.warn(`[welcome/creditReferrer] Self-referral blocked for uid=${refereeId}`);
+    logger.warn("Self-referral blocked in creditReferrer", { userId: refereeId });
     return;
   }
 
@@ -248,7 +251,7 @@ async function creditReferrer(
       });
     });
   } catch (txErr) {
-    console.error("[welcome/creditReferrer] transaction failed:", txErr);
+    logger.error("creditReferrer transaction failed", { error: String(txErr) });
     return; // Abort notifications for a failed credit
   }
 
