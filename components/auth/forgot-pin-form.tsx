@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, KeyRound, Phone, ShieldCheck, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Phone, ShieldCheck, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -101,8 +102,8 @@ export function ForgotPinForm() {
   return (
     <GlassCard className="mx-auto max-w-md">
       {/* Header */}
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-3xl bg-primary/15 text-primary">
-        <KeyRound className="h-7 w-7" />
+      <div className="mb-6">
+        <Image src="/icon.svg" alt="ZURIA" width={56} height={56} className="rounded-[14px]" unoptimized />
       </div>
       <h1 className="text-3xl font-black">Reset your PIN</h1>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">

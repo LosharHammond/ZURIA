@@ -4,16 +4,8 @@
 
   "crons": [
     {
-      "path": "/api/cron/process-webhooks",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/reconcile-payments",
+      "path": "/api/cron/daily",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/expire-subscriptions",
-      "schedule": "0 1 * * *"
     }
   ],
 
@@ -30,6 +22,9 @@
     "app/api/reports/pdf/route.ts": {
       "maxDuration": 60
     },
+    "app/api/cron/daily/route.ts": {
+      "maxDuration": 300
+    },
     "app/api/cron/process-webhooks/route.ts": {
       "maxDuration": 60
     },
@@ -38,6 +33,12 @@
     },
     "app/api/cron/expire-subscriptions/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/business-dna/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/proactive-insights/route.ts": {
+      "maxDuration": 300
     },
     "app/api/payments/webhook/route.ts": {
       "maxDuration": 10
@@ -73,7 +74,7 @@
       ]
     },
     {
-      "source": "/(dashboard|transactions|debts|inventory|notifications|profile|admin|referrals|welcome|subscription|onboarding|login|verify|forgot-pin)(.*)",
+      "source": "/(dashboard|transactions|debts|inventory|timeline|notifications|profile|admin|referrals|welcome|subscription|onboarding|login|verify|forgot-pin)(.*)",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]

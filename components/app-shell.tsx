@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell, Boxes, CrownIcon, Gift, HandCoins,
-  Home, PlusCircle, UserCircle, WifiOff,
+  Home, PlusCircle, UserCircle, WifiOff, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/transactions", label: "Record",        icon: PlusCircle  },
   { href: "/debts",        label: "Debts",         icon: HandCoins   },
   { href: "/inventory",    label: "Stock",         icon: Boxes       },
+  { href: "/timeline",     label: "Timeline",      icon: History     },
   { href: "/referrals",    label: "Refer & Earn",  icon: Gift        },
   { href: "/subscription", label: "Plan",          icon: CrownIcon   },
   { href: "/profile",      label: "Profile",       icon: UserCircle  },
@@ -31,23 +33,6 @@ const BOTTOM_NAV_ITEMS = [
   { href: "/profile",      label: "Profile", icon: UserCircle  },
 ];
 
-// ── ZURIA wordmark SVG ────────────────────────────────────────────────────────
-function ZuriaLogo({ size = 36 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 96 96"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0 rounded-[10px]"
-    >
-      <rect width="96" height="96" rx="24" fill="#071514" />
-      <path d="M25 65L58 31H30V21H74V31L41 65H72V75H25V65Z" fill="#4FD1C5" />
-      <circle cx="25" cy="24" r="6" fill="#F59E0B" />
-    </svg>
-  );
-}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -66,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo / brand */}
         <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-3">
           <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
-            <ZuriaLogo size={36} />
+            <Image src="/icon.svg" alt="ZURIA" width={36} height={36} className="shrink-0 rounded-[10px]" unoptimized />
             <div className="hidden md:block min-w-0">
               <span className="block text-sm font-bold tracking-[0.18em]">ZURIA</span>
               <span className="block truncate text-[11px] text-muted-foreground leading-none">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -378,9 +379,7 @@ function NavBar() {
     <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-lg font-black text-primary-foreground shadow-lg shadow-primary/20">
-            Z
-          </span>
+          <Image src="/icon.svg" alt="ZURIA" width={36} height={36} className="rounded-xl shadow-lg shadow-primary/20" unoptimized />
           <span className="font-bold tracking-[0.22em] text-sm">ZURIA</span>
         </Link>
         <div className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
@@ -955,9 +954,7 @@ function Footer() {
       <div className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-black text-primary-foreground">
-              Z
-            </span>
+            <Image src="/icon.svg" alt="ZURIA" width={32} height={32} className="rounded-lg" unoptimized />
             <span className="text-sm font-bold tracking-[0.22em]">ZURIA</span>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">

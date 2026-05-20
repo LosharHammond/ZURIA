@@ -130,4 +130,30 @@ export const collections = {
 
   // AI cost governor — per-plan spend tracking and abuse signals.
   aiCostGovernor: "ai_cost_governor",
+
+  // ── Retention & Irreplaceability Engine ───────────────────────────────────
+
+  // Business DNA — synthesized behavioral facts about each business.
+  // One doc per businessId; refreshed daily by cron.
+  // Powers "ZURIA remembers your business" conversational recall.
+  businessDna: "business_dna",
+
+  // Relationship memory — per-supplier and per-customer behavioral profiles.
+  // Doc ID: `${businessId}_${normalizedEntityName}`.
+  // Powers "Kojo usually pays within 8 days" and "last price from this supplier" recall.
+  relationshipMemory: "relationship_memory",
+
+  // Proactive insights — AI-generated insights delivered without user prompting.
+  // One doc per (businessId + date + insightType). Deduplication key prevents spam.
+  // Workers read and deliver via WhatsApp/Telegram/app.
+  proactiveInsights: "proactive_insights",
+
+  // Business timeline — chronological operational intelligence events.
+  // Already declared above as businessTimeline but referenced as a literal string
+  // in timeline/index.ts — keeping the canonical key here for cross-module use.
+  // (Both keys point to the same "business_timeline" collection.)
+
+  // Retention events — engagement and habit-formation telemetry.
+  // Append-only. Tracks: first_record, streak_7d, streak_30d, first_report, etc.
+  retentionEvents: "retention_events",
 } as const;

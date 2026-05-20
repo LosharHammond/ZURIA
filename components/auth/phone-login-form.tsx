@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signInWithCustomToken } from "firebase/auth";
-import { KeyRound, MessageCircle, Phone, ShieldCheck, UserPlus } from "lucide-react";
+import { KeyRound, Phone, ShieldCheck, UserPlus } from "lucide-react";
 import { auth, firebaseReady } from "@/lib/firebase/config";
 import { useAuth } from "@/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -121,8 +122,8 @@ export function PhoneLoginForm() {
 
   return (
     <GlassCard className="mx-auto max-w-md">
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-3xl bg-primary/15 text-primary">
-        <MessageCircle className="h-7 w-7" />
+      <div className="mb-6">
+        <Image src="/icon.svg" alt="ZURIA" width={56} height={56} className="rounded-[14px]" unoptimized />
       </div>
       <h1 className="text-3xl font-black">Welcome to ZURIA</h1>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">

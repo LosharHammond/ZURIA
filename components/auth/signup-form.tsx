@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MessageCircle, Phone, ArrowRight } from "lucide-react";
+import { Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,8 +68,8 @@ export function SignupForm() {
 
   return (
     <GlassCard className="mx-auto max-w-md">
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-3xl bg-primary/15 text-primary">
-        <MessageCircle className="h-7 w-7" />
+      <div className="mb-6">
+        <Image src="/icon.svg" alt="ZURIA" width={56} height={56} className="rounded-[14px]" unoptimized />
       </div>
       <h1 className="text-3xl font-black">Create your account</h1>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">

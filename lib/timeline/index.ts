@@ -20,20 +20,27 @@ import type { Transaction, Debt } from "@/types/domain";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type TimelineEventType =
-  | "revenue_milestone"    // Best day/week ever
-  | "revenue_decline"      // Revenue dropped significantly
-  | "debt_created"         // New customer debt
-  | "debt_cleared"         // Debt fully paid
-  | "debt_milestone"       // Total debt crossed a threshold
-  | "inventory_restock"    // Stock purchased
-  | "inventory_low"        // Low stock warning
-  | "cash_warning"         // Cash flow concern
-  | "expense_spike"        // Unusual expense
-  | "new_supplier"         // First transaction with a new supplier
-  | "new_customer"         // First transaction with a new customer
-  | "operational_anomaly"  // Transaction pattern deviation
-  | "business_milestone"   // General achievement
-  | "risk_alert";          // High-risk signal
+  | "revenue_milestone"       // Best day/week ever
+  | "revenue_decline"         // Revenue dropped significantly
+  | "debt_created"            // New customer debt
+  | "debt_cleared"            // Debt fully paid
+  | "debt_milestone"          // Total debt crossed a threshold
+  | "inventory_restock"       // Stock purchased
+  | "inventory_low"           // Low stock warning
+  | "cash_warning"            // Cash flow concern
+  | "expense_spike"           // Unusual expense
+  | "new_supplier"            // First transaction with a new supplier
+  | "new_customer"            // First transaction with a new customer
+  | "operational_anomaly"     // Transaction pattern deviation
+  | "business_milestone"      // General achievement
+  | "risk_alert"              // High-risk signal
+  // ── Retention Engine additions ────────────────────────────────────────────
+  | "supplier_price_change"   // Supplier price moved ≥10% vs historical avg
+  | "debt_recovery_milestone" // Recovered significant overdue debt amount
+  | "stock_forecast_warning"  // AI predicts stock-out within N days
+  | "expense_category_spike"  // One expense category jumps unusually
+  | "customer_loyalty_milestone" // A customer hits a repeat-purchase milestone
+  | "business_anniversary";   // 1-month, 3-month, 6-month, 1-year on ZURIA
 
 export interface TimelineEvent {
   id: string;
@@ -274,6 +281,167 @@ export function buildTimelineFromTransactions(
         occurredAt: t.createdAt,
         createdAt: now,
       });
+    }
+
+    // ── Supplier price changes ─────────────────────────────────────────────────
+    // Group stock_purchase by product, check if latest price differs ≥10% from avg
+    const stockPurchases = transactions.filter((t) => t.type === "stock_purchase" && t.productName);
+    const byProduct = new Map<string, Transaction[]>();
+    for (const t of stockPurchases) {
+      const key = t.productName!;
+      const list = byProduct.get(key) ?? [];
+      list.push(t);
+      byProduct.set(key, list);
+    }
+    for (const [product, purchases] of byProduct.entries()) {
+      if (purchases.length < 3) continue;
+      const sorted = [...purchases].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const latest = sorted[sorted.length - 1]!;
+      const prior = sorted.slice(0, -1);
+      const priorAvg = prior.reduce((s, t) => s + t.amount, 0) / prior.length;
+      const changePct = ((latest.amount - priorAvg) / priorAvg) * 100;
+      if (Math.abs(changePct) < 10) continue;
+      const direction = changePct > 0 ? "up" : "down";
+      const emoji = changePct > 0 ? "📈" : "📉";
+      events.push({
+        id: makeEventId(businessId, "supplier_price_change", toDateKey(latest.createdAt), product),
+        businessId,
+        userId,
+        type: "supplier_price_change",
+        title: `${product} price ${direction} ${Math.round(Math.abs(changePct))}%`,
+        description: `Latest purchase: GH₵${latest.amount.toFixed(2)} vs prior avg GH₵${priorAvg.toFixed(2)} (${changePct > 0 ? "+" : ""}${Math.round(changePct)}%)`,
+        metric: latest.amount,
+        relatedEntityId: latest.id,
+        severity: Math.abs(changePct) >= 25 ? "warning" : "neutral",
+        icon: emoji,
+        occurredAt: latest.createdAt,
+        createdAt: now,
+      });
+    }
+
+    // ── Debt recovery milestones ───────────────────────────────────────────────
+    // Surface when total repaid this month crosses significant thresholds
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const repaymentsTx = transactions.filter(
+      (t) => t.type === "repayment" && t.createdAt.startsWith(thisMonth),
+    );
+    if (repaymentsTx.length > 0) {
+      const monthlyRecovered = repaymentsTx.reduce((s, t) => s + t.amount, 0);
+      if (avgDailyRevenue > 0 && monthlyRecovered >= avgDailyRevenue * 3) {
+        const lastRepayment = repaymentsTx.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]!;
+        events.push({
+          id: makeEventId(businessId, "debt_recovery_milestone", thisMonth),
+          businessId,
+          userId,
+          type: "debt_recovery_milestone",
+          title: "Strong debt recovery this month",
+          description: `GH₵${monthlyRecovered.toFixed(2)} collected from customers this month — ${repaymentsTx.length} payment${repaymentsTx.length > 1 ? "s" : ""} received`,
+          metric: monthlyRecovered,
+          severity: "positive",
+          icon: "💚",
+          occurredAt: lastRepayment.createdAt,
+          createdAt: now,
+        });
+      }
+    }
+
+    // ── Expense category spikes ────────────────────────────────────────────────
+    // Find if any single expense category exceeded 50% of total expenses in a day
+    for (const dayKey of sortedDayKeys) {
+      const dayTxns = byDay.get(dayKey) ?? [];
+      const dayExpenses = dayTxns.filter(
+        (t) => t.type === "expense" || t.type === "cost",
+      );
+      if (dayExpenses.length < 2) continue;
+      const totalDayExpenses = dayExpenses.reduce((s, t) => s + t.amount, 0);
+      const catTotals: Record<string, number> = {};
+      for (const t of dayExpenses) {
+        const cat = t.productName || t.category || "General";
+        catTotals[cat] = (catTotals[cat] ?? 0) + t.amount;
+      }
+      for (const [cat, catTotal] of Object.entries(catTotals)) {
+        const share = catTotal / totalDayExpenses;
+        if (share >= 0.6 && catTotal >= 50) {
+          events.push({
+            id: makeEventId(businessId, "expense_category_spike", dayKey, cat),
+            businessId,
+            userId,
+            type: "expense_category_spike",
+            title: `${cat} dominated expenses`,
+            description: `${cat} was ${Math.round(share * 100)}% of all expenses on ${dayKey} (GH₵${catTotal.toFixed(2)})`,
+            metric: catTotal,
+            severity: "warning",
+            icon: "💸",
+            occurredAt: `${dayKey}T00:00:00.000Z`,
+            createdAt: now,
+          });
+        }
+      }
+    }
+
+    // ── Customer loyalty milestones ───────────────────────────────────────────
+    // Surface when a customer completes 5th, 10th, 20th purchase
+    const salesByCustomer = new Map<string, Transaction[]>();
+    for (const t of transactions.filter((t) => t.type === "sale" && t.customerName)) {
+      const key = t.customerName!;
+      const list = salesByCustomer.get(key) ?? [];
+      list.push(t);
+      salesByCustomer.set(key, list);
+    }
+    for (const [customer, cSales] of salesByCustomer.entries()) {
+      const count = cSales.length;
+      const milestones = [5, 10, 20, 50];
+      for (const milestone of milestones) {
+        if (count === milestone) {
+          const lastSale = cSales.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]!;
+          const totalSpent = cSales.reduce((s, t) => s + t.amount, 0);
+          events.push({
+            id: makeEventId(businessId, "customer_loyalty_milestone", toDateKey(lastSale.createdAt), `${customer}_${milestone}`),
+            businessId,
+            userId,
+            type: "customer_loyalty_milestone",
+            title: `${customer.split(" ")[0]} is a loyal customer 🌟`,
+            description: `${customer} has made ${milestone} purchases with you, spending GH₵${totalSpent.toFixed(2)} total`,
+            metric: totalSpent,
+            severity: "positive",
+            icon: "🌟",
+            occurredAt: lastSale.createdAt,
+            createdAt: now,
+          });
+        }
+      }
+    }
+
+    // ── Business anniversary ──────────────────────────────────────────────────
+    // Surface when the first ever transaction was 1, 3, 6, or 12 months ago
+    if (transactions.length > 0) {
+      const firstTx = [...transactions].sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt),
+      )[0]!;
+      const firstDate = new Date(firstTx.createdAt);
+      const monthsAgo = [1, 3, 6, 12];
+      for (const months of monthsAgo) {
+        const anniversaryDate = new Date(firstDate);
+        anniversaryDate.setMonth(anniversaryDate.getMonth() + months);
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const annKey = anniversaryDate.toISOString().slice(0, 10);
+        if (annKey === todayKey) {
+          const label =
+            months === 12 ? "1 year" : months === 6 ? "6 months" : months === 3 ? "3 months" : "1 month";
+          events.push({
+            id: makeEventId(businessId, "business_anniversary", annKey, `${months}m`),
+            businessId,
+            userId,
+            type: "business_anniversary",
+            title: `${label} on ZURIA! 🎉`,
+            description: `You've been tracking your business for ${label}. ZURIA has recorded ${transactions.length} transactions for you.`,
+            severity: "positive",
+            icon: "🎂",
+            occurredAt: anniversaryDate.toISOString(),
+            createdAt: now,
+          });
+        }
+      }
     }
 
     // ── Sort descending, cap at 50 ─────────────────────────────────────────────

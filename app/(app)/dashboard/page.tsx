@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Banknote,
   HandCoins,
+  History,
   MessageCircle,
   PiggyBank,
   ShoppingBag,
@@ -20,6 +21,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { FinanceBreakdown } from "@/components/dashboard/finance-breakdown";
 import { TransactionComposer } from "@/components/transactions/transaction-composer";
 import { RecentActivity } from "@/components/transactions/recent-activity";
+import { BusinessTimeline, BusinessTimelineSkeleton } from "@/components/dashboard/business-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Lazy-load recharts (SalesChart) ─────────────────────────────────────────
@@ -38,6 +40,7 @@ import { formatMoney } from "@/lib/utils";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
 import type { BusinessCategory } from "@/types/domain";
+import type { TimelineEvent } from "@/lib/timeline";
 
 function getSoldPrefix(cat?: BusinessCategory) {
   if (cat === "barber" || cat === "salon") return "Cut hair ";
@@ -48,10 +51,27 @@ function getSoldPrefix(cat?: BusinessCategory) {
 
 export default function DashboardPage() {
   const data = useBusinessData();
-  const category = useAppStore((s) => s.business?.category);
+  const business      = useAppStore((s) => s.business);
+  const category      = useAppStore((s) => s.business?.category);
   const effectivePlan = useAppStore((s) => s.user?.subscriptionPlan ?? "free");
-  const waNumber = process.env.NEXT_PUBLIC_WA_NUMBER;
+  const waNumber      = process.env.NEXT_PUBLIC_WA_NUMBER;
   const [composerPrefill, setComposerPrefill] = useState("");
+  const [timelineEvents, setTimelineEvents]   = useState<TimelineEvent[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  useEffect(() => {
+    if (!business?.id || data.loading) return;
+    let cancelled = false;
+    setTimelineLoading(true);
+    fetch(`/api/intelligence/timeline?businessId=${business.id}&days=14`)
+      .then((r) => r.ok ? r.json() : Promise.resolve([]))
+      .then((events: TimelineEvent[]) => {
+        if (!cancelled) setTimelineEvents(events.slice(0, 4));
+      })
+      .catch(() => {/* non-fatal */})
+      .finally(() => { if (!cancelled) setTimelineLoading(false); });
+    return () => { cancelled = true; };
+  }, [business?.id, data.loading]);
 
   if (data.loading) return <DashboardSkeleton />;
 
@@ -223,6 +243,31 @@ export default function DashboardPage() {
       <section>
         <h2 className="mb-3 text-xl font-black">What happened recently</h2>
         <RecentActivity transactions={data.transactions} />
+      </section>
+
+      {/* ── Business timeline preview ── */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-black">Business story</h2>
+          </div>
+          <Link
+            href="/timeline"
+            className="text-xs text-primary/80 hover:text-primary transition-colors"
+          >
+            View all →
+          </Link>
+        </div>
+        {timelineLoading ? (
+          <BusinessTimelineSkeleton />
+        ) : (
+          <BusinessTimeline
+            events={timelineEvents}
+            showViewAll={timelineEvents.length >= 4}
+            onViewAll={() => window.location.assign("/timeline")}
+          />
+        )}
       </section>
     </div>
   );
