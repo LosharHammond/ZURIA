@@ -12,6 +12,7 @@ const PROTECTED_PREFIXES = [
   "/referrals",
   "/welcome",
   "/subscription",
+  "/timeline",
   // NOTE: /onboarding is intentionally NOT protected here.
   // New users reach it before authentication (server-side registration flow).
   // The OnboardingForm itself handles the "already onboarded" redirect.

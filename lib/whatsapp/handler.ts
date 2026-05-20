@@ -250,7 +250,7 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
   // ── If no PIN is set yet, guide user to set one ──────────────────────────
   if (!storedPin) {
     return [
-      `👋 Welcome *${user.ownerName}*! 😊 I'm *ZURIA (${bName})*, your business helper.`,
+      `👋 Welcome *${user.ownerName}*! 😊 I'm *ZURIA*, your AI Business Assistant for *${bName}*.`,
       "",
       "Before we start, you need a 4-digit PIN to keep your account safe.",
       "",

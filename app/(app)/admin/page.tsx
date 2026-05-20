@@ -7,6 +7,7 @@ import {
   ArrowDownToLine, Check, X, AlertTriangle, Info, TrendingUp,
   CreditCard, BadgeCheck, ChevronRight, Crown, Zap,
   ShieldCheck, Activity, DollarSign, Server, MessageSquare, Eye,
+  Copy, ExternalLink, Phone,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,27 @@ function SkeletonRows({ count = 5 }: { count?: number }) {
       ))}
     </div>
   );
+}
+
+// ─── Copy helper ─────────────────────────────────────────────────────────────
+
+function useCopyPhone() {
+  const [copied, setCopied] = useState<string | null>(null);
+  function copyPhone(phone: string, id: string) {
+    navigator.clipboard.writeText(phone).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    }).catch(() => {});
+  }
+  return { copied, copyPhone };
+}
+
+// ─── WhatsApp link builder ────────────────────────────────────────────────────
+
+function waLink(rawPhone: string, message?: string): string {
+  const digits = rawPhone.replace(/\D/g, "");
+  const base = `https://wa.me/${digits}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -540,138 +562,15 @@ export default function AdminPage() {
 
       {/* ── USERS TAB ── */}
       {activeTab === "users" && (
-        <GlassCard>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold">All users ({stats?.totals.users ?? "…"})</h2>
-            {refreshing && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
-          </div>
-          {loading ? <SkeletonRows count={8} /> : !stats?.users.length ? (
-            <p className="text-sm text-muted-foreground">No users yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {stats.users.map((u) => {
-                const showForm = !!activateForms[u.id];
-                const form = activateForms[u.id] ?? { plan: "growth" as SubscriptionPlan, days: 30 };
-                const isActivating = actionState[u.id] === "activate";
-                const isExpired = u.subscriptionExpiresAt
-                  ? new Date(u.subscriptionExpiresAt) < new Date()
-                  : false;
-
-                return (
-                  <div key={u.id} className="rounded-xl bg-white/[0.03] border border-white/[0.04]">
-                    {/* User row */}
-                    <div className="flex items-start justify-between gap-3 px-3 py-2.5">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold">{u.ownerName}</p>
-                          <PlanBadge plan={u.subscriptionPlan} />
-                          {!u.onboardingComplete && (
-                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">Incomplete</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{u.phoneNumber}</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Globe className="h-2.5 w-2.5" />{u.preferredLanguage}
-                          </span>
-                          {u.subscriptionExpiresAt && (
-                            <span className={`text-[10px] ${isExpired ? "text-destructive" : "text-muted-foreground"}`}>
-                              {isExpired ? "⚠ Expired" : "Expires"} {fmtDateShort(u.subscriptionExpiresAt)}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">
-                            Joined {fmtDateShort(u.createdAt)}
-                          </span>
-                          {u.whatsappMessageCount > 0 && (
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Smartphone className="h-2.5 w-2.5" />{u.whatsappMessageCount} msgs
-                            </span>
-                          )}
-                          {u.referralCount > 0 && (
-                            <span className="text-[10px] text-emerald-400">
-                              {u.referralCount} referrals · GH₵ {u.referralBalance.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="shrink-0">
-                        {u.subscriptionPlan !== "enterprise" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => {
-                              if (showForm) {
-                                setActivateForms((prev) => { const n = { ...prev }; delete n[u.id]; return n; });
-                              } else {
-                                setActivateForms((prev) => ({ ...prev, [u.id]: { plan: "growth", days: 30 } }));
-                              }
-                            }}
-                          >
-                            {showForm ? "Cancel" : "Activate plan"}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Inline activation form */}
-                    {showForm && (
-                      <div className="border-t border-white/[0.04] px-3 py-3 bg-white/[0.02]">
-                        <p className="text-xs font-semibold text-primary mb-2">Activate subscription for {u.ownerName}</p>
-                        <div className="flex flex-wrap gap-2 items-end">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground mb-1">Plan</p>
-                            <select
-                              value={form.plan}
-                              onChange={(e) => setActivateForms((prev) => ({
-                                ...prev,
-                                [u.id]: { ...prev[u.id]!, plan: e.target.value as SubscriptionPlan },
-                              }))}
-                              className="rounded-lg bg-white/[0.06] border border-white/[0.08] px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                            >
-                              <option value="growth">Growth — GH₵20/mo</option>
-                              <option value="pro">Pro — GH₵50/mo</option>
-                              <option value="enterprise">Enterprise — GH₵100/mo</option>
-                            </select>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground mb-1">Duration</p>
-                            <select
-                              value={form.days}
-                              onChange={(e) => setActivateForms((prev) => ({
-                                ...prev,
-                                [u.id]: { ...prev[u.id]!, days: Number(e.target.value) },
-                              }))}
-                              className="rounded-lg bg-white/[0.06] border border-white/[0.08] px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                            >
-                              <option value={7}>7 days</option>
-                              <option value={30}>30 days (monthly)</option>
-                              <option value={90}>90 days (quarterly)</option>
-                              <option value={365}>365 days (annual)</option>
-                            </select>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => handleActivate(u.id, form.plan, form.days)}
-                            disabled={isActivating}
-                            className="h-8 gap-1.5"
-                          >
-                            {isActivating
-                              ? <><RefreshCw className="h-3 w-3 animate-spin" /> Activating…</>
-                              : <><BadgeCheck className="h-3 w-3" /> Activate</>}
-                          </Button>
-                        </div>
-                        <p className="mt-2 text-[10px] text-muted-foreground">
-                          User will be notified on WhatsApp automatically.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </GlassCard>
+        <UsersTabPanel
+          stats={stats}
+          loading={loading}
+          refreshing={refreshing}
+          activateForms={activateForms}
+          setActivateForms={setActivateForms}
+          actionState={actionState}
+          handleActivate={handleActivate}
+        />
       )}
 
       {/* ── PAYMENT CLAIMS TAB ── */}
@@ -987,6 +886,201 @@ export default function AdminPage() {
       )}
 
     </div>
+  );
+}
+
+// ─── Users tab panel (extracted to keep main component clean) ─────────────────
+
+function UsersTabPanel({
+  stats,
+  loading,
+  refreshing,
+  activateForms,
+  setActivateForms,
+  actionState,
+  handleActivate,
+}: {
+  stats: AdminStats | null;
+  loading: boolean;
+  refreshing: boolean;
+  activateForms: Record<string, { plan: SubscriptionPlan; days: number }>;
+  setActivateForms: React.Dispatch<React.SetStateAction<Record<string, { plan: SubscriptionPlan; days: number }>>>;
+  actionState: Record<string, string>;
+  handleActivate: (userId: string, plan: SubscriptionPlan, durationDays: number, claimId?: string) => Promise<void>;
+}) {
+  const { copied, copyPhone } = useCopyPhone();
+
+  return (
+    <GlassCard>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="font-bold">All users ({stats?.totals.users ?? "…"})</h2>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            Phone numbers visible — admin only
+          </span>
+        </div>
+        {refreshing && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+      {loading ? <SkeletonRows count={8} /> : !stats?.users.length ? (
+        <p className="text-sm text-muted-foreground">No users yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {stats.users.map((u) => {
+            const showForm = !!activateForms[u.id];
+            const form = activateForms[u.id] ?? { plan: "growth" as SubscriptionPlan, days: 30 };
+            const isActivating = actionState[u.id] === "activate";
+            const isExpired = u.subscriptionExpiresAt
+              ? new Date(u.subscriptionExpiresAt) < new Date()
+              : false;
+            const rawPhone = u.rawPhone || "";
+            const waHref = rawPhone ? waLink(rawPhone) : null;
+
+            return (
+              <div key={u.id} className="rounded-xl bg-white/[0.03] border border-white/[0.04]">
+                {/* User row */}
+                <div className="flex items-start justify-between gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">{u.ownerName}</p>
+                      <PlanBadge plan={u.subscriptionPlan} />
+                      {!u.onboardingComplete && (
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">Incomplete</span>
+                      )}
+                    </div>
+
+                    {/* Phone row — full number + copy + WhatsApp send */}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="text-xs font-mono text-foreground/80">{rawPhone || u.phoneNumber}</span>
+                      {rawPhone && (
+                        <>
+                          <button
+                            onClick={() => copyPhone(rawPhone, u.id)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title="Copy phone number"
+                          >
+                            {copied === u.id
+                              ? <span className="text-[10px] text-emerald-400 font-semibold">Copied!</span>
+                              : <Copy className="h-3 w-3" />}
+                          </button>
+                          {waHref && (
+                            <a
+                              href={waHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-0.5 rounded-md bg-[#25D366]/15 border border-[#25D366]/25 px-1.5 py-0.5 text-[10px] font-bold text-[#25D366] hover:bg-[#25D366]/25 transition-colors"
+                              title="Open WhatsApp chat"
+                            >
+                              <ExternalLink className="h-2.5 w-2.5" />
+                              WhatsApp
+                            </a>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Globe className="h-2.5 w-2.5" />{u.preferredLanguage}
+                      </span>
+                      {u.subscriptionExpiresAt && (
+                        <span className={`text-[10px] ${isExpired ? "text-destructive" : "text-muted-foreground"}`}>
+                          {isExpired ? "⚠ Expired" : "Expires"} {fmtDateShort(u.subscriptionExpiresAt)}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        Joined {fmtDateShort(u.createdAt)}
+                      </span>
+                      {u.whatsappMessageCount > 0 && (
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Smartphone className="h-2.5 w-2.5" />{u.whatsappMessageCount} msgs
+                        </span>
+                      )}
+                      {u.referralCount > 0 && (
+                        <span className="text-[10px] text-emerald-400">
+                          {u.referralCount} referrals · GH₵ {u.referralBalance.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {u.subscriptionPlan !== "enterprise" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          if (showForm) {
+                            setActivateForms((prev) => { const n = { ...prev }; delete n[u.id]; return n; });
+                          } else {
+                            setActivateForms((prev) => ({ ...prev, [u.id]: { plan: "growth", days: 30 } }));
+                          }
+                        }}
+                      >
+                        {showForm ? "Cancel" : "Activate plan"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inline activation form */}
+                {showForm && (
+                  <div className="border-t border-white/[0.04] px-3 py-3 bg-white/[0.02]">
+                    <p className="text-xs font-semibold text-primary mb-2">Activate subscription for {u.ownerName}</p>
+                    <div className="flex flex-wrap gap-2 items-end">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1">Plan</p>
+                        <select
+                          value={form.plan}
+                          onChange={(e) => setActivateForms((prev) => ({
+                            ...prev,
+                            [u.id]: { ...prev[u.id]!, plan: e.target.value as SubscriptionPlan },
+                          }))}
+                          className="rounded-lg bg-white/[0.06] border border-white/[0.08] px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        >
+                          <option value="growth">Growth — GH₵25/mo</option>
+                          <option value="pro">Pro — GH₵70/mo</option>
+                          <option value="enterprise">Enterprise — GH₵200/mo</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1">Duration</p>
+                        <select
+                          value={form.days}
+                          onChange={(e) => setActivateForms((prev) => ({
+                            ...prev,
+                            [u.id]: { ...prev[u.id]!, days: Number(e.target.value) },
+                          }))}
+                          className="rounded-lg bg-white/[0.06] border border-white/[0.08] px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        >
+                          <option value={7}>7 days (trial)</option>
+                          <option value={30}>30 days (monthly)</option>
+                          <option value={90}>90 days (quarterly)</option>
+                          <option value={365}>365 days (annual)</option>
+                        </select>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleActivate(u.id, form.plan, form.days)}
+                        disabled={isActivating}
+                        className="h-8 gap-1.5"
+                      >
+                        {isActivating
+                          ? <><RefreshCw className="h-3 w-3 animate-spin" /> Activating…</>
+                          : <><BadgeCheck className="h-3 w-3" /> Activate</>}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-muted-foreground">
+                      User will be notified on WhatsApp automatically.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </GlassCard>
   );
 }
 

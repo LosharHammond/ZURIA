@@ -549,7 +549,7 @@ async function _handleTelegramInner(
     await saveTgLink(chatId, { state: "awaiting_phone", pinAttempts: 0, lockedUntil: null });
     await reply(
       `👋 *Welcome to ZURIA, ${firstName}!*\n\n` +
-      `I'm your personal business helper — record sales, track debts, check your balance, and more.\n\n` +
+      `I'm your *AI Business Assistant* — record sales, track debts, check your balance, and more. Available 24/7 on WhatsApp + Telegram.\n\n` +
       `To get started, please send me your *ZURIA phone number* (the one you registered with).\n` +
       `Example: *0241234567*\n\n` +
       `Don't have an account yet? Create one at:\n${APP_URL}/signup`

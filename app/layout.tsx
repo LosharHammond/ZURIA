@@ -6,8 +6,8 @@ import { AppProviders } from "@/providers/app-providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://zuria.vercel.app";
-const OG_TITLE = "ZURIA | Know where your money goes";
-const OG_DESC = "Free WhatsApp business helper for Ghanaian traders. Track sales, debts & profit — just text it. No accountant needed.";
+const OG_TITLE = "ZURIA — AI Business Assistant for African Businesses";
+const OG_DESC = "AI Business Assistant with WhatsApp + Telegram integration. Track sales, debts & profit in your language — no accountant needed. Built for Ghanaian traders.";
 
 export const metadata: Metadata = {
   title: OG_TITLE,

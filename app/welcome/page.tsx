@@ -30,7 +30,7 @@ export default function WelcomePage() {
       </h1>
 
       <p className="mt-4 max-w-xs text-base text-muted-foreground leading-7">
-        ZURIA is now your personal business helper. You can record your sales, expenses, and debts right from WhatsApp — any time, anywhere.
+        ZURIA is your AI Business Assistant — available on WhatsApp and Telegram. Record your sales, expenses, and debts in plain language, any time, anywhere.
       </p>
 
       {/* WhatsApp CTA — primary action */}

@@ -264,7 +264,7 @@ export function fmtHelp(
   ].filter(Boolean) as string[];
 
   return [
-    `👋 Hi *${firstName}*! I am *ZURIA (${businessName})*, your personal business helper.`,
+    `👋 Hi *${firstName}*! I am *ZURIA*, your AI Business Assistant for *${businessName}*.`,
     "",
     `Your plan: *${planBadge}*`,
     "",
@@ -330,7 +330,7 @@ export function fmtWelcome(ownerName: string, businessName: string, category: Bu
     "",
     `Congratulations on setting up *${businessName}* ${voiceEmoji}`,
     "",
-    "I'm your personal business helper — available 24/7 on WhatsApp and Telegram.",
+    "I'm your *AI Business Assistant* — available 24/7 on WhatsApp and Telegram.",
     "I remember *everything* for you, so you never lose track again! 💪",
     "",
     "━━━━━━━━━━━━━━━━━━━",
@@ -423,7 +423,7 @@ export function fmtUnregistered(): string {
     "Or use *Telegram* for a seamless experience (no expiry):",
     "👉 https://t.me/ZuriaBot",
     "",
-    "_ZURIA is your free business helper — it remembers everything for you. 😊_",
+    "_ZURIA — AI Business Assistant with WhatsApp + Telegram integration. It remembers everything so you don't have to. 😊_",
     "",
     `Need help getting started? ${SUPPORT_WA}`,
   ].join("\n");
