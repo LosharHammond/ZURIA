@@ -13,6 +13,7 @@
 import { type NextRequest, NextResponse, after } from "next/server";
 import { handleTelegram } from "@/lib/telegram/handler";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { captureZuriaError } from "@/lib/observability/sentry";
 import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
     try {
       await handleTelegram(update);
     } catch (err) {
-      console.error("[telegram/webhook] unhandled error in handleTelegram:", err);
+      captureZuriaError(err instanceof Error ? err : new Error(String(err)), { extra: { route: "telegram/webhook" } });
     }
   });
 

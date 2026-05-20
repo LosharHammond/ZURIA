@@ -50,6 +50,7 @@ import {
 } from "@/lib/whatsapp/session";
 import { expireSession } from "@/lib/whatsapp/security";
 import { logError }      from "@/lib/server/error-logger";
+import { captureZuriaError } from "@/lib/observability/sentry";
 import { classifyMessage } from "@/lib/intelligence/intent-classifier";
 import {
   loadTelegramContext, saveTelegramContext, clearTelegramContext,
@@ -519,7 +520,7 @@ export async function handleTelegram(update: Record<string, unknown>): Promise<v
   try {
     await _handleTelegramInner(chatId, rawText, firstName, reply);
   } catch (err) {
-    console.error("[telegram/handler] unhandled error:", err);
+    captureZuriaError(err instanceof Error ? err : new Error(String(err)), { extra: { module: "telegram/handler", chatId } });
     try {
       await reply(fmtSystemError());
     } catch {
