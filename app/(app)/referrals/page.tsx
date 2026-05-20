@@ -242,7 +242,7 @@ function EarningsChoiceCard({ balance, monthlyCount, onWithdrawClick }: {
           Refer just <span className="font-bold text-foreground">{Math.max(0, MILESTONE_REFERRALS - monthlyCount)} more people this month</span>{" "}
           and you&apos;ll earn <span className="font-bold text-amber-300">{formatMoney(MILESTONE_BALANCE)}</span> total
           {" "}+ unlock <span className="font-bold text-indigo-300">ZURIA Growth features FREE</span> for the whole month —
-          worth <span className="font-bold text-foreground">GHS 20</span>!
+          worth <span className="font-bold text-foreground">GHS 25</span>!
         </p>
       </div>
 
@@ -420,7 +420,7 @@ export default function ReferralsPage() {
                   <span className="font-bold text-amber-300">GHS 15.00</span> cash{" "}
                   <span className="font-bold">AND</span> unlock{" "}
                   <span className="font-bold text-indigo-300">ZURIA Growth features free</span> until end of month —
-                  monthly reports, AI insights, debt reminders, inventory alerts. Worth GHS 20!
+                  monthly reports, AI insights, debt reminders, inventory alerts. Worth GHS 25!
                 </p>
               </div>
             </div>

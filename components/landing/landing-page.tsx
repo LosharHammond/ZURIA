@@ -181,7 +181,7 @@ const pricingTiers = [
     glowColor: "",
     target: "Market women · Kiosks · Solo hustlers",
     highlight: false,
-    limits: ["10 AI entries per day", "1 business account", "30-day history"],
+    limits: ["15 AI entries per day", "1 business account", "30-day history"],
     features: [
       "Voice & text transaction recording",
       "AI transaction parsing in 6 local languages",
@@ -203,14 +203,14 @@ const pricingTiers = [
     badgeVariant: "success" as const,
     name: "ZURIA Growth",
     tagline: "Your digital shop assistant",
-    price: 20,
-    annualPrice: 200,
+    price: 25,
+    annualPrice: 250,
     color: "text-emerald-400",
     borderColor: "border-emerald-500/30",
     glowColor: "from-emerald-500/8",
     target: "Small shops · Salons · MoMo vendors · Food vendors",
     highlight: true,
-    limits: ["200 AI entries per month", "Unlimited voice notes"],
+    limits: ["500 AI entries per month", "Unlimited voice notes"],
     features: [
       "Everything in Starter Ledger",
       "Smart transaction categorization",
@@ -237,8 +237,8 @@ const pricingTiers = [
     badgeVariant: "secondary" as const,
     name: "ZURIA Pro",
     tagline: "The African SME operating system",
-    price: 50,
-    annualPrice: 500,
+    price: 70,
+    annualPrice: 700,
     color: "text-cyan-400",
     borderColor: "border-cyan-500/30",
     glowColor: "from-cyan-500/8",
@@ -275,8 +275,8 @@ const pricingTiers = [
     badgeVariant: "warning" as const,
     name: "ZURIA Enterprise",
     tagline: "Commercial intelligence infrastructure",
-    price: 100,
-    annualPrice: 1000,
+    price: 200,
+    annualPrice: 2000,
     color: "text-amber-400",
     borderColor: "border-amber-500/30",
     glowColor: "from-amber-500/8",
@@ -731,7 +731,7 @@ function PricingSection() {
           {/* Annual discount banner */}
           <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-400">
             <Sparkles className="h-4 w-4" />
-            Pay annually and get 2 months free — save up to GHS 200/year
+            Pay annually and get 2 months free — save up to GHS 400/year
           </div>
         </FadeUp>
 

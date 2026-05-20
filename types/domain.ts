@@ -103,10 +103,10 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 /**
  * ZURIA Subscription Plans
- *  free       → Starter Ledger  — 10 AI entries/day, 30-day history
- *  growth     → ZURIA Growth    — GHS 20/month, 200 entries/month
- *  pro        → ZURIA Pro       — GHS 50/month, unlimited
- *  enterprise → ZURIA Enterprise— GHS 100/month, unlimited + multi-branch
+ *  free       → Starter Ledger  — 15 AI entries/day, 30-day history
+ *  growth     → ZURIA Growth    — GHS 25/month, 500 entries/month
+ *  pro        → ZURIA Pro       — GHS 70/month, unlimited
+ *  enterprise → ZURIA Enterprise— GHS 200/month, unlimited + multi-branch
  */
 export type SubscriptionPlan = "free" | "growth" | "pro" | "enterprise";
 
@@ -142,7 +142,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     priceGHS: 0,
     annualPriceGHS: null,
     limitPeriod: "daily",
-    messageLimit: 10,
+    messageLimit: 15,
     features: [
       "Voice/text transaction recording",
       "AI transaction parsing (Twi, Ga, Hausa, Ewe, Fante, English)",
@@ -153,7 +153,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
       "Basic business health score",
       "Low-stock alerts",
       "Offline-first — works without internet",
-      "Up to 10 AI entries per day",
+      "Up to 15 AI entries per day",
       "30-day transaction history",
     ],
     reports: ["daily", "weekly"],
@@ -162,13 +162,13 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     plan: "growth",
     label: "ZURIA Growth",
     brand: "ZURIA Growth",
-    priceGHS: 20,
-    annualPriceGHS: 180,   // GHS 180/yr — 2 months free (10 × 20 = 200, save 20)
+    priceGHS: 25,
+    annualPriceGHS: 250,   // GHS 250/yr — 2 months free (10 × 25 = 250)
     limitPeriod: "monthly",
-    messageLimit: 200,
+    messageLimit: 500,
     features: [
       "Everything in Starter Ledger",
-      "200 AI entries per month",
+      "500 AI entries per month",
       "Unlimited voice notes",
       "Smart transaction categorization",
       "Auto debt reminders via WhatsApp",
@@ -191,8 +191,8 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     plan: "pro",
     label: "ZURIA Pro",
     brand: "ZURIA Pro",
-    priceGHS: 50,
-    annualPriceGHS: 500,   // GHS 500/yr — 2 months free (10 × 50 = 500)
+    priceGHS: 70,
+    annualPriceGHS: 700,   // GHS 700/yr — 2 months free (10 × 70 = 700)
     limitPeriod: null,
     messageLimit: null,
     features: [
@@ -223,8 +223,8 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
     plan: "enterprise",
     label: "ZURIA Enterprise",
     brand: "ZURIA Enterprise",
-    priceGHS: 100,
-    annualPriceGHS: 1000,  // GHS 1000/yr — 2 months free (10 × 100 = 1000)
+    priceGHS: 200,
+    annualPriceGHS: 2000,  // GHS 2000/yr — 2 months free (10 × 200 = 2000)
     limitPeriod: null,
     messageLimit: null,
     features: [

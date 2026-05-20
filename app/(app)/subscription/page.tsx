@@ -56,7 +56,7 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-emerald-500/30",
     glow: "shadow-emerald-500/10",
     emoji: "🟢",
-    annualPrice: 180,   // GHS 180/yr — 2 months free on GHS 20/mo
+    annualPrice: 250,   // GHS 250/yr — 2 months free on GHS 25/mo
   },
   pro: {
     color: "text-cyan-400",
@@ -64,7 +64,7 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-cyan-500/30",
     glow: "shadow-cyan-500/10",
     emoji: "🔵",
-    annualPrice: 500,   // GHS 500/yr — 2 months free on GHS 50/mo
+    annualPrice: 700,   // GHS 700/yr — 2 months free on GHS 70/mo
   },
   enterprise: {
     color: "text-amber-400",
@@ -72,7 +72,7 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-amber-500/30",
     glow: "shadow-amber-500/10",
     emoji: "🟣",
-    annualPrice: 1000,  // GHS 1000/yr — 2 months free on GHS 100/mo
+    annualPrice: 2000,  // GHS 2000/yr — 2 months free on GHS 200/mo
   },
 };
 
@@ -127,7 +127,7 @@ function computePlanRecommendation(params: {
   if (usagePct >= 70) {
     return {
       plan: "growth",
-      reason: "You're running low on AI entries today. Growth gives you 200/month — never hit a wall.",
+      reason: "You're running low on AI entries today. Growth gives you 500/month — never hit a wall.",
       urgency: "medium",
       cta: "Upgrade to Growth",
     };
@@ -939,7 +939,7 @@ export default function SubscriptionPage() {
             <tbody>
               <tr><td colSpan={5} className="pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-primary/70">Limits &amp; Recording</td></tr>
               {[
-                ["Daily AI entries", "10/day", "200/mo", "∞", "∞"],
+                ["Daily AI entries", "15/day", "500/mo", "∞", "∞"],
                 ["Voice / text recording via WhatsApp", "✅", "✅", "✅", "✅"],
                 ["Sales & expense tracking", "✅", "✅", "✅", "✅"],
                 ["Multi-currency support", "✅", "✅", "✅", "✅"],

@@ -24,8 +24,8 @@ import type { SubscriptionPlan } from "@/types/domain";
  * Daily AI cost budget per plan (USD).
  *
  * Free users get minimal AI; Enterprise gets much higher.
- * These drive profitability: GHS 100/mo Enterprise ≈ ~$9 USD.
- * At $0.10/day budget, 30-day cost = $3 — safe margin.
+ * These drive profitability: GHS 200/mo Enterprise ≈ ~$18 USD.
+ * At $0.50/day budget, 30-day cost = $15 — safe margin.
  */
 export const PLAN_DAILY_AI_BUDGET_USD: Record<SubscriptionPlan, number> = {
   free:       0.02,   // ~4-8 fast-model calls/day

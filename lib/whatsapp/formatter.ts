@@ -6,9 +6,9 @@ import { APP_URL, SUPPORT_WA_LINK } from "@/lib/config";
 // ─── Subscription config (derived from SUBSCRIPTION_TIERS — single source of truth) ─
 const SUPPORT_WA = SUPPORT_WA_LINK;
 const SUB_PLANS = {
-  growth:     { label: SUBSCRIPTION_TIERS.growth.brand,      price: SUBSCRIPTION_TIERS.growth.priceGHS,      monthlyPrice: SUBSCRIPTION_TIERS.growth.annualPriceGHS      ?? 180  },
-  pro:        { label: SUBSCRIPTION_TIERS.pro.brand,         price: SUBSCRIPTION_TIERS.pro.priceGHS,         monthlyPrice: SUBSCRIPTION_TIERS.pro.annualPriceGHS         ?? 500  },
-  enterprise: { label: SUBSCRIPTION_TIERS.enterprise.brand,  price: SUBSCRIPTION_TIERS.enterprise.priceGHS,  monthlyPrice: SUBSCRIPTION_TIERS.enterprise.annualPriceGHS  ?? 1000 },
+  growth:     { label: SUBSCRIPTION_TIERS.growth.brand,      price: SUBSCRIPTION_TIERS.growth.priceGHS,      monthlyPrice: SUBSCRIPTION_TIERS.growth.annualPriceGHS      ?? 250  },
+  pro:        { label: SUBSCRIPTION_TIERS.pro.brand,         price: SUBSCRIPTION_TIERS.pro.priceGHS,         monthlyPrice: SUBSCRIPTION_TIERS.pro.annualPriceGHS         ?? 700  },
+  enterprise: { label: SUBSCRIPTION_TIERS.enterprise.brand,  price: SUBSCRIPTION_TIERS.enterprise.priceGHS,  monthlyPrice: SUBSCRIPTION_TIERS.enterprise.annualPriceGHS  ?? 2000 },
 };
 
 const GHS = (n: number) => formatMoney(Math.abs(n));
@@ -251,10 +251,10 @@ export function fmtHelp(
   const canFull    = plan === "pro" || plan === "enterprise";
 
   const planBadge =
-    plan === "free"       ? "🆓 Starter Ledger — Free (10 entries/day)"
-    : plan === "growth"   ? "🟢 ZURIA Growth — GHS 20/month"
-    : plan === "pro"      ? "🔵 ZURIA Pro — GHS 50/month"
-    : "🟣 ZURIA Enterprise — GHS 100/month";
+    plan === "free"       ? "🆓 Starter Ledger — Free (15 entries/day)"
+    : plan === "growth"   ? "🟢 ZURIA Growth — GHS 25/month"
+    : plan === "pro"      ? "🔵 ZURIA Pro — GHS 70/month"
+    : "🟣 ZURIA Enterprise — GHS 200/month";
 
   const reportLines = [
     '📊 "balance" or "summary" — End-of-day report',
@@ -282,7 +282,7 @@ export function fmtHelp(
     '🔒 "lock" — Lock your account',
     "",
     plan === "free" ? "*Want unlimited messages + more features?*" : "*Subscription commands:*",
-    plan === "free" ? 'Reply *"subscribe"* to see plans (from GHS 20/month)' : 'Reply *"subscribe"* to renew or upgrade your plan',
+    plan === "free" ? 'Reply *"subscribe"* to see plans (from GHS 25/month)' : 'Reply *"subscribe"* to renew or upgrade your plan',
     "",
     "*Need human help?*",
     `📞 Message us directly: ${SUPPORT_WA}`,
@@ -450,10 +450,10 @@ export function fmtSubscribePlans(
   businessName = "Your Business"
 ): string {
   const currentLabel =
-    currentPlan === "free"       ? "Starter Ledger — Free (10 entries/day)"
-    : currentPlan === "growth"   ? "ZURIA Growth — GHS 20/month"
-    : currentPlan === "pro"      ? "ZURIA Pro — GHS 50/month"
-    : "ZURIA Enterprise — GHS 100/month";
+    currentPlan === "free"       ? "Starter Ledger — Free (15 entries/day)"
+    : currentPlan === "growth"   ? "ZURIA Growth — GHS 25/month"
+    : currentPlan === "pro"      ? "ZURIA Pro — GHS 70/month"
+    : "ZURIA Enterprise — GHS 200/month";
 
   return [
     `🧠 *ZURIA — AI Memory System for Your Business*`,
@@ -462,7 +462,7 @@ export function fmtSubscribePlans(
     "━━━━━━━━━━━━━━━━━━━━━━━━",
     `🟢 *ZURIA Growth — GHS ${SUB_PLANS.growth.price}/month*`,
     `   _(or GHS ${SUB_PLANS.growth.monthlyPrice}/year — 2 months free!)_`,
-    "   ✅ 200 AI entries per month",
+    "   ✅ 500 AI entries per month",
     "   ✅ Monthly profit reports",
     "   ✅ AI-generated sales insights in local language",
     "   ✅ Auto debt reminders via WhatsApp",

@@ -266,9 +266,9 @@ function SubscriptionCard({
 
   const meta: Record<string, { label: string; color: string; emoji: string }> = {
     free:       { label: "Starter Ledger — Free",       color: "text-muted-foreground", emoji: "🆓" },
-    growth:     { label: "ZURIA Growth — GHS 20/mo",    color: "text-emerald-400",       emoji: "🟢" },
-    pro:        { label: "ZURIA Pro — GHS 50/mo",       color: "text-cyan-400",          emoji: "🔵" },
-    enterprise: { label: "ZURIA Enterprise — GHS 100/mo", color: "text-amber-400",       emoji: "🟣" },
+    growth:     { label: "ZURIA Growth — GHS 25/mo",    color: "text-emerald-400",       emoji: "🟢" },
+    pro:        { label: "ZURIA Pro — GHS 70/mo",       color: "text-cyan-400",          emoji: "🔵" },
+    enterprise: { label: "ZURIA Enterprise — GHS 200/mo", color: "text-amber-400",       emoji: "🟣" },
   };
 
   const { label, color, emoji } = meta[effective] ?? meta.free;
