@@ -72,10 +72,11 @@ export async function checkSubscriptionIntegrity(
     }
 
     const data = userDoc.data() ?? {};
-    const rawPlan         = (data["subscriptionPlan"]      as string)  ?? "free";
-    const expiresAt       = (data["subscriptionExpiresAt"] as string)  ?? null;
-    const dailyCount      = (data["dailyMessageCount"]     as number)  ?? 0;
-    const dailyResetAt    = (data["dailyResetAt"]          as string)  ?? null;
+    const rawPlan      = (data["subscriptionPlan"]         as string) ?? "free";
+    const expiresAt    = (data["subscriptionExpiresAt"]    as string) ?? null;
+    // Correct field names — must match AppUser schema in types/domain.ts
+    const msgCount     = (data["whatsappMessageCount"]     as number) ?? 0;
+    const resetKey     = (data["whatsappMessageResetKey"]  as string) ?? null;
 
     const effectivePlan = getEffectivePlan({
       subscriptionPlan:        rawPlan as "free" | "growth" | "pro" | "enterprise",
@@ -110,28 +111,29 @@ export async function checkSubscriptionIntegrity(
       if (repairResult) repaired = true;
     }
 
-    // ── Check 3: Daily quota not reset on new day ──────────────────────────
-    if (dailyCount > 0 && dailyResetAt) {
-      const resetDate = new Date(dailyResetAt).toDateString();
-      const today     = new Date().toDateString();
-      if (resetDate !== today) {
+    // ── Check 3: Daily quota key stale (free plan only) ───────────────────
+    // Free plan reset key is "YYYY-MM-DD". If it doesn't match today, the counter
+    // was not reset. Growth plan uses "YYYY-MM" (monthly) — skip daily check.
+    if (rawPlan === "free" && msgCount > 0 && resetKey) {
+      const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+      if (resetKey !== today) {
         await syncQuota(userId);
         issues.push({
           code:         "QUOTA_NOT_RESET",
           severity:     "info",
-          description:  `Daily quota not reset (last reset: ${dailyResetAt})`,
+          description:  `Daily quota not reset (resetKey: ${resetKey}, today: ${today})`,
           autoRepaired: true,
         });
         repaired = true;
       }
     }
 
-    // ── Check 4: Suspicious daily count ───────────────────────────────────
-    if (dailyCount > 10_000) {
+    // ── Check 4: Anomalous message count ──────────────────────────────────
+    if (msgCount > 10_000) {
       issues.push({
-        code:         "ANOMALOUS_DAILY_COUNT",
+        code:         "ANOMALOUS_MESSAGE_COUNT",
         severity:     "critical",
-        description:  `Daily message count is anomalously high: ${dailyCount}`,
+        description:  `whatsappMessageCount is anomalously high: ${msgCount}`,
         autoRepaired: false,
       });
     }
@@ -178,7 +180,9 @@ export async function repairSubscription(
 
     switch (issue.code) {
       case "EXPIRED_PLAN_NOT_RESET": {
-        void db.collection(collections.users).doc(userId).update({
+        // Must await — returning true before the write completes would silently
+        // report a successful repair even when Firestore rejected the update.
+        await db.collection(collections.users).doc(userId).update({
           subscriptionPlan: "free",
           _repairedAt:       nowISO(),
           _repairReason:     issue.code,
@@ -250,17 +254,15 @@ export async function runIntegrityAudit(limit = 50): Promise<IntegrityCheckResul
  * Fire-and-forget — never throws to callers.
  */
 export async function syncQuota(userId: string): Promise<void> {
-  void (async () => {
-    try {
-      const db  = getAdminDb();
-      const today = new Date().toDateString();
-      await db.collection(collections.users).doc(userId).update({
-        dailyMessageCount: 0,
-        dailyResetAt:      new Date().toISOString(),
-        _quotaSyncDate:    today,
-      });
-    } catch {
-      // silent — quota sync must never affect callers
-    }
-  })();
+  try {
+    const db    = getAdminDb();
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    await db.collection(collections.users).doc(userId).update({
+      whatsappMessageCount:    0,
+      whatsappMessageResetKey: today,
+      _quotaSyncedAt:          new Date().toISOString(),
+    });
+  } catch {
+    // Silent — quota sync must never affect callers
+  }
 }

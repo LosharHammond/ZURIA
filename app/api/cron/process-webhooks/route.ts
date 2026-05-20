@@ -1,7 +1,7 @@
 /**
  * GET /api/cron/process-webhooks
  *
- * Vercel Cron: runs every minute (`* * * * *` in vercel.json).
+ * Vercel Cron: runs daily at 06:00 UTC (`0 6 * * *` in vercel.json).
  *
  * Drains the webhook_queue collection:
  *  - Picks up to BATCH_SIZE "pending" events eligible for processing
@@ -18,6 +18,7 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { processWebhookEvent, isEventFresh, verifyAndActivateMissedPayment } from "@/lib/payments/webhook-processor";
+import { captureZuriaError } from "@/lib/observability/sentry";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Vercel Pro: up to 60s per cron invocation
@@ -107,8 +108,22 @@ export async function GET(req: Request) {
         });
 
         if (isDead) {
-          // Alert: in production, integrate with PagerDuty / Slack here
-          console.error(`[cron/process-webhooks] DEAD LETTER: event ${entry.id} exhausted ${entry.maxAttempts} attempts`);
+          // Persist to billingDeadLetters collection for admin review
+          db.collection(collections.billingDeadLetters).doc(entry.id).set({
+            id:          entry.id,
+            eventType:   entry.eventType,
+            data:        entry.data,
+            attempts:    nextAttempts,
+            lastError:   err instanceof Error ? err.message : String(err),
+            deadAt:      now.toISOString(),
+            source:      "webhook_queue",
+          }, { merge: true }).catch(() => {});
+
+          // Alert Sentry so the team is notified immediately
+          captureZuriaError(
+            new Error(`[billing] DEAD LETTER: webhook event ${entry.id} exhausted ${entry.maxAttempts} attempts`),
+            { extra: { eventType: entry.eventType, eventId: entry.id } },
+          );
         }
 
         return { id: entry.id, result: isDead ? "dead" : "retrying" };

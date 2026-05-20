@@ -17,6 +17,9 @@
 
 import type { Transaction } from "@/types/domain";
 import { enqueueJob } from "@/lib/workers/index";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("transaction-worker");
 
 // ─── handleTransactionCreated ─────────────────────────────────────────────────
 
@@ -42,35 +45,24 @@ export async function handleTransactionCreated(params: {
         "run_parser_learning",
         { userId, businessId, transactionId: transaction.id },
       );
-      console.log(
-        "[transaction-worker] enqueued run_parser_learning",
-        { transactionId: transaction.id, confidence: parserConfidence },
-      );
+      logger.info("enqueued run_parser_learning", { transactionId: transaction.id, confidence: parserConfidence });
     } catch (err) {
-      console.log(
-        "[transaction-worker] failed to enqueue run_parser_learning",
-        { error: String(err) },
-      );
+      logger.warn("failed to enqueue run_parser_learning", { error: String(err) });
     }
   }
 
   // 2. Debt records → recalculate risk score (delayed 30 s to let writes settle)
-  if (transaction.type === "debt_record" as Transaction["type"]) {
+  // "debt" is the correct TransactionType for credit sales (customer owes you).
+  if (transaction.type === "debt") {
     try {
       await enqueueJob(
         "recalculate_risk",
         { userId, businessId, transactionId: transaction.id },
         { delayMs: 30_000 },
       );
-      console.log(
-        "[transaction-worker] enqueued recalculate_risk (30 s delay)",
-        { transactionId: transaction.id },
-      );
+      logger.info("enqueued recalculate_risk (30s delay)", { transactionId: transaction.id });
     } catch (err) {
-      console.log(
-        "[transaction-worker] failed to enqueue recalculate_risk",
-        { error: String(err) },
-      );
+      logger.warn("failed to enqueue recalculate_risk", { error: String(err) });
     }
   }
 
@@ -81,15 +73,9 @@ export async function handleTransactionCreated(params: {
         "refresh_business_intelligence",
         { userId, businessId, transactionId: transaction.id },
       );
-      console.log(
-        "[transaction-worker] enqueued refresh_business_intelligence",
-        { transactionId: transaction.id, amount: transaction.amount },
-      );
+      logger.info("enqueued refresh_business_intelligence", { transactionId: transaction.id, amount: transaction.amount });
     } catch (err) {
-      console.log(
-        "[transaction-worker] failed to enqueue refresh_business_intelligence",
-        { error: String(err) },
-      );
+      logger.warn("failed to enqueue refresh_business_intelligence", { error: String(err) });
     }
   }
 
@@ -99,15 +85,9 @@ export async function handleTransactionCreated(params: {
       "refresh_timeline",
       { userId, businessId, transactionId: transaction.id },
     );
-    console.log(
-      "[transaction-worker] enqueued refresh_timeline",
-      { transactionId: transaction.id },
-    );
+    logger.info("enqueued refresh_timeline", { transactionId: transaction.id });
   } catch (err) {
-    console.log(
-      "[transaction-worker] failed to enqueue refresh_timeline",
-      { error: String(err) },
-    );
+    logger.warn("failed to enqueue refresh_timeline", { error: String(err) });
   }
 
   // 5. End-of-day (≥ 20:00) → generate daily executive report
@@ -118,15 +98,9 @@ export async function handleTransactionCreated(params: {
         "generate_report",
         { userId, businessId, period: "daily" },
       );
-      console.log(
-        "[transaction-worker] enqueued generate_report (end-of-day)",
-        { userId, businessId },
-      );
+      logger.info("enqueued generate_report (end-of-day)", { userId, businessId });
     } catch (err) {
-      console.log(
-        "[transaction-worker] failed to enqueue generate_report",
-        { error: String(err) },
-      );
+      logger.warn("failed to enqueue generate_report", { error: String(err) });
     }
   }
 }
@@ -162,15 +136,9 @@ export async function handleDebtUpdated(params: {
         "recalculate_risk",
         { userId, businessId, debtId, newBalance, oldBalance },
       );
-      console.log(
-        "[transaction-worker] enqueued recalculate_risk (debt updated)",
-        { debtId, changePct: (changePct * 100).toFixed(1) + "%" },
-      );
+      logger.info("enqueued recalculate_risk (debt updated)", { debtId, changePct: (changePct * 100).toFixed(1) + "%" });
     } catch (err) {
-      console.log(
-        "[transaction-worker] failed to enqueue recalculate_risk for debt update",
-        { debtId, error: String(err) },
-      );
+      logger.warn("failed to enqueue recalculate_risk for debt update", { debtId, error: String(err) });
     }
   }
 }

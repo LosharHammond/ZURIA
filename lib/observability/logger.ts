@@ -7,6 +7,7 @@
 
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import * as Sentry from "@sentry/nextjs";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,17 @@ export class ZuriaLogger {
     // Persist errors to Firestore asynchronously
     if (level === "error") {
       persistErrorLog(entry).catch(() => {});
+
+      // Also forward to Sentry for alerting and stack-trace visibility.
+      // Wrap in try/catch — Sentry must never crash the application.
+      try {
+        Sentry.withScope((scope) => {
+          scope.setTag("module", this.module);
+          if (entry.userId) scope.setTag("userId", entry.userId);
+          if (data) scope.setExtras(data as Record<string, unknown>);
+          Sentry.captureMessage(message, "error");
+        });
+      } catch { /* Sentry must never propagate */ }
     }
   }
 

@@ -12,24 +12,27 @@ export const PhoneNumberSchema = z
 /** Validates a monetary amount (min 0.01, max 10,000,000). */
 export const AmountSchema = z.number().min(0.01).max(10_000_000);
 
-/** Validates a transaction type string against the full set of known types. */
+/**
+ * Validates a transaction type string against the full set of known types.
+ * MUST stay in sync with TransactionType in types/domain.ts.
+ */
 export const TransactionTypeSchema = z.enum([
   "sale",
   "expense",
-  "debt_record",
-  "debt_payment",
+  "debt",
+  "repayment",
   "stock_purchase",
+  "cost",
   "salary",
-  "income",
+  "tax",
   "borrow_in",
   "borrow_out",
-  "cost",
-  "refund_given",
-  "refund_received",
-  "tax",
+  "loan_repay_out",
+  "loan_collect_in",
   "investment",
   "withdrawal",
-  "repayment",
+  "refund_out",
+  "refund_in",
   "transfer",
 ]);
 

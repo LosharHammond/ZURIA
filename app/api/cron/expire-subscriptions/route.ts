@@ -4,13 +4,17 @@
  * Vercel Cron: runs daily at 01:00 UTC (`0 1 * * *` in vercel.json).
  *
  * Scans for users whose subscriptionExpiresAt has passed but whose
- * subscriptionPlan field is still set to a paid plan. Emits a
- * SUBSCRIPTION_EXPIRED event for each expired user so the audit ledger is
- * complete, and logs a reconciliation summary.
+ * subscriptionPlan field is still set to a paid plan.
  *
- * NOTE: Plan enforcement happens at request time via getEffectivePlan() —
- * this job does NOT downgrade users. It only ensures every expiry is
- * recorded in the payment_events ledger for auditability.
+ * For each expired user this job:
+ *   1. Resets subscriptionPlan → "free" in the user document
+ *   2. Emits an immutable SUBSCRIPTION_EXPIRED ledger entry for audit
+ *
+ * Without step 1, a user's Firestore document permanently shows e.g.
+ * "pro" even after expiry, which confuses admin tooling, data exports, and
+ * any code that reads subscriptionPlan directly instead of calling
+ * getEffectivePlan(). getEffectivePlan() still enforces expiry at request
+ * time, but writing "free" here keeps Firestore as the ground truth.
  */
 
 import { NextResponse } from "next/server";
@@ -66,6 +70,17 @@ export async function GET(req: Request) {
           return;
         }
 
+        // ── 1. Reset subscriptionPlan to "free" ──────────────────────────────
+        // Keeps Firestore as ground truth — without this, expired users retain
+        // e.g. subscriptionPlan="pro" in the DB even though getEffectivePlan()
+        // would return "free". Admin tooling and data exports would be wrong.
+        await userDoc.ref.update({
+          subscriptionPlan: "free",
+          _expiredAt:       nowIso,
+          updatedAt:        nowIso,
+        });
+
+        // ── 2. Write immutable SUBSCRIPTION_EXPIRED ledger entry ─────────────
         await ledgerRef.set({
           id:                    expiredLedgerId,
           userId,

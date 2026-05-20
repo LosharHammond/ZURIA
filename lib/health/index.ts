@@ -437,7 +437,7 @@ async function getAIHealth(): Promise<{
   avgLatencyMs: number;
 }> {
   const groqAvailable   = isGroqAvailable();
-  const openaiAvailable = !!(process.env.OPENAI_API_KEY?.length ?? 0 > 10);
+  const openaiAvailable = !!(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.length > 10);
 
   try {
     const db = getAdminDb();
