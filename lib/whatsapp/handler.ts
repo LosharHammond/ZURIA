@@ -72,6 +72,7 @@ import {
   shouldAddEmotionalLayer,
   enrichResponseWithEmotion,
 } from "@/lib/emotional-intelligence";
+import { emitTransactionCreated } from "@/lib/events/emitter";
 
 // Admin number for subscription payment notifications
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
@@ -450,6 +451,14 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         };
 
         await saveTransaction(txn, fromPhone);
+        // Domain event — fire-and-forget
+        emitTransactionCreated(user.id, {
+          transactionId: txnId,
+          type:          pending.type,
+          amount:        pending.amount,
+          confidence:    pending.confidence,
+          usedAI:        isAIProviderAvailable(),
+        });
 
         const todayTxns = await getTodayTransactions(business.id);
         const moneyIn   = todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);
@@ -880,7 +889,17 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
         source:                 "manual",
       };
 
-      if (!isDuplicate) await saveTransaction(txn, fromPhone);
+      if (!isDuplicate) {
+        await saveTransaction(txn, fromPhone);
+        // Fire-and-forget domain event — never blocks the response
+        emitTransactionCreated(user.id, {
+          transactionId: txnId,
+          type:          parsed.type,
+          amount:        parsed.amount,
+          confidence:    ensemble.confidence,
+          usedAI:        isAIProviderAvailable(),
+        });
+      }
 
       const todayTxns = await getTodayTransactions(business.id);
       const moneyIn   = todayTxns.filter((t) => MONEY_IN_TYPES.includes(t.type)).reduce((a, t) => a + t.amount, 0);

@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { ServiceBanner } from "@/components/ui/service-banner";
+import { useOnlineSync } from "@/hooks/use-online-sync";
 
 const NAV_ITEMS = [
   { href: "/dashboard",    label: "Home",         icon: Home        },
@@ -50,8 +51,8 @@ function ZuriaLogo({ size = 36 }: { size?: number }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // SyncProvider (mounted above in the tree) already manages the online/offline
-  // listeners and updates the store. We only read from the store here.
+  // Online/offline detection + offline queue flush on reconnect
+  useOnlineSync();
   const business = useAppStore((s) => s.business);
   const offline = useAppStore((s) => s.offline);
 
