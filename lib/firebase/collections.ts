@@ -111,4 +111,23 @@ export const collections = {
 
   // Subscription audit log — integrity check results and auto-repair records.
   subscriptionAuditLog: "subscription_audit_log",
+
+  // ── Billing Infrastructure ────────────────────────────────────────────────
+
+  // Dead-letter queue — webhook events that failed all retry attempts.
+  billingDeadLetters: "billing_dead_letters",
+
+  // Billing events — comprehensive log of every billing state change.
+  billingEvents: "billing_events",
+
+  // Entitlement cache — denormalized feature set per user, refreshed on plan change.
+  entitlementCache: "entitlement_cache",
+
+  // ── Observability ─────────────────────────────────────────────────────────
+
+  // Structured observability log — errors, warnings, and audit traces.
+  observabilityLogs: "observability_logs",
+
+  // AI cost governor — per-plan spend tracking and abuse signals.
+  aiCostGovernor: "ai_cost_governor",
 } as const;
