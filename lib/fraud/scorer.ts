@@ -15,6 +15,9 @@
 
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("fraud-scorer");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -220,11 +223,11 @@ export async function computeAndStoreFraudScore(userId: string): Promise<FraudSc
   });
 
   batch.commit().catch((err) => {
-    console.error(`[fraud/scorer] Failed to persist fraud score for ${userId}:`, err);
+    logger.error("Failed to persist fraud score", { userId, error: String(err) });
   });
 
   if (riskLevel === "HIGH" || riskLevel === "BLOCKED") {
-    console.warn(`[fraud/scorer] ${riskLevel} risk user detected: uid=${userId} score=${score}`);
+    logger.warn(`${riskLevel} risk user detected`, { userId, score });
   }
 
   return fraudScore;

@@ -5,12 +5,16 @@ import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
 import { createId } from "@/lib/utils";
+import { captureZuriaError } from "@/lib/observability/sentry";
+import { createLogger } from "@/lib/observability/logger";
 import type { WithdrawalLedgerEntry } from "@/types/domain";
 import {
   createTransferRecipient,
   initiateTransfer,
   paystackConfigured,
 } from "@/lib/services/paystack-service";
+
+const logger = createLogger("withdraw");
 
 export const dynamic = "force-dynamic";
 
@@ -175,7 +179,7 @@ export async function POST(req: NextRequest) {
     if (statusCode < 500) {
       return NextResponse.json({ error: message }, { status: statusCode });
     }
-    console.error("[withdraw] transaction failed:", err);
+    captureZuriaError(err instanceof Error ? err : new Error(String(err)), { extra: { route: "referral/withdraw", userId: uid } });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
@@ -206,7 +210,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (recError || !recipientCode) {
-          console.error("[withdraw] createTransferRecipient failed:", recError);
+          logger.error("createTransferRecipient failed", { withdrawalId: id, error: String(recError) });
           // Fall through to admin notification
           notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
           return;
@@ -221,7 +225,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (txError) {
-          console.error("[withdraw] initiateTransfer failed:", txError);
+          logger.error("initiateTransfer failed", { withdrawalId: id, error: String(txError) });
           notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
           return;
         }
@@ -261,7 +265,7 @@ export async function POST(req: NextRequest) {
           sendText(`whatsapp:${userPhone}`, msg).catch(() => {});
         }
       } catch (err) {
-        console.error("[withdraw] Paystack auto-transfer error:", err);
+        logger.error("Paystack auto-transfer error", { withdrawalId: id, error: String(err) });
         notifyAdminManual(id, ownerName, userPhone, balance, network, momoNumber, momoName);
       }
     })();
@@ -314,6 +318,6 @@ function notifyAdminManual(
     ``,
     `_Paystack auto-transfer unavailable — please process manually._`,
   ].join("\n")).catch((err) =>
-    console.error("[withdraw] Admin notification failed:", err)
+    logger.warn("Admin notification failed", { withdrawalId: id, error: String(err) })
   );
 }

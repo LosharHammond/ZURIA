@@ -17,6 +17,9 @@ import { createJournalEntry } from "./journal";
 import { generateReconciliationReport } from "./reconciliation";
 import type { JournalEntry } from "./journal";
 import type { ReconciliationReport } from "./reconciliation";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("ledger");
 
 // ─── Firestore collection name ────────────────────────────────────────────────
 // journal_entries will be added to collections.ts separately.
@@ -74,7 +77,7 @@ export async function processTransactionToLedger(
     const db = getAdminDb();
     await db.collection(JOURNAL_ENTRIES_COLLECTION).doc(entry.id).set(entry);
   } catch (err) {
-    console.error("[ledger] Failed to persist journal entry to Firestore:", {
+    logger.error("Failed to persist journal entry", {
       entryId: entry.id,
       transactionId: transaction.id,
       error: String(err),
@@ -103,11 +106,7 @@ export async function getBusinessJournalEntries(
 
     return snap.docs.map((d) => d.data() as JournalEntry);
   } catch (err) {
-    console.error("[ledger] Failed to fetch journal entries:", {
-      businessId,
-      since,
-      error: String(err),
-    });
+    logger.error("Failed to fetch journal entries", { businessId, since, error: String(err) });
     return [];
   }
 }
@@ -130,11 +129,7 @@ export async function runReconciliation(
     const entries = await getBusinessJournalEntries(businessId, periodStart);
     return generateReconciliationReport(businessId, entries, periodStart, periodEnd);
   } catch (err) {
-    console.error("[ledger] Reconciliation failed:", {
-      businessId,
-      periodDays,
-      error: String(err),
-    });
+    logger.error("Reconciliation failed", { businessId, periodDays, error: String(err) });
 
     // Return a zero-filled report so callers never need to handle null/undefined.
     return {
