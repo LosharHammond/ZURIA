@@ -103,9 +103,16 @@ export async function POST(req: Request) {
 
     if (result.error) {
       console.error("[payments/initialize] Paystack error:", result.error);
+
+      // Surface actionable message: distinguish config errors from API errors
+      const isConfigError = result.error.toLowerCase().includes("not configured");
+      const clientMsg = isConfigError
+        ? "Payment is not yet configured on this server. Contact support."
+        : `Payment provider error: ${result.error}`;
+
       return NextResponse.json(
-        { error: "Payment provider error. Please try again." },
-        { status: 502 }
+        { error: clientMsg, detail: result.error },
+        { status: isConfigError ? 503 : 502 }
       );
     }
 

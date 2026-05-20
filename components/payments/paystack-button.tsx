@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CreditCard } from "lucide-react";
+import { Loader2, CreditCard, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
 import type { SubscriptionPlan } from "@/types/domain";
@@ -33,19 +33,25 @@ export function PaystackButton({
   onError,
 }: PaystackButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { firebaseUser } = useAuth();
 
   async function handleClick() {
     if (loading) return;
     setLoading(true);
+    setErrorMsg(null);
 
     try {
       if (!firebaseUser) {
-        onError?.("You must be signed in to subscribe.");
+        const msg = "You must be signed in to subscribe.";
+        setErrorMsg(msg);
+        onError?.(msg);
         setLoading(false);
         return;
       }
-      const token = await firebaseUser.getIdToken();
+
+      // Refresh token each time to avoid expired tokens
+      const token = await firebaseUser.getIdToken(/* forceRefresh= */ true);
 
       const res = await fetch("/api/payments/initialize", {
         method:  "POST",
@@ -59,7 +65,9 @@ export function PaystackButton({
       const data = await res.json();
 
       if (!res.ok || !data.authorizationUrl) {
-        onError?.(data.error ?? "Could not start payment. Please try again.");
+        const msg = data.error ?? "Could not start payment. Please try again.";
+        setErrorMsg(msg);
+        onError?.(msg);
         return;
       }
 
@@ -68,6 +76,7 @@ export function PaystackButton({
       onSuccess?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Network error. Please try again.";
+      setErrorMsg(msg);
       onError?.(msg);
     } finally {
       setLoading(false);
@@ -75,24 +84,33 @@ export function PaystackButton({
   }
 
   return (
-    <Button
-      onClick={handleClick}
-      disabled={loading}
-      variant={variant}
-      size={size}
-      className={className}
-    >
-      {loading ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Preparing payment…
-        </>
-      ) : (
-        <>
-          <CreditCard className="mr-2 h-4 w-4" />
-          {label ?? "Pay with Paystack"}
-        </>
+    <div className="space-y-2">
+      <Button
+        onClick={handleClick}
+        disabled={loading}
+        variant={variant}
+        size={size}
+        className={className}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Preparing payment…
+          </>
+        ) : (
+          <>
+            <CreditCard className="mr-2 h-4 w-4" />
+            {label ?? "Pay with Paystack"}
+          </>
+        )}
+      </Button>
+
+      {errorMsg && (
+        <p className="flex items-start gap-1.5 text-xs text-red-400">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {errorMsg}
+        </p>
       )}
-    </Button>
+    </div>
   );
 }
