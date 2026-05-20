@@ -574,8 +574,18 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
     return reply;
   }
 
-  // ── 8. Message-count gate ─────────────────────────────────────────────────
-  if (effectivePlan === "free" || effectivePlan === "growth") {
+  // ── 8. Message-count gate — ONLY blocks new transaction recording ────────────
+  //
+  // Spec (ZURIA Free User Limit Failsafe):
+  //   "When daily limits are reached, NEVER lock users out entirely."
+  //   Still allow: subscribe, plans, upgrade, billing, support, referrals,
+  //               viewing reports, exporting existing data.
+  //
+  // Therefore the gate ONLY fires for LEDGER_ENGINE (new AI transaction entries).
+  // SUBSCRIPTION_ENGINE, LEDGER_QUERY_ENGINE, HELP_ENGINE, SMALLTALK, and UNDO
+  // are handled before this gate or bypass it entirely.
+  //
+  if ((effectivePlan === "free" || effectivePlan === "growth") && finalIntent.intent === "LEDGER_ENGINE") {
     const limit = effectivePlan === "free" ? FREE_DAILY_LIMIT : GROWTH_MONTHLY_LIMIT;
     let usedCount = 0;
     try {
@@ -585,18 +595,16 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
     }
 
     if (usedCount >= limit) {
-      // Hard block — subscription wall
+      // Soft wall — show upgrade prompt but do NOT block reports/subscription commands
       return fmtSubscriptionRequired(limit, bName, referralLink, effectivePlan === "growth" ? "monthly" : "daily");
     }
 
-    // Check if we need to stage a limit warning for the NEXT response
-    // (never appended to the current financial confirmation)
+    // Stage a limit warning for the NEXT response (never in this one)
     const suppressSubUi = finalIntent.state.subscription_ui_suppressed;
     if (!suppressSubUi) {
       const remaining = Math.max(0, limit - usedCount - 1); // -1 for this message
       const period = effectivePlan === "free" ? "today" : "this month";
       if (remaining <= 2 && remaining >= 0) {
-        // Stage warning — it will appear as preamble on the NEXT message
         stageLimitNotification(
           "whatsapp", fromPhone,
           buildLimitWarning(remaining, limit, period, referralLink),

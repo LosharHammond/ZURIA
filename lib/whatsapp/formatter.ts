@@ -534,16 +534,19 @@ export function fmtSubscriptionRequired(
   referralLink?: string,
   period: "daily" | "monthly" = "daily"
 ): string {
-  const limitLabel = period === "monthly" ? `${limit} monthly` : `${limit} daily`;
   const resetNote = period === "monthly"
-    ? "_Your monthly limit resets on the 1st of next month. 📅_"
-    : "_Your limit resets tomorrow at midnight. 🌙_";
+    ? "_Resets on the 1st of next month. 📅_"
+    : "_Resets at midnight tonight. 🌙_";
+  const periodLabel = period === "daily" ? "today" : "this month";
   return [
-    `🚫 *You've used all ${limitLabel} AI entries.*`,
+    `🧠 *You've reached ${periodLabel}'s smart entry limit (${limit} AI entries/${period === "daily" ? "day" : "month"}).*`,
     "",
     resetNote,
     "",
-    "Want unlimited access? Upgrade to a paid plan:",
+    "You can still: reply *\"balance\"* · *\"weekly report\"* · *\"debts\"* · *\"subscribe\"*",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
+    "💡 *Upgrade to never hit a wall:*",
     "",
     "━━━━━━━━━━━━━━━━━━━━━━━━",
     `🟢 *ZURIA Growth — GHS ${SUB_PLANS.growth.price}/month*`,
@@ -564,10 +567,10 @@ export function fmtSubscriptionRequired(
     "   ✅ Dedicated support & integrations",
     "━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
-    "💳 *How to upgrade — 3 steps:*",
-    "1️⃣  Reply *\"subscribe\"* → get your personal Paystack payment link",
-    "2️⃣  Tap the link → pay with MoMo, bank card, or bank transfer",
-    "3️⃣  ✅ Your plan activates *instantly* — no waiting, no manual steps",
+    "💳 *Your options right now:*",
+    `1️⃣  Reply *"subscribe"* → upgrade instantly via Paystack (MoMo, card, bank)`,
+    `2️⃣  Reply *"balance"* or *"weekly report"* → still works for free 📊`,
+    `3️⃣  Reply *"referrals"* → refer friends & earn Growth for FREE 🎁`,
     "",
     `🌐 Or upgrade directly: ${APP_URL}/subscription`,
     "",

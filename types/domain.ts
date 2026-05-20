@@ -103,7 +103,7 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 /**
  * ZURIA Subscription Plans
- *  free       → Starter Ledger  — 15 AI entries/day, 30-day history
+ *  free       → Starter Ledger  — 15 AI entries/day, 60-day history
  *  growth     → ZURIA Growth    — GHS 25/month, 500 entries/month
  *  pro        → ZURIA Pro       — GHS 70/month, unlimited
  *  enterprise → ZURIA Enterprise— GHS 200/month, unlimited + multi-branch
@@ -153,8 +153,8 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
       "Basic business health score",
       "Low-stock alerts",
       "Offline-first — works without internet",
-      "Up to 15 AI entries per day",
-      "30-day transaction history",
+      "15 smart AI entries per day",
+      "60-day transaction history",
     ],
     reports: ["daily", "weekly"],
   },
@@ -203,7 +203,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
       "Predictive business health scoring",
       "AI profit leakage detection",
       "AI recommendations engine",
-      "Staff accounts & employee permissions",
+      "15 staff accounts & employee permissions",
       "Activity logs & staff sales tracking",
       "Advanced analytics dashboard",
       "Profit trends & peak sales hours",

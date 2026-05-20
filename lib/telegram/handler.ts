@@ -760,15 +760,20 @@ async function _handleTelegramInner(
     return;
   }
 
-  // ── Message-count gate ────────────────────────────────────────────────────
+  // ── Message-count gate — ONLY blocks new transaction recording ──────────────
+  // Spec: "NEVER lock users out entirely" when limit reached.
+  // Subscription commands, reports, and help bypass this gate.
+  // Only LEDGER_ENGINE (new AI transaction entries) is gated.
   const msgCount = await getAndMaybeResetMessageCount(user, plan);
-  if (plan === "free" && msgCount >= FREE_DAILY_LIMIT) {
-    await reply(fmtSubscriptionRequired(FREE_DAILY_LIMIT, businessName, undefined, "daily"));
-    return;
-  }
-  if (plan === "growth" && msgCount >= GROWTH_MONTHLY_LIMIT) {
-    await reply(fmtSubscriptionRequired(GROWTH_MONTHLY_LIMIT, businessName, undefined, "monthly"));
-    return;
+  if (tgIntent.intent === "LEDGER_ENGINE") {
+    if (plan === "free" && msgCount >= FREE_DAILY_LIMIT) {
+      await reply(fmtSubscriptionRequired(FREE_DAILY_LIMIT, businessName, undefined, "daily"));
+      return;
+    }
+    if (plan === "growth" && msgCount >= GROWTH_MONTHLY_LIMIT) {
+      await reply(fmtSubscriptionRequired(GROWTH_MONTHLY_LIMIT, businessName, undefined, "monthly"));
+      return;
+    }
   }
 
   // Stage near-limit notification for the NEXT response

@@ -181,7 +181,7 @@ const pricingTiers = [
     glowColor: "",
     target: "Market women · Kiosks · Solo hustlers",
     highlight: false,
-    limits: ["15 AI entries per day", "1 business account", "30-day history"],
+    limits: ["15 smart AI entries per day", "1 business account", "60-day history"],
     features: [
       "Voice & text transaction recording",
       "AI transaction parsing in 6 local languages",
