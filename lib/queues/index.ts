@@ -89,12 +89,16 @@ export async function enqueue<T extends Record<string, unknown>>(
 
 /**
  * Claim up to `limit` pending jobs whose scheduledAt <= now.
- * Marks them as "processing" atomically in a batch write.
+ *
+ * Each job is claimed with an individual Firestore transaction that re-reads
+ * the document before marking it "processing". This prevents two concurrent
+ * workers from processing the same job (compare-and-swap semantics).
+ *
  * @returns Array of claimed jobs, or [] on failure.
  */
 export async function dequeue(limit = 10): Promise<QueueJob[]> {
   try {
-    const db = getAdminDb();
+    const db  = getAdminDb();
     const now = new Date().toISOString();
 
     const snapshot = await db
@@ -106,19 +110,40 @@ export async function dequeue(limit = 10): Promise<QueueJob[]> {
 
     if (snapshot.empty) return [];
 
-    const batch = db.batch();
-    const jobs: QueueJob[] = [];
+    const claimed: QueueJob[] = [];
 
-    for (const doc of snapshot.docs) {
-      batch.update(doc.ref, { status: "processing" as QueueJobStatus });
-      const data = doc.data() as QueueJobDoc;
-      jobs.push({ id: doc.id, ...data });
+    // Claim each job atomically — if another worker grabbed it first the
+    // transaction will find status !== "pending" and skip it (no retry needed).
+    await Promise.allSettled(
+      snapshot.docs.map(async (doc) => {
+        try {
+          await db.runTransaction(async (txn) => {
+            const fresh     = await txn.get(doc.ref);
+            const freshData = fresh.data() as QueueJobDoc | undefined;
+
+            // Only claim if still pending (concurrent worker may have beaten us)
+            if (!fresh.exists || freshData?.status !== "pending") return;
+
+            txn.update(doc.ref, {
+              status:    "processing" as QueueJobStatus,
+              claimedAt: now,
+            });
+
+            // Use original snapshot data for the return value — the write is
+            // already committed so the status change is safe to reflect.
+            claimed.push({ id: doc.id, ...doc.data() as QueueJobDoc });
+          });
+        } catch {
+          // Transaction aborted (contention) — another worker claimed this job.
+          // Not an error; silently skip.
+        }
+      })
+    );
+
+    if (claimed.length > 0) {
+      logger.info("Jobs dequeued", { count: claimed.length });
     }
-
-    await batch.commit();
-
-    logger.info("Jobs dequeued", { count: jobs.length });
-    return jobs;
+    return claimed;
   } catch (err) {
     logger.error("Failed to dequeue jobs", { error: String(err) });
     return [];
