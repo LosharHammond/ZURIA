@@ -354,7 +354,7 @@ async function creditReferrer(
       ``,
       `As a thank-you, you've just unlocked *ZURIA Growth features* — completely FREE for the rest of the month! 🚀`,
       ``,
-      `✅ 200 AI entries this month`,
+      `✅ 500 AI entries this month`,
       `✅ Monthly profit reports`,
       `✅ AI sales insights in your language`,
       `✅ Auto debt reminders via WhatsApp`,

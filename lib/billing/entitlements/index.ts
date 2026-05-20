@@ -20,7 +20,7 @@ export type Feature =
   | "ai_insights"            // AI-generated business insights
   | "ai_forecasting"         // Cash-flow / sales forecasting
   | "ai_anomaly"             // Unusual pattern detection
-  | "ai_coaching"            // Business coach chatbot
+  | "ai_coaching"            // AI business coach (on-demand advice)
   | "ai_reports"             // AI executive reports
   | "ai_advanced_model"      // Access to deepseek advanced model
   | "debt_reminders"         // Auto WhatsApp debt reminders

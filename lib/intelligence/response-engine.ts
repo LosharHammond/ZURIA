@@ -782,7 +782,7 @@ const NUDGES: Record<NudgeContext, string> = {
   debt_alerts:       `🔔 Growth plan can send automatic debt reminders to your customers.`,
   inventory:         `📦 Track stock levels automatically — that's on Growth plan.`,
   analytics:         `📊 See your best sellers and profit trends on Growth plan.`,
-  unlimited_entries: `💡 You're close to today's limit. Growth plan gives you 200 entries a month.`,
+  unlimited_entries: `💡 You're close to today's limit. Growth plan gives you 500 entries a month.`,
 };
 
 /**

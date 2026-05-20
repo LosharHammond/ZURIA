@@ -263,7 +263,7 @@ const pricingTiers = [
       "Auto-generated invoices",
       "Smart recurring reminders",
       "Scheduled reports",
-      "AI business coach chatbot",
+      "AI business coach (on-demand advice)",
       "Biometric login & cloud backup priority",
     ],
     cta: "Get Pro",

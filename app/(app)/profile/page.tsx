@@ -295,7 +295,7 @@ function SubscriptionCard({
             <p className="mt-0.5 text-xs text-muted-foreground">Valid until {expDate}</p>
           )}
           {effective === "free" && (
-            <p className="mt-0.5 text-xs text-muted-foreground">10 AI entries/day · Free forever</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">15 AI entries/day · Free forever</p>
           )}
         </div>
         <Link

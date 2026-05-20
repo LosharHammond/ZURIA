@@ -214,7 +214,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionPlan, SubscriptionTier> = {
       "Auto-generated invoices",
       "Smart recurring reminders",
       "Scheduled reports",
-      "AI business coach chatbot",
+      "AI business coach (on-demand advice)",
       "Biometric login & cloud backup priority",
     ],
     reports: ["daily", "weekly", "monthly", "full_dashboard"],

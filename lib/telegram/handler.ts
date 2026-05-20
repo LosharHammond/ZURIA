@@ -76,8 +76,8 @@ import { initializePayment } from "@/lib/services/paystack-service";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FREE_DAILY_LIMIT     = 10;
-const GROWTH_MONTHLY_LIMIT = 200;
+const FREE_DAILY_LIMIT     = 15;
+const GROWTH_MONTHLY_LIMIT = 500;
 const ADMIN_PHONE          = process.env.ADMIN_PHONE ?? process.env.NEXT_PUBLIC_ADMIN_PHONE ?? "";
 
 // ── Telegram session state stored in Firestore ────────────────────────────────
