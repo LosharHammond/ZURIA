@@ -4,6 +4,8 @@ import { collection, getDocs, limit, orderBy, query, where } from "firebase/fire
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { Debt } from "@/types/domain";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:debt");
 
 type RawRepayment = {
   createdAt?: { toDate?: () => Date } | string;
@@ -56,7 +58,7 @@ export async function fetchDebts(businessId: string, max = 200): Promise<Debt[]>
     const items = snap.docs.map((d) => mapDebt(d.data()));
     return items.sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));
   } catch (err) {
-    console.error("[fetchDebts]", err);
+    logger.error("fetchDebts failed", { err: String(err) });
     return [];
   }
 }

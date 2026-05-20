@@ -2,6 +2,9 @@
 // Server-only — AI usage metering and budget control.
 
 import { getAdminDb } from "@/lib/firebase/admin";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("ai:cost-governance");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +71,7 @@ export async function recordAIUsage(
     });
   } catch (err: unknown) {
     // Silently swallow — usage logging must never affect the request path
-    console.warn("[cost-governance] recordAIUsage failed silently:", err);
+    logger.warn("recordAIUsage failed silently", { err: String(err) });
   }
 }
 
@@ -125,7 +128,7 @@ export async function getDailyAISpend(userId: string): Promise<number> {
 
     return total;
   } catch (err: unknown) {
-    console.warn("[cost-governance] getDailyAISpend failed:", err);
+    logger.warn("getDailyAISpend failed", { err: String(err) });
     return 0;
   }
 }

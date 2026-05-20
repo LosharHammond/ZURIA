@@ -4,6 +4,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { AppUser, Business } from "@/types/domain";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:business");
 
 export async function getAppUser(userId: string): Promise<AppUser | undefined> {
   if (!db) return undefined;
@@ -17,7 +19,7 @@ export async function getAppUser(userId: string): Promise<AppUser | undefined> {
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
     } as AppUser;
   } catch (err) {
-    console.error("[getAppUser]", err);
+    logger.error("getAppUser failed", { err: String(err) });
     return undefined;
   }
 }
@@ -34,7 +36,7 @@ export async function getBusiness(businessId: string): Promise<Business | undefi
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
     } as Business;
   } catch (err) {
-    console.error("[getBusiness]", err);
+    logger.error("getBusiness failed", { err: String(err) });
     return undefined;
   }
 }

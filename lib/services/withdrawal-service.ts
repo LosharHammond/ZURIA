@@ -10,6 +10,8 @@ import {
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { WithdrawalMethod, WithdrawalNetwork, WithdrawalRequest } from "@/types/domain";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:withdrawal");
 
 /**
  * @deprecated DO NOT USE — bypasses critical server logic:
@@ -48,7 +50,7 @@ export async function getUserWithdrawals(userId: string): Promise<WithdrawalRequ
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data() as WithdrawalRequest);
   } catch (err) {
-    console.error("[getUserWithdrawals]", err);
+    logger.error("getUserWithdrawals failed", { err: String(err) });
     return [];
   }
 }

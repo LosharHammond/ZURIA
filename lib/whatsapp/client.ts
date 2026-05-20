@@ -1,3 +1,6 @@
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("whatsapp:client");
+
 const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? "";
 const AUTH_TOKEN  = process.env.TWILIO_AUTH_TOKEN  ?? "";
 const FROM_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER ?? ""; // e.g. "whatsapp:+14155238886"
@@ -23,7 +26,7 @@ export class TwilioError extends Error {
  */
 export async function sendText(to: string, body: string, _retryCount = 0): Promise<void> {
   if (!ACCOUNT_SID || !AUTH_TOKEN || !FROM_NUMBER) {
-    console.warn("[Twilio] Credentials not configured — message skipped (dev mode)");
+    logger.warn("Twilio credentials not configured — message skipped (dev mode)");
     return;
   }
 

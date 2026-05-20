@@ -15,6 +15,8 @@ import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { Loan, LoanRepayment, Transaction } from "@/types/domain";
 import { createId } from "@/lib/utils";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:loan");
 
 export async function fetchLoans(businessId: string): Promise<Loan[]> {
   if (!db) return [];
@@ -51,7 +53,7 @@ export async function fetchLoans(businessId: string): Promise<Loan[]> {
     const items = snap.docs.map((d) => mapLoan(d.data()));
     return items.sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));
   } catch (err) {
-    console.error("[fetchLoans]", err);
+    logger.error("fetchLoans failed", { err: String(err) });
     return [];
   }
 }

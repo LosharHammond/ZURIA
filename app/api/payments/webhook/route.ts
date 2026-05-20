@@ -19,6 +19,8 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { verifyPaystackSignature } from "@/lib/services/paystack-service";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("payments:webhook");
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
   const signature = req.headers.get("x-paystack-signature") ?? "";
 
   if (!verifyPaystackSignature(rawBody, signature)) {
-    console.warn("[webhook] Invalid Paystack signature — rejected");
+    logger.warn("Invalid Paystack signature — rejected");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
   } catch {
     // Queue write failure must NOT cause a non-200 response — that would make
     // Paystack retry the webhook before the queue worker even runs.
-    console.error("[webhook] Failed to write to webhook_queue — event may be missed:", queueDocId);
+    logger.error("Failed to write to webhook_queue — event may be missed", { queueDocId });
   }
 
   // ── 4. Always return 200 immediately ─────────────────────────────────────

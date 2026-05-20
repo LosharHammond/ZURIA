@@ -8,6 +8,8 @@ import { SUBSCRIPTION_TIERS } from "@/types/domain";
 import { APP_URL } from "@/lib/config";
 import { getEffectivePlan } from "@/lib/subscription";
 import { rateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("payments:initialize");
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +104,7 @@ export async function POST(req: Request) {
     });
 
     if (result.error) {
-      console.error("[payments/initialize] Paystack error:", result.error);
+      logger.error("Paystack error", { detail: result.error });
 
       // Surface actionable message: distinguish config errors from API errors
       const isConfigError = result.error.toLowerCase().includes("not configured");
@@ -161,7 +163,7 @@ export async function POST(req: Request) {
       reference,
     });
   } catch (err) {
-    console.error("[payments/initialize]", err);
+    logger.error("payment initialization failed", { err: String(err) });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

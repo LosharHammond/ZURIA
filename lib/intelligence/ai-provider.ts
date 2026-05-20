@@ -18,6 +18,9 @@
 // The complete behavioral specification for the Conversational Cognition Layer.
 // This is not a chatbot personality. This is an operational identity.
 
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("ai:provider");
+
 export const ZURIA_SYSTEM_PROMPT = `
 You are ZURIA — an intelligent African business operating system that communicates through conversation.
 
@@ -334,7 +337,7 @@ class OpenAIZuria implements AIProvider {
       return text && text.length > 0 ? text : null;
     } catch (err) {
       // Never crash — always fall back to rule-based
-      console.warn("[ai-provider] OpenAI request failed, falling back:", err);
+      logger.warn("OpenAI request failed, falling back to rule-based", { err: String(err) });
       return null;
     }
   }

@@ -23,6 +23,8 @@ import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
 import { createId } from "@/lib/utils";
 import { hashPin } from "@/lib/security/pin";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("auth:register");
 
 export const dynamic = "force-dynamic";
 
@@ -241,7 +243,7 @@ export async function POST(req: Request) {
     // failed, delete the orphaned auth record so the user can retry cleanly.
     if (uid) {
       getAdminAuth().deleteUser(uid).catch((cleanupErr) =>
-        console.error("[register] failed to clean up orphaned auth user:", cleanupErr)
+        logger.error("failed to clean up orphaned auth user", { err: String(cleanupErr) })
       );
     }
 
@@ -253,7 +255,7 @@ export async function POST(req: Request) {
         { status: 409 }
       );
     }
-    console.error("[register]", err);
+    logger.error("registration failed", { err: String(err) });
     return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 });
   }
 }

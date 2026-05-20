@@ -5,6 +5,8 @@ import { getAdminDb, verifyAdminToken } from "@/lib/firebase/admin";
 import { sendText } from "@/lib/whatsapp/client";
 import { collections } from "@/lib/firebase/collections";
 import type { Transaction, WithdrawalLedgerEntry, WithdrawalRequest } from "@/types/domain";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("admin:withdrawals");
 
 import {
   createTransferRecipient,
@@ -127,7 +129,7 @@ export async function PATCH(
     const e = err as { code?: number };
     if (e.code === 404) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (e.code === 409) return NextResponse.json({ error: "Already processed" }, { status: 409 });
-    console.error("[admin/withdrawals] status transaction failed:", err);
+    logger.error("status transaction failed", { err: String(err) });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
@@ -180,7 +182,7 @@ export async function PATCH(
     // merge:true so a retried approve call does not overwrite an already-synced record
     await db.collection(collections.transactions).doc(txn.id)
       .set({ ...txn, synced: now }, { merge: true })
-      .catch((err) => console.error("[admin/withdrawals] accounting txn write failed:", err));
+      .catch((err) => logger.error("accounting txn write failed", { err: String(err) }));
   }
 
   // ── Attempt Paystack auto-transfer ────────────────────────────────────────
@@ -234,7 +236,7 @@ export async function PATCH(
         }
       }
     } catch (err) {
-      console.error("[admin/withdrawals] Paystack auto-transfer error:", err);
+      logger.error("Paystack auto-transfer error", { err: String(err) });
       // Fall through to manual approval below
     }
   }

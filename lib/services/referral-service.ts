@@ -12,6 +12,8 @@ import {
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { Referral } from "@/types/domain";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:referral");
 
 export const REFERRAL_REWARD = 0.5;           // GHS per successful invite
 export const WITHDRAWAL_THRESHOLD = 5.0;     // GHS minimum to request cash out (10 referrals)
@@ -92,7 +94,7 @@ export async function getReferralStats(userId: string): Promise<ReferralStats> {
       try {
         await updateDoc(userRef, { referralCode: code });
       } catch (writeErr) {
-        console.warn("[getReferralStats] could not save generated referralCode:", writeErr);
+        logger.warn("could not save generated referralCode", { err: String(writeErr) });
       }
     }
 
@@ -104,7 +106,7 @@ export async function getReferralStats(userId: string): Promise<ReferralStats> {
       referralUnlockExpiresAt: (data.referralUnlockExpiresAt as string | undefined) ?? null,
     };
   } catch (err) {
-    console.error("[getReferralStats]", err);
+    logger.error("getReferralStats failed", { err: String(err) });
     return empty;
   }
 }

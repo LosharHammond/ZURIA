@@ -17,6 +17,9 @@
 
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("conversation-context");
 import type {
   ClassifiedIntent,
   ConversationContext,
@@ -151,7 +154,7 @@ export async function saveWhatsAppContext(
   ]).catch((err) => {
     // Log timeout/failure — but NEVER throw; context save must not break responses
     if ((err as Error).message !== "ctx_save_timeout") {
-      console.warn("[conversation-context] WhatsApp ctx save failed:", err);
+      logger.warn("WhatsApp ctx save failed", { err: String(err) });
     }
   });
 }
@@ -174,7 +177,7 @@ export async function saveTelegramContext(
     ),
   ]).catch((err) => {
     if ((err as Error).message !== "ctx_save_timeout") {
-      console.warn("[conversation-context] Telegram ctx save failed:", err);
+      logger.warn("Telegram ctx save failed", { err: String(err) });
     }
   });
 }

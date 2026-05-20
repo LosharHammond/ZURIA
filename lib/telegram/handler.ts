@@ -16,6 +16,9 @@
  */
 
 import { createId, formatMoney } from "@/lib/utils";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("telegram:handler");
 import { sendText }           from "@/lib/whatsapp/client";
 import { hashPin, verifyPin }  from "@/lib/security/pin";
 import {
@@ -488,7 +491,7 @@ export async function handleTelegram(update: Record<string, unknown>): Promise<v
   if (!message) {
     // Non-message update (callback query, inline, channel post, etc.) — log and ignore.
     const updateType = Object.keys(update).filter((k) => k !== "update_id")[0] ?? "unknown";
-    console.info("[telegram/handler] ignoring non-message update type:", updateType);
+    logger.info("ignoring non-message update", { updateType });
     return;
   }
 

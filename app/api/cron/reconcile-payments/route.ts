@@ -18,6 +18,8 @@ import {
   reconcileRecentPayments,
   reconcileReferralBalances,
 } from "@/lib/reconciliation/payment-reconciler";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("cron:reconcile-payments");
 
 export const dynamic  = "force-dynamic";
 export const maxDuration = 60;
@@ -51,10 +53,10 @@ export async function GET(req: Request) {
     balanceReport.status === "fulfilled" &&
     balanceReport.value.drifted.length > 0
   ) {
-    console.error(
-      `[reconcile] BALANCE DRIFT DETECTED — ${balanceReport.value.drifted.length} user(s):`,
-      JSON.stringify(balanceReport.value.drifted)
-    );
+    logger.error("BALANCE DRIFT DETECTED", {
+      count: balanceReport.value.drifted.length,
+      drifted: JSON.stringify(balanceReport.value.drifted),
+    });
   }
 
   return NextResponse.json(report);

@@ -4,6 +4,8 @@ import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
 import { hashPin } from "@/lib/security/pin";
 import { normalisePhone, E164_REGEX } from "@/lib/utils/phone";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("auth:forgot-pin");
 
 export const dynamic = "force-dynamic";
 
@@ -118,7 +120,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[forgot-pin]", err);
+    logger.error("forgot-pin failed", { err: String(err) });
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 }

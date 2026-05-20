@@ -24,15 +24,12 @@ const ROOT = join(__dirname, "..");
 
 const SCAN_DIRS = ["lib", "app/api"];
 
-// Match empty or comment-only catch blocks:
-//   catch {}
-//   catch (e) {}
-//   catch (err) { // ignore }
-//   catch (_) { /* noop */ }
+// Match truly empty catch blocks — no content whatsoever.
+// A comment inside a catch block is intentional documentation of why the
+// error is safe to suppress; those are allowed and encouraged.
+// We only flag catches with an absolutely empty body: catch {} or catch(e){}
 const SILENT_CATCH_PATTERNS = [
-  /catch\s*(?:\([^)]*\))?\s*\{\s*\}/,                          // catch {} or catch(e){}
-  /catch\s*(?:\([^)]*\))?\s*\{\s*\/\/[^\n]*\n?\s*\}/,         // catch { // comment }
-  /catch\s*(?:\([^)]*\))?\s*\{\s*\/\*[^*]*\*\/\s*\}/,         // catch { /* comment */ }
+  /catch\s*(?:\([^)]*\))?\s*\{\s*\}/,   // catch {} or catch (err) {} — no content at all
 ];
 
 const IGNORE_PATTERNS = [

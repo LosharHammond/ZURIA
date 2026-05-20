@@ -4,6 +4,8 @@ import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
 import { hashPin, verifyPin } from "@/lib/security/pin";
 import { normalisePhone, E164_REGEX } from "@/lib/utils/phone";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("auth:phone-login");
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +107,7 @@ export async function POST(req: Request) {
     const customToken = await getAdminAuth().createCustomToken(uid, { phone });
     return NextResponse.json({ token: customToken, phone, isNewUser: false });
   } catch (err) {
-    console.error("[phone-login]", err);
+    logger.error("phone-login failed", { err: String(err) });
     return NextResponse.json(
       { error: "Authentication failed. Please try again." },
       { status: 500 }

@@ -8,6 +8,9 @@
  *  - 4xx errors are NOT retried (bad request, chat not found, bot blocked, etc.)
  */
 
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("telegram:client");
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const API   = `https://api.telegram.org/bot${TOKEN}`;
 
@@ -22,7 +25,7 @@ export async function sendTelegram(
   extra?: { parse_mode?: "Markdown" | "HTML"; disable_web_page_preview?: boolean }
 ): Promise<void> {
   if (!TOKEN) {
-    console.warn("[telegram] TELEGRAM_BOT_TOKEN not set — skipping send");
+    logger.warn("TELEGRAM_BOT_TOKEN not set — skipping send");
     return;
   }
 
@@ -49,7 +52,7 @@ export async function sendTelegram(
       if (res.ok) return; // ✅ success
 
       const errText = await res.text().catch(() => "(unreadable)");
-      console.error(`[telegram/send] attempt ${attempt + 1} HTTP ${res.status}:`, errText);
+      logger.error(`send attempt ${attempt + 1} HTTP ${res.status}`, { errText, chatId });
 
       // 4xx = client error (bot blocked, invalid chat, message too long, etc.)
       // No amount of retrying will fix these — give up immediately.
@@ -59,10 +62,7 @@ export async function sendTelegram(
     } catch (fetchErr) {
       clearTimeout(timer);
       const isAbort = fetchErr instanceof Error && fetchErr.name === "AbortError";
-      console.warn(
-        `[telegram/send] attempt ${attempt + 1} ${isAbort ? "timed out" : "fetch failed"}:`,
-        fetchErr
-      );
+      logger.warn(`send attempt ${attempt + 1} ${isAbort ? "timed out" : "fetch failed"}`, { err: String(fetchErr), chatId });
     }
 
     // Wait before the next attempt (skip wait after the final attempt)
@@ -71,7 +71,7 @@ export async function sendTelegram(
     }
   }
 
-  console.error("[telegram/send] all attempts exhausted — message not delivered to chat:", chatId);
+  logger.error("all send attempts exhausted — message not delivered", { chatId });
 }
 
 /** Answer a Telegram webhook with a 200 OK (fast path — no await needed) */

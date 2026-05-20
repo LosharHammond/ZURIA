@@ -18,6 +18,8 @@ import type { Debt, InventoryItem, ParsedTransaction, Transaction } from "@/type
 import { createId } from "@/lib/utils";
 import { queueTransaction } from "@/lib/offline/db";
 import { applyLoanEffect } from "@/lib/services/loan-service";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:transaction");
 
 export async function createTransaction(input: {
   businessId: string;
@@ -108,7 +110,7 @@ export async function fetchTransactions(businessId: string, max = 100): Promise<
     const items = snap.docs.map((d) => mapTxn(d.data()));
     return items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   } catch (err) {
-    console.error("[fetchTransactions]", err);
+    logger.error("fetchTransactions failed", { err: String(err) });
     return [];
   }
 }

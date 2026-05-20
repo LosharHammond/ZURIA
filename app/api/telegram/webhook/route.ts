@@ -16,6 +16,8 @@ import { getAdminDb } from "@/lib/firebase/admin";
 import { captureZuriaError } from "@/lib/observability/sentry";
 import { collections } from "@/lib/firebase/collections";
 import { rateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("telegram:webhook");
 
 export const dynamic = "force-dynamic";
 
@@ -73,15 +75,15 @@ export async function POST(req: NextRequest) {
     const incoming = req.headers.get("x-telegram-bot-api-secret-token");
     if (incoming !== null && incoming !== WEBHOOK_SECRET) {
       // Header is present but wrong — this is a spoofed request, reject it.
-      console.warn("[telegram/webhook] rejected — wrong secret token (possible spoof)");
+      logger.warn("rejected — wrong secret token (possible spoof)");
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (incoming === null) {
       // Header is absent — webhook not yet registered with the secret.
       // Allow but warn loudly so the operator knows to re-register.
-      console.warn(
-        "[telegram/webhook] WARNING: TELEGRAM_WEBHOOK_SECRET is set but the " +
-        "incoming request carries no X-Telegram-Bot-Api-Secret-Token header. " +
+      logger.warn(
+        "TELEGRAM_WEBHOOK_SECRET is set but the incoming request carries no " +
+        "X-Telegram-Bot-Api-Secret-Token header. " +
         "Re-register the webhook: GET /api/telegram/webhook?setup=1&key=YOUR_SECRET"
       );
     }
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
   if (typeof updateId === "number") {
     const isDuplicate = await markAndCheckDuplicate(updateId);
     if (isDuplicate) {
-      console.info("[telegram/webhook] duplicate update_id, skipping:", updateId);
+      logger.info("duplicate update_id, skipping", { updateId });
       return NextResponse.json({ ok: true });
     }
   }

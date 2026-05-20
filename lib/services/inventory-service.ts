@@ -4,6 +4,8 @@ import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { collections } from "@/lib/firebase/collections";
 import type { InventoryItem } from "@/types/domain";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:inventory");
 
 function mapItem(data: Record<string, unknown>): InventoryItem {
   return {
@@ -35,7 +37,7 @@ export async function fetchInventory(businessId: string): Promise<InventoryItem[
     const items = snap.docs.map((d) => mapItem(d.data()));
     return items.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   } catch (err) {
-    console.error("[fetchInventory]", err);
+    logger.error("fetchInventory failed", { err: String(err) });
     return [];
   }
 }

@@ -5,6 +5,9 @@
 import { groqGenerate, isGroqAvailable } from "../groq";
 import { ZURIA_SYSTEM_PROMPT } from "@/lib/intelligence/ai-provider";
 import { isAIEnabled } from "../cost-governance";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("ai:orchestrator");
 
 // ─── Confidence Thresholds ────────────────────────────────────────────────────
 
@@ -138,7 +141,7 @@ export async function orchestrate(
               maxTokens:   256,
               temperature: 0.4,
             });
-            console.log(`[orchestrator] shadow-learn fired for user ${userId}`);
+            logger.info("shadow-learn fired", { userId });
           } catch {
             // intentionally silent
           }

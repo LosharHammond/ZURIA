@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAdminDb, verifyAdminToken } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("admin:stats");
 
 export const dynamic = "force-dynamic";
 
@@ -174,7 +176,7 @@ export async function GET(req: NextRequest) {
       errors,
     });
   } catch (err) {
-    console.error("[admin/stats]", err instanceof Error ? err.message : String(err));
+    logger.error("stats fetch failed", { err: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -2,6 +2,8 @@
 
 import { getQueuedTransactions, removeQueuedTransaction } from "@/lib/offline/db";
 import { persistTransaction } from "@/lib/services/transaction-service";
+import { createClientLogger } from "@/lib/observability/client-logger";
+const logger = createClientLogger("services:sync");
 
 export async function syncQueuedTransactions(): Promise<number> {
   if (!navigator.onLine) return 0;
@@ -10,7 +12,7 @@ export async function syncQueuedTransactions(): Promise<number> {
   try {
     queued = await getQueuedTransactions();
   } catch (err) {
-    console.error("[sync] Failed to read queue:", err);
+    logger.error("Failed to read queue", { err: String(err) });
     return 0;
   }
 
@@ -23,7 +25,7 @@ export async function syncQueuedTransactions(): Promise<number> {
       synced += 1;
     } catch (err) {
       // Leave in queue — will retry on next sync
-      console.error("[sync] Failed to persist transaction", transaction.id, err);
+      logger.error("Failed to persist transaction", { id: transaction.id, err: String(err) });
     }
   }
   return synced;

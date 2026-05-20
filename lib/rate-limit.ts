@@ -9,6 +9,9 @@
  * module with the Upstash implementation.
  */
 
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("rate-limit");
+
 interface Bucket {
   count: number;
   resetAt: number;
@@ -42,10 +45,7 @@ export function rateLimit(
   // Warn once per cold-start in production
   if (process.env.NODE_ENV === "production" && !_warnedAboutInMemory) {
     _warnedAboutInMemory = true;
-    console.warn(
-      "[rate-limit] Using in-memory limiter. Install @upstash/ratelimit + set " +
-      "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN for distributed limiting."
-    );
+    logger.warn("Using in-memory rate limiter. Install @upstash/ratelimit + UPSTASH_REDIS env vars for distributed limiting.");
   }
 
   const now    = Date.now();

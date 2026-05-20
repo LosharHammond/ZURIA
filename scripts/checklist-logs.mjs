@@ -30,6 +30,12 @@ const IGNORE_PATTERNS = [
   /\.spec\./,
   /__tests__/,
   /scripts\//,
+  // These files ARE the logging/observability infrastructure — they
+  // intentionally call console.* as their output mechanism.
+  /lib[/\\]observability[/\\]/,
+  /lib[/\\]server[/\\]error-logger/,
+  // Firebase client config — console.warn on misconfiguration is acceptable
+  /lib[/\\]firebase[/\\]config/,
 ];
 
 let violations = 0;

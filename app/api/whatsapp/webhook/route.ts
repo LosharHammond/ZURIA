@@ -7,6 +7,8 @@ import { logError } from "@/lib/server/error-logger";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { createLogger } from "@/lib/observability/logger";
+const logger = createLogger("whatsapp:webhook");
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +108,7 @@ async function claimMessageSid(sid: string): Promise<boolean> {
   } catch (err) {
     if (err instanceof Error && err.message === "duplicate") return false;
     // Firestore error (network, quota, etc.) — fail open to avoid dropping messages
-    console.warn("[webhook] Firestore SID claim failed, processing anyway:", err instanceof Error ? err.message : err);
+    logger.warn("Firestore SID claim failed, processing anyway", { err: err instanceof Error ? err.message : String(err) });
     return true;
   }
 }
@@ -133,7 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Reject requests that don't carry a valid Twilio signature (production only)
   if (!isTwilioSignatureValid(request, rawBody)) {
-    console.warn("[webhook] Invalid Twilio signature — request rejected");
+    logger.warn("Invalid Twilio signature — request rejected");
     return new NextResponse("Forbidden", { status: 403 });
   }
 
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Layer 1: fast in-process check (same serverless instance)
   if (isDuplicateSid(messageSid)) {
-    console.info("[webhook] duplicate MessageSid (in-process), skipping:", messageSid);
+    logger.info("duplicate MessageSid (in-process), skipping", { messageSid });
     return xml(twimlReply(""));
   }
 
@@ -161,7 +163,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (messageSid) {
     const claimed = await claimMessageSid(messageSid);
     if (!claimed) {
-      console.info("[webhook] duplicate MessageSid (Firestore), skipping:", messageSid);
+      logger.info("duplicate MessageSid (Firestore), skipping", { messageSid });
       return xml(twimlReply(""));
     }
   }
@@ -179,7 +181,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const maskedPhone = phone.length > 6
     ? `${phone.slice(0, phone.length - 6)}****${phone.slice(-2)}`
     : "****";
-  console.info("[webhook] incoming", maskedPhone, safeBody.slice(0, 40));
+  logger.info("incoming message", { phone: maskedPhone, body: safeBody.slice(0, 40) });
 
   // Rate limit: max 20 messages per phone per minute
   const { allowed } = rateLimit(`wa:${phone}`, 20, 60_000);

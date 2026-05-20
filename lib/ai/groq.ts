@@ -2,6 +2,9 @@
 // Server-only — Groq SDK singleton and generation utilities.
 
 import Groq from "groq-sdk";
+import { createLogger } from "@/lib/observability/logger";
+
+const logger = createLogger("ai:groq");
 
 // ─── Model Constants ──────────────────────────────────────────────────────────
 
@@ -136,7 +139,7 @@ export async function groqGenerate(
       };
     } catch (err: unknown) {
       const latencyMs = Date.now() - startMs;
-      console.error(`[groq] error: attempt ${attempt + 1}, latency ${latencyMs}ms`, err);
+      logger.error(`groq error on attempt ${attempt + 1}`, { latencyMs, err: String(err) });
 
       if (attempt < 2) {
         await sleep(backoffDelays[attempt] ?? 400);
