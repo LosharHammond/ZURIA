@@ -8,8 +8,8 @@ import { isAIEnabled } from "../cost-governance";
 
 // ─── Confidence Thresholds ────────────────────────────────────────────────────
 
-/** 85%+ → save immediately, no AI needed */
-export const CONF_HIGH   = 0.85;
+/** 90%+ → save immediately, no AI needed */
+export const CONF_HIGH   = 0.90;
 /** 60–84% → lightweight AI enhancement (fast model) */
 export const CONF_MEDIUM = 0.60;
 /** 0–59% → advanced AI reasoning (advanced model) */

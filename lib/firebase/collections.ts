@@ -103,4 +103,12 @@ export const collections = {
 
   // Notification deduplication keys — prevents duplicate notification sends.
   notificationDedup: "notification_dedup",
+
+  // ── Infrastructure Monitoring ─────────────────────────────────────────────
+
+  // System status records — health check results per service.
+  systemStatus: "system_status",
+
+  // Subscription audit log — integrity check results and auto-repair records.
+  subscriptionAuditLog: "subscription_audit_log",
 } as const;

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Users, Store, ReceiptText, RefreshCw, Smartphone, Globe,
   ArrowDownToLine, Check, X, AlertTriangle, Info, TrendingUp,
   CreditCard, BadgeCheck, ChevronRight, Crown, Zap,
-  ShieldCheck, Activity, DollarSign,
+  ShieldCheck, Activity, DollarSign, Server, MessageSquare,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -382,6 +383,39 @@ export default function AdminPage() {
       {/* ── OVERVIEW TAB ── */}
       {activeTab === "overview" && (
         <div className="space-y-6">
+
+          {/* ── System Tools ── */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link href="/admin/ai-monitoring">
+              <GlassCard className="cursor-pointer hover:bg-white/[0.06] transition-colors group">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors">
+                    <Server className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">AI System Monitor</p>
+                    <p className="text-xs text-muted-foreground">Infrastructure health &amp; latency</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </GlassCard>
+            </Link>
+            <Link href="/admin/ai-console">
+              <GlassCard className="cursor-pointer hover:bg-white/[0.06] transition-colors group">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">System Intelligence Console</p>
+                    <p className="text-xs text-muted-foreground">Groq-powered operational AI</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </GlassCard>
+            </Link>
+          </div>
+
           {/* Stat cards */}
           {loading ? <SkeletonStatCards /> : stats ? (
             <>
