@@ -802,17 +802,24 @@ export async function handleMessage(fromPhone: string, rawText: string): Promise
 
       if (!isStockWithQty) {
         // For specific action types, the user omitted the amount — prompt for it.
+        // Keys must exactly match TransactionType values in types/domain.ts.
+        // Previously had stale values (debt_record, debt_payment, loan_given,
+        // loan_repaid, refund) that were silently falling through to AI clarification.
         const AMOUNT_LABELS: Partial<Record<string, string>> = {
-          salary:       "salary payment",
-          expense:      "expense",
-          sale:         "sale",
-          debt_record:  "debt",
-          debt_payment: "payment",
-          loan_given:   "loan",
-          loan_repaid:  "loan repayment",
-          investment:   "investment",
-          withdrawal:   "withdrawal",
-          refund:       "refund",
+          salary:          "salary payment",
+          expense:         "expense",
+          sale:            "sale",
+          debt:            "debt",
+          repayment:       "payment",
+          borrow_out:      "loan",
+          loan_repay_out:  "loan repayment",
+          loan_collect_in: "loan collection",
+          investment:      "investment",
+          withdrawal:      "withdrawal",
+          refund_out:      "refund",
+          refund_in:       "refund",
+          cost:            "cost",
+          tax:             "tax",
         };
         const label = AMOUNT_LABELS[parsed.type];
         if (label) {
@@ -1470,7 +1477,7 @@ async function handleUndoIntent(businessId: string, businessName: string): Promi
       `_— ZURIA (${businessName})_`,
     ].join("\n");
   } catch (err) {
-    console.error("[handleUndoIntent]", err);
+    await logError("[handler] handleUndoIntent", err, { meta: { businessId } });
     return [
       "❌ *Couldn't delete the entry.*",
       "",

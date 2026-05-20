@@ -13,6 +13,7 @@ import { collections } from "@/lib/firebase/collections";
 import { verifyTransaction } from "@/lib/services/paystack-service";
 import { sendText } from "@/lib/whatsapp/client";
 import { fmtSubscriptionActivated } from "@/lib/whatsapp/formatter";
+import { captureZuriaError } from "@/lib/observability/sentry";
 import type { PaystackPayment, SubscriptionPlan, PaymentLedgerEntry } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
@@ -258,7 +259,7 @@ export async function GET(req: Request) {
       expiresAt,
     });
   } catch (err) {
-    console.error("[payments/verify]", err);
+    captureZuriaError(err instanceof Error ? err : new Error(String(err)), { extra: { route: "payments/verify" } });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

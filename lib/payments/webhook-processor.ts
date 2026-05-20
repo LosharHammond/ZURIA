@@ -12,6 +12,7 @@ import { collections } from "@/lib/firebase/collections";
 import { verifyTransaction } from "@/lib/services/paystack-service";
 import { sendText } from "@/lib/whatsapp/client";
 import { fmtSubscriptionActivated } from "@/lib/whatsapp/formatter";
+import { createLogger } from "@/lib/observability/logger";
 import type {
   SubscriptionPlan,
   PaystackPayment,
@@ -23,6 +24,7 @@ import type {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const VALID_PLANS = new Set<SubscriptionPlan>(["growth", "pro", "enterprise"]);
+const logger = createLogger("webhook-processor");
 
 function planDurationDays(annual: boolean) {
   return annual ? 365 : 30;
@@ -41,7 +43,7 @@ export async function activateSubscription(
   channel?: string,
 ): Promise<void> {
   if (!VALID_PLANS.has(plan)) {
-    console.error(`[processor] Unknown plan "${plan}" for uid=${userId} — aborting`);
+    logger.error(`Unknown plan — aborting activation`, { plan, userId });
     return;
   }
 
