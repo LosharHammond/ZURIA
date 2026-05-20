@@ -52,7 +52,10 @@ service cloud.firestore {
 
     // ─── Transactions ────────────────────────────────────────────────────────
     // Read/write only if the businessId on the document belongs to the user.
-    // Enforce businessId matches a business the user owns.
+    // Update is blocked client-side — all mutations go through Admin SDK or
+    // the offline sync queue (which writes via setDoc with a deterministic ID).
+    // Delete IS allowed so the web app can reverse mistaken entries and undo
+    // the corresponding debt/inventory side-effects (see transaction-service.ts).
     match /transactions/{txnId} {
       allow read: if businessOwnedByUser(resource.data.businessId);
       allow create: if businessOwnedByUser(request.resource.data.businessId)
@@ -60,43 +63,67 @@ service cloud.firestore {
         && request.resource.data.amount is number
         && request.resource.data.amount >= 0
         && request.resource.data.rawText is string
-        && request.resource.data.rawText.size() <= 500
-        && request.resource.data.notes is string
-        && request.resource.data.notes.size() <= 500;
-      allow update, delete: if false; // Transactions are immutable from the client
+        && request.resource.data.rawText.size() <= 500;
+      allow update: if false; // Immutable from the client
+      allow delete: if businessOwnedByUser(resource.data.businessId)
+        && resource.data.userId == request.auth.uid;
     }
 
     // ─── Debts ──────────────────────────────────────────────────────────────
+    // Clients may create and update debts (via transaction side-effects).
+    // Update is field-locked: only the specific fields written by transaction-
+    // service.ts are allowed, preventing clients from forging amounts or status.
     match /debts/{debtId} {
       allow read: if businessOwnedByUser(resource.data.businessId);
       allow create: if businessOwnedByUser(request.resource.data.businessId)
         && request.resource.data.originalAmount is number
         && request.resource.data.outstandingAmount is number
+        && request.resource.data.outstandingAmount >= 0
         && request.resource.data.repaymentHistory is list
         && request.resource.data.repaymentHistory.size() <= 200;
       allow update: if businessOwnedByUser(resource.data.businessId)
         && request.resource.data.businessId == resource.data.businessId
+        // Only allow the fields that transaction-service.ts legitimately writes
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             "outstandingAmount", "originalAmount", "repaymentHistory",
+             "status", "lastActivityAt", "syncStatus"
+           ])
+        && request.resource.data.outstandingAmount is number
+        && request.resource.data.outstandingAmount >= 0
         && request.resource.data.repaymentHistory is list
-        && request.resource.data.repaymentHistory.size() <= 200;
+        && request.resource.data.repaymentHistory.size() <= 200
+        && request.resource.data.status in ["open", "paid"];
       allow delete: if false;
     }
 
     // ─── Loans ──────────────────────────────────────────────────────────────
+    // Clients create and update loans via loan-service.ts.
+    // Field-locked update to prevent balance forgery.
     match /loans/{loanId} {
       allow read: if businessOwnedByUser(resource.data.businessId);
       allow create: if businessOwnedByUser(request.resource.data.businessId)
         && request.resource.data.originalAmount is number
         && request.resource.data.outstandingAmount is number
+        && request.resource.data.outstandingAmount >= 0
         && request.resource.data.repaymentHistory is list
         && request.resource.data.repaymentHistory.size() <= 200;
       allow update: if businessOwnedByUser(resource.data.businessId)
         && request.resource.data.businessId == resource.data.businessId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             "outstandingAmount", "originalAmount", "repaymentHistory",
+             "status", "lastActivityAt", "syncStatus"
+           ])
+        && request.resource.data.outstandingAmount is number
+        && request.resource.data.outstandingAmount >= 0
         && request.resource.data.repaymentHistory is list
-        && request.resource.data.repaymentHistory.size() <= 200;
+        && request.resource.data.repaymentHistory.size() <= 200
+        && request.resource.data.status in ["open", "paid", "partial"];
       allow delete: if false;
     }
 
     // ─── Inventory ──────────────────────────────────────────────────────────
+    // Clients create and update inventory via transaction side-effects.
+    // Update field-locked to quantity + updatedAt + syncStatus only.
     match /inventory/{itemId} {
       allow read: if businessOwnedByUser(resource.data.businessId);
       allow create: if businessOwnedByUser(request.resource.data.businessId)
@@ -106,8 +133,9 @@ service cloud.firestore {
         && request.resource.data.quantity >= 0;
       allow update: if businessOwnedByUser(resource.data.businessId)
         && request.resource.data.businessId == resource.data.businessId
-        && request.resource.data.productName is string
-        && request.resource.data.productName.size() <= 120
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             "quantity", "updatedAt", "syncStatus", "lowStockThreshold"
+           ])
         && request.resource.data.quantity is number
         && request.resource.data.quantity >= 0;
       allow delete: if false;
