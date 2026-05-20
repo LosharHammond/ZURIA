@@ -243,8 +243,52 @@ export function zuriaConfirm(
     lines.push("", "_Wasn't 100% sure about that — double-check if needed._");
   }
 
+  // ── Quick-reply hints (spec-mandated post-confirmation actions) ───────────
+  // Contextual based on transaction type — surface the most relevant next step.
+  const hints = buildQuickReplyHints(parsed.type);
+  if (hints) lines.push("", hints);
+
   void businessName; // used by caller for context; not needed in this response
   return lines.join("\n");
+}
+
+/**
+ * Build contextual quick-reply hint line after a confirmed transaction.
+ * These are text-based action prompts — WhatsApp has no native buttons.
+ * Spec: show "Record Another", "View Summary", "Check Debts", "View Inventory"
+ * as appropriate to the transaction type.
+ */
+function buildQuickReplyHints(type: string): string {
+  switch (type) {
+    case "sale":
+    case "income":
+    case "revenue":
+      return `_Reply: *"balance"* · *"debts"* · *"weekly report"*_`;
+
+    case "debt":
+    case "debt_record":
+      return `_Reply: *"debts"* · *"balance"* · *"weekly report"*_`;
+
+    case "repayment":
+    case "debt_payment":
+      return `_Reply: *"debts"* to see remaining · *"balance"*_`;
+
+    case "stock_purchase":
+    case "inventory":
+      return `_Reply: *"stock"* to view inventory · *"balance"*_`;
+
+    case "expense":
+    case "cost":
+    case "salary":
+      return `_Reply: *"balance"* · *"weekly report"*_`;
+
+    case "borrow_out":
+    case "loan_given":
+      return `_Reply: *"loans"* to track all loans · *"balance"*_`;
+
+    default:
+      return `_Reply: *"balance"* · *"weekly report"* · *"help"*_`;
+  }
 }
 
 // ─── Smalltalk / Emotional Response ──────────────────────────────────────────
@@ -844,21 +888,23 @@ export function buildLimitWarning(
     : `\n💡 _Open ZURIA app → Refer & Earn to get more._`;
 
   if (remaining === 0) {
+    // This staged notice is shown on the message AFTER the last entry — the
+    // entry was recorded successfully; this primes the user before they hit the wall.
     return (
-      `⛔ You've used all *${total}* entries for ${period}.\n` +
-      `Reply *"subscribe"* to get more — or earn free entries by referring friends.${refLine}`
+      `🧠 You've reached ${period}'s smart entry limit (*${total}* AI entries).\n` +
+      `You can still: *"balance"* · *"weekly report"* · *"debts"* · *"subscribe"*${refLine}`
     );
   }
 
   if (remaining <= 2) {
     return (
-      `⚠️ Only *${remaining}* entr${remaining === 1 ? "y" : "ies"} left ${period}.\n` +
+      `⚠️ Only *${remaining}* smart entr${remaining === 1 ? "y" : "ies"} left ${period}.\n` +
       `Reply *"subscribe"* to continue without limits.${refLine}`
     );
   }
 
   return (
-    `💡 *${remaining}* entries remaining ${period}.\n` +
+    `💡 *${remaining}* smart entries remaining ${period}.\n` +
     `Reply *"subscribe"* to upgrade, or refer friends to earn more.${refLine}`
   );
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
 import { hashPin, verifyPin } from "@/lib/security/pin";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,12 @@ export async function POST(req: Request) {
   const decoded = await verifyIdToken(req.headers.get("Authorization"));
   if (!decoded) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit: 5 PIN changes per hour per user (brute-force protection)
+  const { allowed } = rateLimit(`change-pin:${decoded.uid}`, 5, 60 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   let rawBody: unknown;

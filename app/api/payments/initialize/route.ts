@@ -7,6 +7,7 @@ import type { SubscriptionPlan, PaystackPayment, PaymentLedgerEntry } from "@/ty
 import { SUBSCRIPTION_TIERS } from "@/types/domain";
 import { APP_URL } from "@/lib/config";
 import { getEffectivePlan } from "@/lib/subscription";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const uid = decoded.uid;
+
+    // ── Rate limit: 10 payment initiations per hour per user ─────────────────
+    const { allowed } = rateLimit(`payment-init:${uid}`, 10, 60 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     // ── Parse body ────────────────────────────────────────────────────────────
     const body = await req.json();

@@ -181,17 +181,20 @@ export async function buildBusinessProfile(
   try {
     const db = getAdminDb();
     const now = Date.now();
-    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+    // 60 days aligns with the spec-mandated free-tier history window.
+    // Paid tiers have unlimited history — 60 days is sufficient for profile
+    // inference (cash flow pattern, category, top customers, etc.).
+    const sixtyDaysAgo   = new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString();
+    const sevenDaysAgo   = new Date(now - 7  * 24 * 60 * 60 * 1000).toISOString();
     const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
 
-    // ── Fetch transactions (last 30 days, limit 200) ───────────────────────
+    // ── Fetch transactions (last 60 days, limit 500) ───────────────────────
     const txnSnap = await db
       .collection(collections.transactions)
       .where("businessId", "==", businessId)
-      .where("createdAt", ">=", thirtyDaysAgo)
+      .where("createdAt", ">=", sixtyDaysAgo)
       .orderBy("createdAt", "desc")
-      .limit(200)
+      .limit(500)
       .get();
 
     const transactions = txnSnap.docs.map((d) => d.data() as Transaction);

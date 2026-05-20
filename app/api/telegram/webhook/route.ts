@@ -14,6 +14,7 @@ import { type NextRequest, NextResponse, after } from "next/server";
 import { handleTelegram } from "@/lib/telegram/handler";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { collections } from "@/lib/firebase/collections";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,14 @@ export async function POST(req: NextRequest) {
   } catch {
     // Malformed body — acknowledge so Telegram doesn't retry endlessly
     return NextResponse.json({ ok: true });
+  }
+
+  // 2b. Per-sender rate limit (60 messages per minute)
+  const senderChat = (update.message as Record<string, unknown> | undefined)?.chat as Record<string, unknown> | undefined;
+  const chatId     = senderChat?.id ?? req.headers.get("x-forwarded-for") ?? "unknown";
+  const { allowed: senderAllowed } = rateLimit(`tg-msg:${chatId}`, 60, 60 * 1000);
+  if (!senderAllowed) {
+    return NextResponse.json({ ok: true }); // acknowledge silently — don't leak 429 to Telegram
   }
 
   // 3. Deduplicate using Firestore (works across instances and cold starts)

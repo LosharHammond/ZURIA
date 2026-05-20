@@ -115,11 +115,12 @@ export function planHasFeature(plan: SubscriptionPlan, feature: Feature): boolea
  * null = unlimited.
  */
 export function getPlanAILimit(plan: SubscriptionPlan): { daily: number | null; monthly: number | null } {
+  // Values must stay in sync with SUBSCRIPTION_TIERS.messageLimit in types/domain.ts.
   switch (plan) {
-    case "free":       return { daily: 10, monthly: null };
-    case "growth":     return { daily: null, monthly: 200 };
-    case "pro":        return { daily: null, monthly: null };
-    case "enterprise": return { daily: null, monthly: null };
+    case "free":       return { daily: 15,   monthly: null };   // 15 AI entries/day
+    case "growth":     return { daily: null, monthly: 500 };    // 500 AI entries/month
+    case "pro":        return { daily: null, monthly: null };   // unlimited
+    case "enterprise": return { daily: null, monthly: null };   // unlimited
   }
 }
 

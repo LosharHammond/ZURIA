@@ -4,6 +4,7 @@ import { collections } from "@/lib/firebase/collections";
 import type { SubscriptionPlan, Transaction, Debt, TransactionType } from "@/types/domain";
 import { MONEY_IN_TYPES, MONEY_OUT_TYPES, REVENUE_TYPES, OPERATING_COST_TYPES } from "@/types/domain";
 import { getEffectivePlan } from "@/lib/subscription";
+import { rateLimit } from "@/lib/rate-limit";
 
 // Friendly cost-category labels for PDF reports (shorter than TRANSACTION_TYPE_LABELS)
 const COST_LABEL: Partial<Record<TransactionType, string>> = {
@@ -34,8 +35,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const db = getAdminDb();
   const uid = decoded.uid;
+
+  // Rate limit: 20 PDF downloads per hour per user
+  const { allowed } = rateLimit(`pdf-report:${uid}`, 20, 60 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const db = getAdminDb();
 
   // Load user + check subscription
   const userSnap = await db.collection(collections.users).doc(uid).get();
