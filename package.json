@@ -16,6 +16,12 @@
     "project:update-baseline": "node scripts/update-project-baseline.mjs",
     "regression:update-baseline": "node scripts/update-baseline.mjs",
     "regression:install-hooks": "node -e \"require('os').platform()==='win32' ? require('child_process').execSync('powershell -ExecutionPolicy Bypass -File scripts/install-hooks.ps1',{stdio:'inherit'}) : require('child_process').execSync('bash scripts/install-hooks.sh',{stdio:'inherit'})\"",
+    "checklist": "node scripts/checklist.mjs",
+    "checklist:full": "node scripts/checklist.mjs --full",
+    "checklist:logs": "node scripts/checklist-logs.mjs",
+    "checklist:silent-catch": "node scripts/checklist-silent-catch.mjs",
+    "checklist:build": "node scripts/checklist-build.mjs",
+    "checklist:bundle": "node scripts/checklist-bundle.mjs",
     "prepare": "node -e \"try{require('child_process').execSync(require('os').platform()==='win32'?'powershell -ExecutionPolicy Bypass -File scripts/install-hooks.ps1':'bash scripts/install-hooks.sh',{stdio:'inherit'})}catch(e){console.warn('Hook install skipped (no git):',e.message)}\""
   },
   "dependencies": {
