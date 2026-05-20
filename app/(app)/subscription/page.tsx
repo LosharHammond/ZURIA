@@ -34,13 +34,14 @@ import { SUPPORT_WA_LINK } from "@/lib/config";
 
 const SUPPORT_WA_HREF = SUPPORT_WA_LINK;
 
+// Note: annualPrice is intentionally NOT stored here — it is read directly from
+// SUBSCRIPTION_TIERS[plan].annualPriceGHS so there is a single source of truth.
 const PLAN_META: Record<SubscriptionPlan, {
   color: string;
   bg: string;
   border: string;
   glow: string;
   emoji: string;
-  annualPrice: number | null;
 }> = {
   free: {
     color: "text-muted-foreground",
@@ -48,7 +49,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-white/10",
     glow: "",
     emoji: "🆓",
-    annualPrice: null,
   },
   growth: {
     color: "text-emerald-400",
@@ -56,7 +56,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-emerald-500/30",
     glow: "shadow-emerald-500/10",
     emoji: "🟢",
-    annualPrice: 250,   // GHS 250/yr — 2 months free on GHS 25/mo
   },
   pro: {
     color: "text-cyan-400",
@@ -64,7 +63,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-cyan-500/30",
     glow: "shadow-cyan-500/10",
     emoji: "🔵",
-    annualPrice: 700,   // GHS 700/yr — 2 months free on GHS 70/mo
   },
   enterprise: {
     color: "text-amber-400",
@@ -72,7 +70,6 @@ const PLAN_META: Record<SubscriptionPlan, {
     border: "border-amber-500/30",
     glow: "shadow-amber-500/10",
     emoji: "🟣",
-    annualPrice: 2000,  // GHS 2000/yr — 2 months free on GHS 200/mo
   },
 };
 
@@ -499,7 +496,7 @@ function TierCard({
   if (plan === "free") return null;
 
   const monthlyPrice = tier.priceGHS;
-  const annualTotal  = meta.annualPrice ?? 0;
+  const annualTotal  = tier.annualPriceGHS ?? 0;
   const annualMonthlyCost = Math.round(annualTotal / 12);
   const annualSaving = monthlyPrice * 12 - annualTotal;
 
@@ -530,7 +527,7 @@ function TierCard({
           <p className="mt-0.5 text-xs text-muted-foreground">{tier.label}</p>
         </div>
         <div className="text-right shrink-0">
-          {billingAnnual && meta.annualPrice ? (
+          {billingAnnual && tier.annualPriceGHS ? (
             <>
               <p className={`text-2xl font-black ${meta.color}`}>
                 GHS {annualTotal}
@@ -544,7 +541,7 @@ function TierCard({
                 GHS {monthlyPrice}
                 <span className="text-xs font-normal text-muted-foreground">/mo</span>
               </p>
-              {meta.annualPrice && (
+              {tier.annualPriceGHS && (
                 <p className="text-[11px] text-muted-foreground">or GHS {annualTotal}/yr</p>
               )}
             </>
@@ -553,7 +550,7 @@ function TierCard({
       </div>
 
       {/* Annual saving callout */}
-      {billingAnnual && meta.annualPrice && !isCurrentPlan && (
+      {billingAnnual && tier.annualPriceGHS && !isCurrentPlan && (
         <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
           <BadgeCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
           <p className="text-[11px] text-emerald-400 font-medium">
@@ -616,7 +613,7 @@ function TierCard({
             plan={plan}
             annual={billingAnnual}
             label={
-              billingAnnual && meta.annualPrice
+              billingAnnual && tier.annualPriceGHS
                 ? `Pay GHS ${annualTotal} — Subscribe Annually`
                 : `Pay GHS ${monthlyPrice}/mo — Subscribe`
             }
@@ -710,8 +707,7 @@ export default function SubscriptionPage() {
   const maxAnnualSaving = Math.max(
     ...plans.map((p) => {
       const t = SUBSCRIPTION_TIERS[p];
-      const m = PLAN_META[p];
-      return m.annualPrice ? t.priceGHS * 12 - m.annualPrice : 0;
+      return t.annualPriceGHS ? t.priceGHS * 12 - t.annualPriceGHS : 0;
     })
   );
 
